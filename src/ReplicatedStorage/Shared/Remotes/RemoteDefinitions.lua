@@ -25,8 +25,17 @@ local REMOTE_EVENTS = {
 	-- Server → Client: Sync số tiền sau khi có thay đổi
 	"UpdateMoney",
 
-	-- Server → Client: Hiện màn hình thắng/thua cuối trận
+	-- Server → Client: Hiện màn hình thắng/thua + thống kê cuối trận
 	"ShowGameOver",
+
+	-- Client → Server: Báo tool đã hit một player (Raycast đã xử lý client-side)
+	"OnToolHit",
+
+	-- Server → Client: Bật/tắt AlwaysOnTop cho highlight (FrozenState)
+	"UpdateFrozenState",
+
+	-- Server → Client: Gửi bảng phân đội khi trận bắt đầu
+	"SetTeamAssignment",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

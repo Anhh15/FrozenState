@@ -11,13 +11,26 @@ assert(RunService:IsServer(), "ServiceLoader chỉ được chạy trên Server"
 -- =========================================================
 
 local SERVICES = {
-	-- DataService phải lên đầu tiên vì các service khác phụ thuộc vào nó
+	-- DataService phải lên đầu tiên vì các service khác cần dữ liệu người chơi
 	require(script.Parent.DataService),
 
-	-- Thêm service mới ở đây theo thứ tự:
-	-- require(script.Parent.MatchService),
-	-- require(script.Parent.TeamService),
-	-- ...
+	-- SessionService: quản lý state trận đấu (dependency của hầu hết service sau)
+	require(script.Parent.SessionService),
+
+	-- TeamService: broadcast team data
+	require(script.Parent.TeamService),
+
+	-- MapService: load / unload map
+	require(script.Parent.MapService),
+
+	-- FreezeService: logic đóng băng/giải cứu + OnToolHit handler
+	require(script.Parent.FreezeService),
+
+	-- IcicleService: cấp / thu hồi Tool
+	require(script.Parent.IcicleService),
+
+	-- MatchService: game loop (phải cuối cùng vì phụ thuộc vào tất cả service trên)
+	require(script.Parent.MatchService),
 }
 
 -- =========================================================

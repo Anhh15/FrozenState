@@ -39,6 +39,14 @@ local GameConfig = {
 		RewardLose             = 10,  -- Thưởng an ủi khi thua
 	},
 
+	-- =========================================================
+	-- TOOL: ICICLE
+	-- =========================================================
+	Tool = {
+		IcicleRange    = 10,   -- Khoảng cách Raycast tối đa (studs)
+		IcicleCooldown = 0.8,  -- Thời gian hồi chiêu giữa 2 lần swing (giây)
+	},
+
 }
 
 return GameConfig

@@ -6,8 +6,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local ProfileService = require(ReplicatedStorage.Shared.Lib.ProfileService)
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local ProfileService    = require(ReplicatedStorage.Shared.Lib.ProfileService)
+local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
 -- =========================================================
 -- SCHEMA MẶC ĐỊNH — Dữ liệu bền vững của mỗi người chơi
@@ -207,6 +208,32 @@ function DataService:Init()
 end
 
 function DataService:Start()
+	-- Xử lý GetPlayerData: client gọi lúc mới join để lấy dữ liệu ban đầu
+	local GetPlayerDataFn = RemoteDefinitions.GetFunction("GetPlayerData")
+	GetPlayerDataFn.OnServerInvoke = function(Player)
+		local Data = DataService.GetData(Player)
+		if not Data then return nil end
+		-- Trả bản copy để tránh client modify trực tiếp
+		return {
+			Money              = Data.Money,
+			TotalFreezes       = Data.TotalFreezes,
+			TotalThaws         = Data.TotalThaws,
+			TotalFreezingSpree = Data.TotalFreezingSpree,
+			TotalThawingSpree  = Data.TotalThawingSpree,
+			TotalFirstBlood    = Data.TotalFirstBlood,
+			TotalLastStanding  = Data.TotalLastStanding,
+			OwnedCosmetics     = Data.OwnedCosmetics,
+			EquippedIcicle     = Data.EquippedIcicle,
+			EquippedIceBlock   = Data.EquippedIceBlock,
+		}
+	end
+
+	-- Xử lý EquipItem: client trang bị cosmetic (Phase 2+)
+	local EquipItemFn = RemoteDefinitions.GetFunction("EquipItem")
+	EquipItemFn.OnServerInvoke = function(Player, SlotName, ItemId)
+		return DataService.EquipCosmetic(Player, SlotName, ItemId)
+	end
+
 	print("[DataService] Đang chạy.")
 end
 
