@@ -337,7 +337,7 @@ local function RunInGame()
 	return _earlyWinner or ResolveWinner()
 end
 
---- GameOver: hiện thống kê ngay, đếm ngược, rồi teleport về lobby và dọn dẹp
+--- GameOver: đếm ngược, teleport về lobby, dọn dẹp, rồi mới hiện bảng thống kê
 local function RunGameOver(WinTeam)
 	_currentPhase  = "GameOver"
 	local Duration = GameConfig.Phase.GameOverDuration
@@ -351,9 +351,6 @@ local function RunGameOver(WinTeam)
 
 	-- Thaw tất cả người bị đóng băng ngay lập tức
 	FreezeService.ThawAll()
-
-	-- Gửi thống kê cuối trận xuống client ngay (không delay)
-	BroadcastGameOver(WinTeam)
 
 	-- Đếm ngược để player xem thống kê
 	for t = Duration, 0, -1 do
@@ -382,6 +379,10 @@ local function RunGameOver(WinTeam)
 
 	-- Dọn dẹp map
 	MapService.UnloadMap()
+
+	-- Gửi thống kê cuối trận xuống client sau khi đã dọn dẹp xong
+	-- (player đã về Lobby trước khi thấy bảng thống kê)
+	BroadcastGameOver(WinTeam)
 end
 
 -- =========================================================
