@@ -142,6 +142,9 @@ end
 local GameStatisticController = {}
 
 function GameStatisticController:Init()
+	-- Ngăn GUI reset khi player chết (respawn)
+	StatGui.ResetOnSpawn = false
+
 	HideAll()
 
 	-- Nhận dữ liệu cuối trận từ server
@@ -159,10 +162,10 @@ function GameStatisticController:Init()
 		ShowTeamWon()
 	end)
 
-	-- Ẩn GUI khi trận mới chuẩn bị bắt đầu (phase Ready)
+	-- Ẩn GUI khi đang trong gameplay (Ready hoặc InGame)
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
-		if Data and Data.Phase == "Ready" then
+		if Data and (Data.Phase == "Ready" or Data.Phase == "InGame") then
 			HideAll()
 		end
 	end)

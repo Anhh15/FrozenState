@@ -36,9 +36,18 @@ Tool.Activated:Connect(function()
 	local Origin    = Camera.CFrame.Position
 	local Direction = Camera.CFrame.LookVector * RANGE
 
+	-- Thu thập tất cả IceBlock trong workspace để loại khỏi Raycast
+	-- (tránh tia bị chặn bởi khối băng của chính đồng đội / kẻ địch)
+	local ExcludeList = { Player.Character or workspace }
+	for _, Child in ipairs(workspace:GetChildren()) do
+		if Child.Name == "IceBlock" then
+			table.insert(ExcludeList, Child)
+		end
+	end
+
 	local Params = RaycastParams.new()
 	Params.FilterType = Enum.RaycastFilterType.Exclude
-	Params.FilterDescendantsInstances = { Player.Character or workspace }
+	Params.FilterDescendantsInstances = ExcludeList
 
 	local Result = workspace:Raycast(Origin, Direction, Params)
 	if not Result then return end

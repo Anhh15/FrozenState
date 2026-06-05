@@ -1,0 +1,27 @@
+{
+  "name": "rbx_ice",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$path": "src/ReplicatedStorage"
+    },
+    "ServerScriptService": {
+      "$path": "src/ServerScriptService"
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$path": "src/StarterPlayer/StarterPlayerScripts"
+      }
+    },
+    "Workspace": {
+      "$path": "src/Workspace",
+      "$properties": {}
+    },
+    "Lighting": {
+      "$properties": {}
+    },
+    "SoundService": {
+      "$properties": {}
+    }
+  }
+}

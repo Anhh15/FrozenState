@@ -337,32 +337,47 @@ local function RunInGame()
 	return _earlyWinner or ResolveWinner()
 end
 
---- GameOver: 6 giây, hiện thống kê sau 2 giây đầu
+--- GameOver: hiện thống kê ngay, đếm ngược, rồi teleport về lobby và dọn dẹp
 local function RunGameOver(WinTeam)
 	_currentPhase  = "GameOver"
 	local Duration = GameConfig.Phase.GameOverDuration
-	local Delay    = GameConfig.Phase.GameOverRevealDelay
-	local Revealed = false
 
-	-- Thu hồi tool
+	-- Thu hồi tool và kết thúc trận
 	IcicleService.RemoveToolFromAll()
 	SessionService.SetMatchActive(false)
 
 	-- Phát phần thưởng
 	DistributeRewards(WinTeam)
 
+	-- Thaw tất cả người bị đóng băng ngay lập tức
+	FreezeService.ThawAll()
+
+	-- Gửi thống kê cuối trận xuống client ngay (không delay)
+	BroadcastGameOver(WinTeam)
+
+	-- Đếm ngược để player xem thống kê
 	for t = Duration, 0, -1 do
 		BroadcastGameState("GameOver", t, false)
-
-		-- Sau Delay giây đầu: thaw tất cả + gửi thống kê
-		if (Duration - t) >= Delay and not Revealed then
-			Revealed = true
-			FreezeService.ThawAll()
-			BroadcastGameOver(WinTeam)
-		end
-
 		if t == 0 then break end
 		task.wait(1)
+	end
+
+	-- Teleport tất cả player về SpawnLocation (lobby) sau khi hết giờ
+	local LobbySpawn = workspace:FindFirstChild("SpawnLocation")
+	for _, Player in ipairs(Players:GetPlayers()) do
+		local Character = Player.Character
+		if not Character then continue end
+		local HRP = Character:FindFirstChild("HumanoidRootPart")
+		if HRP and LobbySpawn then
+			HRP.CFrame = LobbySpawn.CFrame + Vector3.new(0, 4, 0)
+		end
+	end
+
+	-- Dọn sạch IceBlock tàn dư còn sót trong Workspace
+	for _, Child in ipairs(workspace:GetChildren()) do
+		if Child.Name == "IceBlock" then
+			Child:Destroy()
+		end
 	end
 
 	-- Dọn dẹp map

@@ -1,5 +1,7 @@
 -- GameStateController.lua (ModuleScript)
 -- Điều khiển GUI GameState: cập nhật tên phase và thời gian đếm ngược
+-- Đồng thời quản lý visibility của các lobby GUI (Menu, NavigationButton)
+-- theo phase: ẩn khi Ready/InGame, hiện lại khi Intermission/GameOver
 -- GUI cần có: Frame/TimeText, Frame/StateText, Frame/TimeShadowText, Frame/StateShadowText
 
 local Players           = game:GetService("Players")
@@ -13,12 +15,18 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
-local GameStateGui = PlayerGui:WaitForChild("GameState")
-local Frame        = GameStateGui:WaitForChild("Frame")
+
+-- GameState HUD (luôn hiện)
+local GameStateGui    = PlayerGui:WaitForChild("GameState")
+local Frame           = GameStateGui:WaitForChild("Frame")
 local TimeText        = Frame:WaitForChild("TimeText")
 local StateText       = Frame:WaitForChild("StateText")
 local TimeShadowText  = Frame:WaitForChild("TimeShadowText")
 local StateShadowText = Frame:WaitForChild("StateShadowText")
+
+-- Lobby GUIs (ẩn khi Ready/InGame)
+local MenuGui = PlayerGui:WaitForChild("Menu", 10)
+local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
 
 -- =========================================================
 -- CONFIG
@@ -33,6 +41,12 @@ local PHASE_DISPLAY = {
 	GameOver     = "GAME OVER",
 }
 
+-- Phase mà lobby GUI phải bị ẩn
+local GAMEPLAY_PHASES = {
+	Ready  = true,
+	InGame = true,
+}
+
 -- =========================================================
 -- HELPERS
 -- =========================================================
@@ -41,6 +55,12 @@ local function FormatTime(Seconds)
 	local M = math.floor(Seconds / 60)
 	local S = Seconds % 60
 	return string.format("%02d:%02d", M, S)
+end
+
+--- Ẩn/hiện các lobby GUI theo phase hiện tại
+local function SetLobbyGuisVisible(Visible)
+	if MenuGui then MenuGui.Enabled = Visible end
+	if NavGui  then NavGui.Enabled  = Visible end
 end
 
 local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
@@ -57,6 +77,9 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	StateShadowText.Text = DisplayPhase
 	TimeText.Text        = TimeStr
 	TimeShadowText.Text  = TimeStr
+
+	-- Ẩn lobby GUI khi đang gameplay, hiện lại khi ở lobby/intermission
+	SetLobbyGuisVisible(not GAMEPLAY_PHASES[Phase])
 end
 
 -- =========================================================
@@ -66,6 +89,9 @@ end
 local GameStateController = {}
 
 function GameStateController:Init()
+	-- Ngăn GUI reset khi player chết (respawn)
+	GameStateGui.ResetOnSpawn = false
+
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
@@ -77,7 +103,7 @@ function GameStateController:Init()
 		)
 	end)
 
-	-- Đặt trạng thái ban đầu
+	-- Đặt trạng thái ban đầu (lobby)
 	UpdateDisplay("Intermission", 0, false)
 
 	print("[GameStateController] Đã khởi tạo.")
