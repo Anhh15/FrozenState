@@ -43,8 +43,8 @@ local GameConfig = {
 	-- TOOL: ICICLE
 	-- =========================================================
 	Tool = {
-		IcicleRange    = 10,   -- Khoảng cách Raycast tối đa (studs)
 		IcicleCooldown = 0.8,  -- Thời gian hồi chiêu giữa 2 lần swing (giây)
+		HitboxRange    = 8,    -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
 	},
 
 }

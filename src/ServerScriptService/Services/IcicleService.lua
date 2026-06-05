@@ -1,6 +1,7 @@
 -- IcicleService.lua
 -- Tạo và cấp / thu hồi Tool Icicle cho người chơi
--- Tool bao gồm một Handle cơ bản + clone LocalScript từ ReplicatedStorage
+-- Tool được clone từ ServerStorage/Icicles/Default (do designer tạo trong Studio)
+-- IcicleScript được inject vào tool sau khi clone
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,53 +13,26 @@ local SessionService = require(script.Parent.SessionService)
 -- PRIVATE: Tool Creation
 -- =========================================================
 
---- Tạo một Tool Icicle hoàn chỉnh sẵn sàng cho vào Backpack
-local function CreateIcicleTool()
-	local Tool           = Instance.new("Tool")
-	Tool.Name            = "Icicle"
-	Tool.RequiresHandle  = true
-	Tool.CanBeDropped    = false
-	Tool.ToolTip         = "Đóng băng kẻ địch / Giải cứu đồng minh"
-
-	-- Handle (part bắt buộc của Tool)
-	local Handle         = Instance.new("Part")
-	Handle.Name          = "Handle"
-	Handle.Size          = Vector3.new(0.25, 1.5, 0.25)
-	Handle.BrickColor    = BrickColor.new("Cyan")
-	Handle.Material      = Enum.Material.Ice
-	Handle.Transparency  = 0.2
-	Handle.CastShadow    = false
-	Handle.Parent        = Tool
-
-	-- Weld skin mặc định từ ServerStorage/Icicles/Default (nếu có)
+--- Clone Tool Icicle từ template trong ServerStorage và inject LocalScript
+local function CloneIcicleTool()
 	local IciclesFolder = ServerStorage:FindFirstChild("Icicles")
-	if IciclesFolder then
-		local DefaultSkin = IciclesFolder:FindFirstChild("Default")
-		if DefaultSkin then
-			local SkinClone = DefaultSkin:Clone()
-			SkinClone.Name  = "Skin"
-			SkinClone.Parent = Tool
+	local Template      = IciclesFolder and IciclesFolder:FindFirstChild("Default")
 
-			-- Weld tất cả Part trong skin vào Handle
-			for _, Part in ipairs(SkinClone:GetDescendants()) do
-				if Part:IsA("BasePart") then
-					Part.Anchored = false
-					local Weld  = Instance.new("WeldConstraint")
-					Weld.Part0  = Handle
-					Weld.Part1  = Part
-					Weld.Parent = Handle
-				end
-			end
-		end
+	if not Template then
+		warn("[IcicleService] Không tìm thấy ServerStorage/Icicles/Default — hãy tạo template trong Studio")
+		return nil
 	end
 
-	-- Clone LocalScript điều khiển tool từ ReplicatedStorage
-	local Shared = ReplicatedStorage:FindFirstChild("Shared")
-	local ToolsFolder = Shared and Shared:FindFirstChild("Tools")
+	local Tool = Template:Clone()
+	Tool.Name  = "Icicle"
+
+	-- Inject LocalScript điều khiển vào tool sau khi clone
+	local Shared         = ReplicatedStorage:FindFirstChild("Shared")
+	local ToolsFolder    = Shared and Shared:FindFirstChild("Tools")
 	local ScriptTemplate = ToolsFolder and ToolsFolder:FindFirstChild("IcicleScript")
 
 	if ScriptTemplate then
-		local ToolScript = ScriptTemplate:Clone()
+		local ToolScript  = ScriptTemplate:Clone()
 		ToolScript.Parent = Tool
 	else
 		warn("[IcicleService] Không tìm thấy IcicleScript tại ReplicatedStorage.Shared.Tools")
@@ -78,9 +52,10 @@ local IcicleService = {}
 function IcicleService.GiveTool(Player)
 	IcicleService.RemoveTool(Player)  -- Xóa cũ nếu có
 
-	local Tool  = CreateIcicleTool()
-	Tool.Parent = Player.Backpack
+	local Tool = CloneIcicleTool()
+	if not Tool then return end
 
+	Tool.Parent = Player.Backpack
 	print(("[IcicleService] Đã cấp Icicle cho %s"):format(Player.Name))
 end
 

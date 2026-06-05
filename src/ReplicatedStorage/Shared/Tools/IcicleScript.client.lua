@@ -1,11 +1,14 @@
 -- IcicleScript (LocalScript)
--- Nằm trong ReplicatedStorage.Shared.Tools — được IcicleService clone vào Tool khi cấp
+-- Nằm trong ReplicatedStorage.Shared.Tools — được IcicleService inject vào Tool khi cấp
 -- Chạy khi player cầm Tool (context: Backpack / Character)
--- Xử lý: Activated → Raycast → FireServer(OnToolHit, targetPlayer)
+--
+-- Cơ chế hit detection:
+--   Tool.Activated → GetPartsInPart(Hitbox) → FireServer(OnToolHit, TargetPlayer)
+--   Không dùng Raycast. Hitbox là Part vô hình trong Tool template (tạo trong Studio).
+--   Một lần swing có thể đóng băng/giải cứu nhiều người cùng lúc (AoE).
 
 local Tool          = script.Parent
 local Player        = game.Players.LocalPlayer
-local Camera        = workspace.CurrentCamera
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Chờ các dependency sẵn sàng
@@ -17,10 +20,11 @@ local GameConfig    = require(
 		:WaitForChild("GameConfig")
 )
 
-local RANGE    = GameConfig.Tool.IcicleRange
-local COOLDOWN = GameConfig.Tool.IcicleCooldown
+-- Chờ Hitbox từ template
+local Hitbox        = Tool:WaitForChild("Hitbox")
+local COOLDOWN      = GameConfig.Tool.IcicleCooldown
 
-local LastFireTime = 0
+local _IsOnCooldown = false
 
 -- =========================================================
 -- TOOL ACTIVATED
@@ -28,38 +32,37 @@ local LastFireTime = 0
 
 Tool.Activated:Connect(function()
 	-- Cooldown check
-	local Now = os.clock()
-	if Now - LastFireTime < COOLDOWN then return end
-	LastFireTime = Now
+	if _IsOnCooldown then return end
+	_IsOnCooldown = true
 
-	-- Raycast từ Camera theo hướng nhìn
-	local Origin    = Camera.CFrame.Position
-	local Direction = Camera.CFrame.LookVector * RANGE
+	-- Kiểm tra tất cả Part đang nằm trong vùng Hitbox tại thời điểm swing
+	local Params = OverlapParams.new()
+	Params.FilterType                 = Enum.RaycastFilterType.Exclude
+	Params.FilterDescendantsInstances = { Player.Character }
 
-	-- Thu thập tất cả IceBlock trong workspace để loại khỏi Raycast
-	-- (tránh tia bị chặn bởi khối băng của chính đồng đội / kẻ địch)
-	local ExcludeList = { Player.Character or workspace }
-	for _, Child in ipairs(workspace:GetChildren()) do
-		if Child.Name == "IceBlock" then
-			table.insert(ExcludeList, Child)
-		end
+	local TouchingParts = workspace:GetPartsInPart(Hitbox, Params)
+
+	-- Tập hợp các TargetPlayer đã hit (tránh fire nhiều lần cùng 1 người)
+	local HitPlayers = {}
+
+	for _, Part in ipairs(TouchingParts) do
+		-- Tìm Model chứa Part
+		local TargetChar = Part:FindFirstAncestorOfClass("Model")
+		if not TargetChar then continue end
+
+		-- Xác định player từ character
+		local TargetPlayer = game.Players:GetPlayerFromCharacter(TargetChar)
+		if not TargetPlayer or TargetPlayer == Player then continue end
+
+		-- Tránh hit cùng 1 player nhiều lần trong 1 swing
+		if HitPlayers[TargetPlayer] then continue end
+		HitPlayers[TargetPlayer] = true
+
+		-- Fire lên server để validate và xử lý (server tự phân biệt Freeze/Thaw dựa vào team)
+		OnToolHit:FireServer(TargetPlayer)
 	end
 
-	local Params = RaycastParams.new()
-	Params.FilterType = Enum.RaycastFilterType.Exclude
-	Params.FilterDescendantsInstances = ExcludeList
-
-	local Result = workspace:Raycast(Origin, Direction, Params)
-	if not Result then return end
-
-	-- Tìm character từ part bị hit
-	local HitInstance  = Result.Instance
-	local TargetChar   = HitInstance:FindFirstAncestorOfClass("Model")
-	if not TargetChar then return end
-
-	local TargetPlayer = game.Players:GetPlayerFromCharacter(TargetChar)
-	if not TargetPlayer or TargetPlayer == Player then return end
-
-	-- Fire lên server để validate và xử lý
-	OnToolHit:FireServer(TargetPlayer)
+	-- Hồi chiêu
+	task.wait(COOLDOWN)
+	_IsOnCooldown = false
 end)

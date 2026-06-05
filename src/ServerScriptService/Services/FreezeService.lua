@@ -270,7 +270,7 @@ local function HandleToolHit(Attacker, Target)
 	if not AttackerHRP or not TargetHRP then return end
 
 	local Distance = (AttackerHRP.Position - TargetHRP.Position).Magnitude
-	if Distance > GameConfig.Tool.IcicleRange * 1.5 then return end  -- 1.5x tolerance lag
+	if Distance > GameConfig.Tool.HitboxRange * 1.5 then return end  -- 1.5x tolerance lag
 
 	if TargetTeam ~= AttackerTeam then
 		-- Kẻ địch → Freeze (chỉ khi đang Normal)
