@@ -39,6 +39,8 @@ local function InitPlayerSession(Player)
 		LastStanding   = false,
 		MoneyEarned    = 0,
 	}
+	-- Xóa Attribute team để client biết player này là Spectator
+	Player:SetAttribute("Team", nil)
 end
 
 -- =========================================================
@@ -110,9 +112,11 @@ function SessionService.AssignTeams(PlayerList)
 	for i, Player in ipairs(Shuffled) do
 		if i <= Half then
 			_teamAssignment[Player] = "Team1"
+			Player:SetAttribute("Team", "Team1")
 			table.insert(Team1, Player)
 		else
 			_teamAssignment[Player] = "Team2"
+			Player:SetAttribute("Team", "Team2")
 			table.insert(Team2, Player)
 		end
 	end
@@ -232,6 +236,9 @@ function SessionService:Init()
 				MatchEndSignal:Fire(WinTeam)
 			end
 		end
+
+		-- Xóa Attribute team trước khi dọn entry
+		Player:SetAttribute("Team", nil)
 
 		-- Dọn dẹp entry
 		_playerStates[Player]   = nil

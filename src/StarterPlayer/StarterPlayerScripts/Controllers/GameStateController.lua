@@ -41,11 +41,17 @@ local PHASE_DISPLAY = {
 	GameOver     = "GAME OVER",
 }
 
--- Phase mà lobby GUI phải bị ẩn
+-- Phase mà lobby GUI phải bị ẩn (chỉ áp dụng khi player đang trong trận, tức là có Team)
 local GAMEPLAY_PHASES = {
-	Ready  = true,
-	InGame = true,
+	Ready    = true,
+	InGame   = true,
+	GameOver = true,  -- Ẩn GUI trong 6s đếm ngược sau trận, trước khi về Lobby
 }
+
+-- Cache phase hiện tại để re-evaluate GUI khi Attribute Team thay đổi
+local _lastPhase          = "Intermission"
+local _lastTimeRemaining  = 0
+local _lastIsFrozenState  = false
 
 -- =========================================================
 -- HELPERS
@@ -57,13 +63,19 @@ local function FormatTime(Seconds)
 	return string.format("%02d:%02d", M, S)
 end
 
---- Ẩn/hiện các lobby GUI theo phase hiện tại
+--- Ẩn/hiện các lobby GUI theo phase và trạng thái team của LocalPlayer
+--- Spectator (chưa có team) luôn thấy GUI dù ở phase nào
 local function SetLobbyGuisVisible(Visible)
 	if MenuGui then MenuGui.Enabled = Visible end
 	if NavGui  then NavGui.Enabled  = Visible end
 end
 
 local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
+	-- Cập nhật cache để re-evaluate khi Attribute Team thay đổi
+	_lastPhase         = Phase
+	_lastTimeRemaining = TimeRemaining
+	_lastIsFrozenState = IsFrozenState
+
 	local DisplayPhase = PHASE_DISPLAY[Phase] or Phase
 
 	-- Thêm indicator khi FrozenState đang active
@@ -78,8 +90,15 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	TimeText.Text        = TimeStr
 	TimeShadowText.Text  = TimeStr
 
-	-- Ẩn lobby GUI khi đang gameplay, hiện lại khi ở lobby/intermission
-	SetLobbyGuisVisible(not GAMEPLAY_PHASES[Phase])
+	-- Kiểm tra xem LocalPlayer có đang trong trận (có team) hay không
+	local MyTeam = LocalPlayer:GetAttribute("Team")
+	if MyTeam then
+		-- Player trong trận: ẩn/hiện theo phase
+		SetLobbyGuisVisible(not GAMEPLAY_PHASES[Phase])
+	else
+		-- Spectator (chưa có team): luôn hiện GUI để đổi skin
+		SetLobbyGuisVisible(true)
+	end
 end
 
 -- =========================================================
@@ -101,6 +120,12 @@ function GameStateController:Init()
 			Data.TimeRemaining or 0,
 			Data.IsFrozenState or false
 		)
+	end)
+
+	-- Re-evaluate GUI ngay khi Attribute Team thay đổi
+	-- (ví dụ: Spectator được phân team khi trận mới bắt đầu, hoặc về Lobby sau GameOver)
+	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(function()
+		UpdateDisplay(_lastPhase, _lastTimeRemaining, _lastIsFrozenState)
 	end)
 
 	-- Đặt trạng thái ban đầu (lobby)
