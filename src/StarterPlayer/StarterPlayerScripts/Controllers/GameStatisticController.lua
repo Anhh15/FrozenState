@@ -1,28 +1,6 @@
 -- GameStatisticController.lua (ModuleScript)
--- Điều khiển GUI GameStatistic: 2 panel TeamWonStats và YourStats
+-- Điều khiển GUI GameStatistic mới với ViewportFrame và UIListLayout
 --
--- Cấu trúc GUI (do user cung cấp):
--- GameStatistic
---   TeamWonStats
---     TeamWon/Text          — tên đội thắng
---     Player1Stats, Player2Stats, Player3Stats
---       PlayerAvatar/PlayerName — tên người chơi
---       FreezeValueText, ThawValueText
---     NextButton            — chuyển sang YourStats
---     CloseButton
---   YourStats
---     GameResult/Text       — WIN / LOSE
---     PlayerMainStats
---       PlayerAvatar/PlayerName
---       FreezeValueText, ThawValueText
---     FreezeStats/Text/ValueText
---     ThawStats/Text/ValueText
---     F_SpreeStats/Text/ValueText
---     T_SpreeStats/Text/ValueText
---     LastStadingStats/Text/ValueText
---     FirstBloodStats/Text/ValueText
---     TotalMoney/Text/ValueText
---     CloseButton
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -38,101 +16,151 @@ local LocalPlayer  = Players.LocalPlayer
 local PlayerGui    = LocalPlayer:WaitForChild("PlayerGui")
 local StatGui      = PlayerGui:WaitForChild("GameStatistic")
 
--- ── TeamWonStats ──────────────────────────────────────────
+-- ── TeamWonStats (Bảng Đội Thắng) ─────────────────────────
 local TeamWonStats  = StatGui:WaitForChild("TeamWonStats")
-local TeamWonText   = TeamWonStats:WaitForChild("TeamWon"):WaitForChild("Text")
+local TeamWonText   = TeamWonStats:WaitForChild("TeamWon"):WaitForChild("TeamWonText")
 local NextButton    = TeamWonStats:WaitForChild("NextButton")
 local CloseButton1  = TeamWonStats:WaitForChild("CloseButton")
 
 local PlayerSlots = {
-	TeamWonStats:WaitForChild("Player1Stats"),
-	TeamWonStats:WaitForChild("Player2Stats"),
-	TeamWonStats:WaitForChild("Player3Stats"),
+	TeamWonStats:WaitForChild("PlayerTop1"),
+	TeamWonStats:WaitForChild("PlayerTop2"),
+	TeamWonStats:WaitForChild("PlayerTop3"),
 }
 
--- ── YourStats ─────────────────────────────────────────────
-local YourStats      = StatGui:WaitForChild("YourStats")
-local GameResultText = YourStats:WaitForChild("GameResult"):WaitForChild("Text")
-local CloseButton2   = YourStats:WaitForChild("CloseButton")
+-- ── PlayerStats (Bảng Thống Kê Cá Nhân) ───────────────────
+local PlayerStats    = StatGui:WaitForChild("PlayerStats")
+local GameResultText = PlayerStats:WaitForChild("GameResult"):WaitForChild("GameResultText")
+local CloseButton2   = PlayerStats:WaitForChild("CloseButton")
+local MainViewport   = PlayerStats:WaitForChild("PlayerViewport")
 
-local PlayerMainStats = YourStats:WaitForChild("PlayerMainStats")
-local MainNameLabel   = PlayerMainStats:WaitForChild("PlayerAvatar"):WaitForChild("PlayerName")
-local MainFreezeVal   = PlayerMainStats:WaitForChild("FreezeValueText")
-local MainThawVal     = PlayerMainStats:WaitForChild("ThawValueText")
+local StatsPanel     = PlayerStats:WaitForChild("Stats")
+local TotalStats     = StatsPanel:WaitForChild("TotalStats")
 
--- Các stat + tiền thưởng tương ứng
-local FreezeStatsVal      = YourStats:WaitForChild("FreezeStats")    :WaitForChild("Text"):WaitForChild("ValueText")
-local ThawStatsVal        = YourStats:WaitForChild("ThawStats")      :WaitForChild("Text"):WaitForChild("ValueText")
-local FSpreeStatsVal      = YourStats:WaitForChild("F_SpreeStats")   :WaitForChild("Text"):WaitForChild("ValueText")
-local TSpreeStatsVal      = YourStats:WaitForChild("T_SpreeStats")   :WaitForChild("Text"):WaitForChild("ValueText")
-local LastStandingStatsVal = YourStats:WaitForChild("LastStadingStats"):WaitForChild("Text"):WaitForChild("ValueText")
-local FirstBloodStatsVal  = YourStats:WaitForChild("FirstBloodStats"):WaitForChild("Text"):WaitForChild("ValueText")
-local TotalMoneyVal       = YourStats:WaitForChild("TotalMoney")     :WaitForChild("Text"):WaitForChild("ValueText")
+-- Tham chiếu tới các dòng thống kê con trong TotalStats
+local FreezeVal       = TotalStats:WaitForChild("Freeze"):WaitForChild("ValueText")
+local ThawVal         = TotalStats:WaitForChild("Thaw"):WaitForChild("ValueText")
+local FSpreeVal       = TotalStats:WaitForChild("FreezingSpree"):WaitForChild("ValueText")
+local TSpreeVal       = TotalStats:WaitForChild("ThawingSpree"):WaitForChild("ValueText")
+local FirstBloodVal   = TotalStats:WaitForChild("FirstBlood"):WaitForChild("ValueText")
+local LastStandingVal = TotalStats:WaitForChild("LastStanding"):WaitForChild("ValueText")
+
+local TotalMoneyVal   = StatsPanel:WaitForChild("TotalMoney"):WaitForChild("ValueText")
 
 -- =========================================================
 -- PRIVATE
 -- =========================================================
 
 local function HideAll()
-	StatGui.Enabled         = false
-	TeamWonStats.Visible    = false
-	YourStats.Visible       = false
+	StatGui.Enabled      = false
+	TeamWonStats.Visible = false
+	PlayerStats.Visible  = false
 end
 
 local function ShowTeamWon()
-	StatGui.Enabled         = true
-	TeamWonStats.Visible    = true
-	YourStats.Visible       = false
+	StatGui.Enabled      = true
+	TeamWonStats.Visible = true
+	PlayerStats.Visible  = false
 end
 
-local function ShowYourStats()
-	StatGui.Enabled         = true
-	TeamWonStats.Visible    = false
-	YourStats.Visible       = true
+local function ShowPlayerStats()
+	StatGui.Enabled      = true
+	TeamWonStats.Visible = false
+	PlayerStats.Visible  = true
 end
 
---- Điền thông tin top 3 vào PlayerSlots
-local function FillTopPlayers(TopPlayers)
-	for i, Slot in ipairs(PlayerSlots) do
-		local Data = TopPlayers[i]
-		if Data then
-			local NameLbl     = Slot:FindFirstChild("PlayerAvatar") and Slot.PlayerAvatar:FindFirstChild("PlayerName")
-			local FreezeLbl   = Slot:FindFirstChild("FreezeValueText")
-			local ThawLbl     = Slot:FindFirstChild("ThawValueText")
+--- Thiết lập và tạo mô hình nhân vật 3D trong ViewportFrame bằng UserId
+local function SetupPlayerViewport(viewportFrame, userId)
+	-- Xóa bỏ các Model/Camera cũ nếu có
+	for _, child in ipairs(viewportFrame:GetChildren()) do
+		if child:IsA("Model") or child:IsA("Camera") then
+			child:Destroy()
+		end
+	end
 
-			if NameLbl   then NameLbl.Text   = Data.Name end
-			if FreezeLbl then FreezeLbl.Text = tostring(Data.Freezes) end
-			if ThawLbl   then ThawLbl.Text   = tostring(Data.Thaws)   end
+	-- Tạo Camera hướng trực tiếp vào nhân vật
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 30
+	camera.Parent = viewportFrame
+	viewportFrame.CurrentCamera = camera
 
-			Slot.Visible = true
+	-- Tải mô hình nhân vật bất đồng bộ (giúp client không bị đơ)
+	task.spawn(function()
+		local success, model = pcall(function()
+			return Players:CreateHumanoidModelFromUserId(userId)
+		end)
+
+		if success and model then
+			model.Parent = viewportFrame
+			local hrp = model:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				-- Căn chỉnh camera đứng trước ngực nhân vật, hơi chúc nhẹ xuống
+				camera.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 1.5, 5.5), hrp.Position + Vector3.new(0, 0.5, 0))
+			end
+		end
+	end)
+end
+
+--- Lấy UserId an toàn từ Tên hiển thị (DisplayName hoặc Name) ngay cả khi người chơi đã thoát game
+local function GetUserIdFromName(name)
+	local player = Players:FindFirstChild(name)
+	if player then
+		return player.UserId
+	end
+	
+	local success, userId = pcall(function()
+		return Players:GetUserIdFromNameAsync(name)
+	end)
+	return success and userId or 0
+end
+
+--- Điền thông tin top 3 vào các PlayerSlots
+local function FillTopPlayers(topPlayers)
+	for i, slot in ipairs(PlayerSlots) do
+		local data = topPlayers[i]
+		if data then
+			slot.PlayerNameText.Text = data.Name
+			slot.FreezesStats.ValueText.Text = tostring(data.Freezes)
+			slot.ThawsStats.ValueText.Text = tostring(data.Thaws)
+
+			-- Render mô hình 3D cho Top player
+			local userId = GetUserIdFromName(data.Name)
+			if userId > 0 then
+				SetupPlayerViewport(slot.PlayerViewport, userId)
+			end
+
+			slot.Visible = true
 		else
-			Slot.Visible = false
+			slot.Visible = false
 		end
 	end
 end
 
---- Điền thống kê cá nhân vào YourStats
-local function FillPersonalStats(Won, Stats)
-	local Eco = GameConfig.Economy
+--- Điền thống kê cá nhân vào bảng PlayerStats
+local function FillPersonalStats(won, stats)
+	local eco = GameConfig.Economy
 
-	GameResultText.Text  = Won and "YOU WIN! 🏆" or "YOU LOSE 💀"
-	MainNameLabel.Text   = LocalPlayer.DisplayName
-	MainFreezeVal.Text   = tostring(Stats.Freezes)
-	MainThawVal.Text     = tostring(Stats.Thaws)
+	GameResultText.Text  = won and "YOU WIN! 🏆" or "YOU LOSE 💀"
+	
+	-- Render mô hình 3D của chính người chơi hiện tại
+	SetupPlayerViewport(MainViewport, LocalPlayer.UserId)
 
-	-- Hiện số tiền kiếm được từ mỗi stat (count × reward)
-	FreezeStatsVal.Text  = ("%d × %d = %d"):format(
-		Stats.Freezes, Eco.RewardPerFreeze, Stats.Freezes * Eco.RewardPerFreeze)
+	-- Format hiển thị chi tiết: "Số lượng (x Giá trị) = Tổng nhận được"
+	FreezeVal.Text = ("%d (×%d) = %d"):format(
+		stats.Freezes, eco.RewardPerFreeze, stats.Freezes * eco.RewardPerFreeze
+	)
 
-	ThawStatsVal.Text    = ("%d × %d = %d"):format(
-		Stats.Thaws, Eco.RewardPerThaw, Stats.Thaws * Eco.RewardPerThaw)
+	ThawVal.Text = ("%d (×%d) = %d"):format(
+		stats.Thaws, eco.RewardPerThaw, stats.Thaws * eco.RewardPerThaw
+	)
 
-	FSpreeStatsVal.Text  = tostring(Stats.FreezingSprees * Eco.RewardPerFreezingSpree)
-	TSpreeStatsVal.Text  = tostring(Stats.ThawingSprees  * Eco.RewardPerThawingSpree)
-
-	LastStandingStatsVal.Text = Stats.LastStanding and tostring(Eco.RewardLastStanding) or "0"
-	FirstBloodStatsVal.Text   = Stats.FirstBlood   and tostring(Eco.RewardFirstBlood)   or "0"
-	TotalMoneyVal.Text        = tostring(Stats.MoneyEarned)
+	-- Đối với Spree, First Blood và Last Standing hiển thị số tiền trực tiếp
+	FSpreeVal.Text       = tostring(stats.FreezingSprees * eco.RewardPerFreezingSpree)
+	TSpreeVal.Text       = tostring(stats.ThawingSprees * eco.RewardPerThawingSpree)
+	FirstBloodVal.Text   = stats.FirstBlood and tostring(eco.RewardFirstBlood) or "0"
+	LastStandingVal.Text = stats.LastStanding and tostring(eco.RewardLastStanding) or "0"
+	
+	TotalMoneyVal.Text   = tostring(stats.MoneyEarned)
 end
 
 -- =========================================================
@@ -142,42 +170,38 @@ end
 local GameStatisticController = {}
 
 function GameStatisticController:Init()
-	-- Ngăn GUI reset khi player chết (respawn)
 	StatGui.ResetOnSpawn = false
-
 	HideAll()
 
-	-- Nhận dữ liệu cuối trận từ server
+	-- Lắng nghe dữ liệu cuối trận từ server
 	local ShowGameOverEvent = RemoteDefinitions.GetEvent("ShowGameOver")
-	ShowGameOverEvent.OnClientEvent:Connect(function(Data)
-		if not Data then return end
+	ShowGameOverEvent.OnClientEvent:Connect(function(data)
+		if not data then return end
 
-		local WinTeam   = Data.WinTeam or "Team1"
-		local TeamLabel = (WinTeam == "Team1") and "TEAM 1 WINS! 🏆" or "TEAM 2 WINS! 🏆"
-		TeamWonText.Text = TeamLabel
+		local winTeam   = data.WinTeam or "Team1"
+		local teamLabel = (winTeam == "Team1") and "TEAM 1 WINS! 🏆" or "TEAM 2 WINS! 🏆"
+		TeamWonText.Text = teamLabel
 
-		FillTopPlayers(Data.TopPlayers     or {})
-		FillPersonalStats(Data.Won, Data.PersonalStats or {})
+		FillTopPlayers(data.TopPlayers or {})
+		FillPersonalStats(data.Won, data.PersonalStats or {})
 
 		ShowTeamWon()
 	end)
 
-	-- Ẩn GUI khi đang trong gameplay (Ready hoặc InGame)
+	-- Ẩn GUI khi bắt đầu trận đấu mới
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
-	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
-		if Data and (Data.Phase == "Ready" or Data.Phase == "InGame") then
+	UpdateGameStateEvent.OnClientEvent:Connect(function(data)
+		if data and (data.Phase == "Ready" or data.Phase == "InGame") then
 			HideAll()
 		end
 	end)
 
-	-- Nút NextButton: chuyển sang YourStats
-	NextButton.MouseButton1Click:Connect(ShowYourStats)
-
-	-- CloseButton ở cả 2 panel
+	-- Cài đặt sự kiện nút bấm chuyển tiếp và đóng
+	NextButton.MouseButton1Click:Connect(ShowPlayerStats)
 	CloseButton1.MouseButton1Click:Connect(HideAll)
 	CloseButton2.MouseButton1Click:Connect(HideAll)
 
-	print("[GameStatisticController] Đã khởi tạo.")
+	print("[GameStatisticController] Khởi tạo thành công với cấu trúc GUI mới.")
 end
 
 return GameStatisticController
