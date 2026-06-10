@@ -71,32 +71,81 @@ end
 
 --- Thiết lập và tạo mô hình nhân vật 3D trong ViewportFrame bằng UserId
 local function SetupPlayerViewport(viewportFrame, userId)
-	-- Xóa bỏ các Model/Camera cũ nếu có
+	-- Dọn dẹp tất cả Model, Camera và WorldModel cũ để tránh rò rỉ bộ nhớ
 	for _, child in ipairs(viewportFrame:GetChildren()) do
-		if child:IsA("Model") or child:IsA("Camera") then
+		if child:IsA("Model") or child:IsA("Camera") or child:IsA("WorldModel") then
 			child:Destroy()
 		end
 	end
 
-	-- Tạo Camera hướng trực tiếp vào nhân vật
+	-- Tạo Camera với góc nhìn hẹp để avatar ít bị méo
 	local camera = Instance.new("Camera")
-	camera.FieldOfView = 30
+	camera.FieldOfView = 40
 	camera.Parent = viewportFrame
 	viewportFrame.CurrentCamera = camera
 
-	-- Tải mô hình nhân vật bất đồng bộ (giúp client không bị đơ)
+	-- Tạo WorldModel làm lớp trung gian bắt buộc để Humanoid/Joints/Accessories hoạt động đúng
+	local worldModel = Instance.new("WorldModel")
+	worldModel.Parent = viewportFrame
+
+	--- Căn chỉnh camera tự động dựa trên kích thước thực tế của avatar
+	local function AlignCameraToModel(model)
+		model.Parent = worldModel
+
+		-- Xóa Script và Sound thừa trong model (đặc biệt khi clone Character đang sống)
+		for _, descendant in ipairs(model:GetDescendants()) do
+			if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Sound") then
+				descendant:Destroy()
+			end
+		end
+
+		-- Đưa toàn bộ avatar về gốc tọa độ cố định để camera không bị lệch
+		model:PivotTo(CFrame.new(0, 0, 0))
+
+		-- Tính toán vị trí camera tự động theo kích thước bounding box của avatar
+		-- (xử lý đúng avatar cao/thấp/béo/gầy và phụ kiện cồng kềnh)
+		local pivotCFrame, size = model:GetBoundingBox()
+		local avatarHeight  = size.Y
+		local avatarCenter  = pivotCFrame.Position
+
+		-- Khoảng cách camera dựa trên chiều cao để luôn thấy toàn thân
+		local distance = avatarHeight * 0.9
+		local lookAtTarget = avatarCenter + Vector3.new(0, avatarHeight * 0.1, 0)
+		local cameraPos    = avatarCenter + Vector3.new(0, avatarHeight * 1, -distance)
+
+		camera.CFrame = CFrame.new(cameraPos, lookAtTarget)
+	end
+
+	-- Chạy tiến trình tải model bất đồng bộ để không làm đơ client
 	task.spawn(function()
-		local success, model = pcall(function()
+		-- Ưu tiên 1: Clone Character hiện tại nếu player còn trong server (0ms latency)
+		local targetPlayer = nil
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player.UserId == userId then
+				targetPlayer = player
+				break
+			end
+		end
+
+		if targetPlayer and targetPlayer.Character then
+			local character = targetPlayer.Character
+			character.Archivable = true
+			local clonedModel = character:Clone()
+			character.Archivable = false
+
+			if clonedModel then
+				AlignCameraToModel(clonedModel)
+				return
+			end
+		end
+
+		-- Ưu tiên 2: Fallback — tải từ Roblox API nếu player đã thoát hoặc Character chưa sẵn sàng
+		local success, backupModel = pcall(function()
 			return Players:CreateHumanoidModelFromUserId(userId)
 		end)
 
-		if success and model then
-			model.Parent = viewportFrame
-			local hrp = model:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				-- Căn chỉnh camera đứng trước ngực nhân vật, hơi chúc nhẹ xuống
-				camera.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 1.5, 5.5), hrp.Position + Vector3.new(0, 0.5, 0))
-			end
+		if success and backupModel then
+			AlignCameraToModel(backupModel)
 		end
 	end)
 end
@@ -123,8 +172,8 @@ local function FillTopPlayers(topPlayers)
 			slot.FreezesStats.ValueText.Text = tostring(data.Freezes)
 			slot.ThawsStats.ValueText.Text = tostring(data.Thaws)
 
-			-- Render mô hình 3D cho Top player
-			local userId = GetUserIdFromName(data.Name)
+			-- Render mô hình 3D cho Top player — dùng UserId trực tiếp từ server
+			local userId = data.UserId or 0
 			if userId > 0 then
 				SetupPlayerViewport(slot.PlayerViewport, userId)
 			end
@@ -140,7 +189,7 @@ end
 local function FillPersonalStats(won, stats)
 	local eco = GameConfig.Economy
 
-	GameResultText.Text  = won and "YOU WIN! 🏆" or "YOU LOSE 💀"
+	GameResultText.Text  = won and "VICTORY" or "DEFEAT"
 	
 	-- Render mô hình 3D của chính người chơi hiện tại
 	SetupPlayerViewport(MainViewport, LocalPlayer.UserId)
@@ -154,9 +203,13 @@ local function FillPersonalStats(won, stats)
 		stats.Thaws, eco.RewardPerThaw, stats.Thaws * eco.RewardPerThaw
 	)
 
-	-- Đối với Spree, First Blood và Last Standing hiển thị số tiền trực tiếp
-	FSpreeVal.Text       = tostring(stats.FreezingSprees * eco.RewardPerFreezingSpree)
-	TSpreeVal.Text       = tostring(stats.ThawingSprees * eco.RewardPerThawingSpree)
+	-- Đối với First Blood và Last Standing hiển thị số tiền trực tiếp
+	FSpreeVal.Text = ("%d (×%d) = %d"):format(
+		stats.FreezingSprees, eco.RewardPerFreezingSpree, stats.FreezingSprees * eco.RewardPerFreezingSpree
+	)
+	TSpreeVal.Text = ("%d (×%d) = %d"):format(
+		stats.ThawingSprees, eco.RewardPerThawingSpree, stats.ThawingSprees * eco.RewardPerThawingSpree
+	)
 	FirstBloodVal.Text   = stats.FirstBlood and tostring(eco.RewardFirstBlood) or "0"
 	LastStandingVal.Text = stats.LastStanding and tostring(eco.RewardLastStanding) or "0"
 	
@@ -179,7 +232,7 @@ function GameStatisticController:Init()
 		if not data then return end
 
 		local winTeam   = data.WinTeam or "Team1"
-		local teamLabel = (winTeam == "Team1") and "TEAM 1 WINS! 🏆" or "TEAM 2 WINS! 🏆"
+		local teamLabel = (winTeam == "Team1") and "TEAM 1 WINS!" or "TEAM 2 WINS!"
 		TeamWonText.Text = teamLabel
 
 		FillTopPlayers(data.TopPlayers or {})

@@ -130,6 +130,7 @@ local function GetTopPlayers(WinTeam, MaxCount)
 		local Stats = SessionService.GetStats(P) or {}
 		table.insert(Result, {
 			Name    = P.DisplayName,
+			UserId  = P.UserId,
 			Freezes = Stats.Freezes or 0,
 			Thaws   = Stats.Thaws   or 0,
 		})

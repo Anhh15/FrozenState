@@ -133,11 +133,10 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	SessionService.ResetFreezeStreak(Victim)
 	SessionService.ResetThawStreak(Victim)
 
-	-- Attacker: tăng freeze stat + streak, reset thaw streak
+	-- Attacker: tăng freeze stat + streak
 	SessionService.IncrementStat(Attacker, "Freezes")
 	DataService.IncrementStat(Attacker, "TotalFreezes")
 	SessionService.IncrementFreezeStreak(Attacker)
-	SessionService.ResetThawStreak(Attacker)
 
 	-- Thưởng cơ bản
 	RewardAndSync(Attacker, GameConfig.Economy.RewardPerFreeze)
@@ -194,11 +193,10 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	-- Xóa IceBlock
 	RemoveIceBlock(Victim)
 
-	-- Rescuer: tăng thaw stat + streak, reset freeze streak
+	-- Rescuer: tăng thaw stat + streak
 	SessionService.IncrementStat(Rescuer, "Thaws")
 	DataService.IncrementStat(Rescuer, "TotalThaws")
 	SessionService.IncrementThawStreak(Rescuer)
-	SessionService.ResetFreezeStreak(Rescuer)
 
 	-- Thưởng
 	RewardAndSync(Rescuer, GameConfig.Economy.RewardPerThaw)
