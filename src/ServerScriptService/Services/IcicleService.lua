@@ -1,22 +1,36 @@
 -- IcicleService.lua
 -- Tạo và cấp / thu hồi Tool Icicle cho người chơi
--- Tool được clone từ ServerStorage/Icicles/Default (do designer tạo trong Studio)
+-- Tool được clone từ ServerStorage/Icicles/<SkinId> (do designer tạo trong Studio)
 -- IcicleScript được inject vào tool sau khi clone
+-- Phase 2: Đọc skin động từ DataService theo EquippedIcicle của người chơi
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
-local SessionService = require(script.Parent.SessionService)
+local SessionService  = require(script.Parent.SessionService)
+local DataService     = require(script.Parent.DataService)
+local ItemRegistry    = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 
 -- =========================================================
 -- PRIVATE: Tool Creation
 -- =========================================================
 
 --- Clone Tool Icicle từ template trong ServerStorage và inject LocalScript
-local function CloneIcicleTool()
+--- @param SkinId string — Id của skin Icicle (vd: "Default", "GoldenIcicle")
+local function CloneIcicleTool(SkinId)
 	local IciclesFolder = ServerStorage:FindFirstChild("Icicles")
-	local Template      = IciclesFolder and IciclesFolder:FindFirstChild("Default")
+	if not IciclesFolder then
+		warn("[IcicleService] Không tìm thấy folder ServerStorage/Icicles")
+		return nil
+	end
+
+	-- Thử load đúng skin, fallback về Default nếu không tìm thấy
+	local Template = IciclesFolder:FindFirstChild(SkinId)
+	if not Template then
+		warn(("[IcicleService] Không tìm thấy Icicle skin '%s', fallback về Default."):format(SkinId))
+		Template = IciclesFolder:FindFirstChild("Default")
+	end
 
 	if not Template then
 		warn("[IcicleService] Không tìm thấy ServerStorage/Icicles/Default — hãy tạo template trong Studio")
@@ -47,16 +61,24 @@ end
 
 local IcicleService = {}
 
---- Cấp Tool cho một player cụ thể
+--- Cấp Tool cho một player cụ thể, đọc skin từ DataService
 --- @param Player Player
 function IcicleService.GiveTool(Player)
 	IcicleService.RemoveTool(Player)  -- Xóa cũ nếu có
 
-	local Tool = CloneIcicleTool()
+	-- Đọc skin đang trang bị từ DataService (Phase 2)
+	local SkinId = "Default"
+	local Data = DataService.GetData(Player)
+	if Data and Data.EquippedIcicle then
+		local Entry = ItemRegistry.GetItem(Data.EquippedIcicle, "Icicle")
+		SkinId = Entry and Entry.Id or "Default"
+	end
+
+	local Tool = CloneIcicleTool(SkinId)
 	if not Tool then return end
 
 	Tool.Parent = Player.Backpack
-	print(("[IcicleService] Đã cấp Icicle cho %s"):format(Player.Name))
+	print(("[IcicleService] Đã cấp Icicle '%s' cho %s"):format(SkinId, Player.Name))
 end
 
 --- Thu hồi Tool của một player

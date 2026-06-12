@@ -1,14 +1,17 @@
 -- FreezeService.lua
 -- Logic Freeze / Thaw, quản lý IceBlock và Spree
 -- Xử lý OnToolHit RemoteEvent từ client
+-- Phase 2: IceBlock là Model clone từ ServerStorage/Blocks theo skin của Attacker
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local SessionService    = require(script.Parent.SessionService)
 local DataService       = require(script.Parent.DataService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 
 -- =========================================================
 -- HẰNG SỐ (từ GameConfig để không hardcode)
@@ -16,6 +19,7 @@ local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 
 local DEFAULT_WALK_SPEED = 16
 local DEFAULT_JUMP_POWER = 50
+local DEFAULT_JUMP_HEIGHT = 7.2
 
 -- =========================================================
 -- STATE
@@ -31,39 +35,87 @@ local OnToolHitEvent
 -- PRIVATE: IceBlock
 -- =========================================================
 
---- Tạo khối băng bao quanh nạn nhân (WeldConstraint theo HumanoidRootPart)
-local function CreateIceBlock(Victim)
+--- Spawn Model Block bao quanh nạn nhân theo skin của Attacker
+--- @param Attacker Player  — đọc EquippedIceBlock từ attacker
+--- @param Victim Player    — được bao quanh bởi Model
+local function SpawnIceBlock(Attacker, Victim)
 	local Character = Victim.Character
 	if not Character then return end
 
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
 	if not HRP then return end
 
-	local IceBlock = Instance.new("Part")
-	IceBlock.Name        = "IceBlock"
-	IceBlock.Size        = Vector3.new(4, 6.5, 4)
-	IceBlock.BrickColor  = BrickColor.new("Cyan")
-	IceBlock.Material    = Enum.Material.Ice
-	IceBlock.Transparency = 0.35
-	IceBlock.CanCollide  = false
-	IceBlock.CastShadow  = false
-	IceBlock.Anchored    = false
-	IceBlock:SetAttribute("VictimUserId", Victim.UserId)
+	-- Đọc skin của attacker
+	local SkinId = "Default"
+	local AttackerData = DataService.GetData(Attacker)
+	if AttackerData and AttackerData.EquippedIceBlock then
+		local Entry = ItemRegistry.GetItem(AttackerData.EquippedIceBlock, "Block")
+		SkinId = Entry and Entry.Id or "Default"
+	end
 
-	-- Weld theo HRP để khối băng đi cùng nhân vật
-	local Weld    = Instance.new("WeldConstraint")
-	Weld.Part0    = IceBlock
-	Weld.Part1    = HRP
-	Weld.Parent   = IceBlock
+	-- Tìm Model trong ServerStorage/Blocks
+	local BlocksFolder = ServerStorage:FindFirstChild("Blocks")
+	if not BlocksFolder then
+		warn("[FreezeService] Không tìm thấy folder ServerStorage/Blocks")
+		return
+	end
 
-	IceBlock.CFrame = HRP.CFrame
-	IceBlock.Parent = workspace
+	local Template = BlocksFolder:FindFirstChild(SkinId)
+	if not Template then
+		warn(("[FreezeService] Không tìm thấy Block skin '%s', fallback về Default."):format(SkinId))
+		Template = BlocksFolder:FindFirstChild("Default")
+	end
+
+	if not Template then
+		warn("[FreezeService] Không tìm thấy ServerStorage/Blocks/Default")
+		return
+	end
+
+	local BlockModel = Template:Clone()
+	-- Đánh dấu Model để RemoveIceBlock có thể tìm đúng theo victim
+	BlockModel:SetAttribute("VictimUserId", Victim.UserId)
+
+	-- Tìm PrimaryPart hoặc Part đầu tiên làm gốc để weld vào HRP
+	local PrimaryPart = BlockModel.PrimaryPart or BlockModel:FindFirstChildOfClass("BasePart")
+	if not PrimaryPart then
+		warn("[FreezeService] Khối băng không chứa BasePart nào để hiển thị.")
+		BlockModel:Destroy()
+		return
+	end
+
+	-- Đảm bảo model có PrimaryPart được thiết lập để PivotTo hoạt động chuẩn xác
+	if not BlockModel.PrimaryPart then
+		BlockModel.PrimaryPart = PrimaryPart
+	end
+
+	-- Đặt parent vào workspace trước khi tạo WeldConstraint để cơ chế vật lý hoạt động chính xác
+	BlockModel.Parent = workspace
+
+	-- Di chuyển Model về vị trí HRP sau khi đã parent vào workspace
+	BlockModel:PivotTo(HRP.CFrame)
+
+	-- Tắt Anchored, CanCollide cho toàn bộ các part trong model (để di chuyển cùng nhân vật)
+	-- nhưng giữ nguyên các liên kết weld thủ công có sẵn giữa chúng
+	for _, Part in ipairs(BlockModel:GetDescendants()) do
+		if Part:IsA("BasePart") then
+			Part.Anchored   = false
+			Part.CanCollide = false
+			Part.CastShadow = false
+		end
+	end
+
+	-- Chỉ tạo duy nhất 1 WeldConstraint kết nối giữa PrimaryPart của khối băng và HRP của victim
+	local Weld = Instance.new("WeldConstraint")
+	Weld.Part0 = PrimaryPart
+	Weld.Part1 = HRP
+	Weld.Parent = PrimaryPart
 end
 
---- Xóa IceBlock của một player
+--- Xóa Model IceBlock của một player
+--- @param Victim Player
 local function RemoveIceBlock(Victim)
 	for _, Child in ipairs(workspace:GetChildren()) do
-		if Child.Name == "IceBlock"
+		if Child:IsA("Model")
 			and Child:GetAttribute("VictimUserId") == Victim.UserId
 		then
 			Child:Destroy()
@@ -123,11 +175,12 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		if Humanoid then
 			Humanoid.WalkSpeed = 0
 			Humanoid.JumpPower = 0
+			Humanoid.JumpHeight = 0
 		end
 	end
 
-	-- Tạo IceBlock
-	CreateIceBlock(Victim)
+	-- Tạo Model IceBlock theo skin của attacker
+	SpawnIceBlock(Attacker, Victim)
 
 	-- Victim bị đóng băng → reset cả 2 streak của victim
 	SessionService.ResetFreezeStreak(Victim)
@@ -187,6 +240,7 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 		if Humanoid then
 			Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
 			Humanoid.JumpPower = DEFAULT_JUMP_POWER
+			Humanoid.JumpHeight = DEFAULT_JUMP_HEIGHT
 		end
 	end
 
@@ -224,6 +278,7 @@ function FreezeService.ThawAll()
 				if Humanoid then
 					Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
 					Humanoid.JumpPower = DEFAULT_JUMP_POWER
+					Humanoid.JumpHeight = DEFAULT_JUMP_HEIGHT
 				end
 			end
 			RemoveIceBlock(Player)

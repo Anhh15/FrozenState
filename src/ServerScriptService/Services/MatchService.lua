@@ -21,6 +21,7 @@ local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 
 local DEFAULT_WALK_SPEED = 16
 local DEFAULT_JUMP_POWER = 50
+local DEFAULT_JUMP_HEIGHT = 7.2
 
 -- =========================================================
 -- STATE
@@ -65,6 +66,7 @@ local function SetMovementLocked(Player, Locked)
 
 	Humanoid.WalkSpeed = Locked and 0 or DEFAULT_WALK_SPEED
 	Humanoid.JumpPower = Locked and 0 or DEFAULT_JUMP_POWER
+	Humanoid.JumpHeight = Locked and 0 or DEFAULT_JUMP_HEIGHT
 end
 
 --- Xác định đội thắng khi hết giờ (không ai bị wipe)

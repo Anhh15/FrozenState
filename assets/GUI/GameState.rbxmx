@@ -2,7 +2,7 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="ScreenGui" referent="RBX644CBC9ABBCE45B4983A1A9C6D12E07D">
+	<Item class="ScreenGui" referent="RBXC042CC5948B14E51AD3A99622C993C2A">
 		<Properties>
 			<bool name="ClipToDeviceSafeArea">true</bool>
 			<int name="DisplayOrder">10</int>
@@ -10,7 +10,6 @@
 			<token name="ScreenInsets">1</token>
 			<bool name="Enabled">true</bool>
 			<bool name="ResetOnSpawn">false</bool>
-			<bool name="TabKeyboardNavigation">false</bool>
 			<token name="ZIndexBehavior">1</token>
 			<bool name="AutoLocalize">true</bool>
 			<Ref name="RootLocalizationTable">null</Ref>
@@ -26,7 +25,7 @@
 			<int64 name="SourceAssetId">-1</int64>
 			<BinaryString name="Tags"></BinaryString>
 		</Properties>
-		<Item class="Frame" referent="RBX0AF116B6514B4942835D4C97E019E254">
+		<Item class="Frame" referent="RBXA52BD185C18D468CB982AA3C32249295">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -90,7 +89,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="UIAspectRatioConstraint" referent="RBXD2BDCD10BCBE4208931711F395CD07AD">
+			<Item class="UIAspectRatioConstraint" referent="RBX228DFB5796204330BA26463AE4045835">
 				<Properties>
 					<float name="AspectRatio">2.4664402</float>
 					<token name="AspectType">0</token>
@@ -103,7 +102,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX48514EEBA59D4EC2A720265D4E08591E">
+			<Item class="TextLabel" referent="RBX3A2FB20423244BC382ECB9FE5C5916DD">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -198,7 +197,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX11F7A71D658A43B1B555A78E22207F33">
+			<Item class="TextLabel" referent="RBX12CD89CFCDE343428ADD9FD619C049EC">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -293,7 +292,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ImageLabel" referent="RBX33E69BDD45DD4B1BBE5331845F0D510A">
+			<Item class="ImageLabel" referent="RBX10A4B4D17E1442C4A793626F3E03BC2C">
 				<Properties>
 					<Content name="Image"><url>rbxassetid://90106398486911</url></Content>
 					<Color3 name="ImageColor3">
@@ -391,7 +390,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX7A3ED8E449F047CAB708C50D3CD10A1A">
+			<Item class="TextLabel" referent="RBX578214585055453DABEF40C05AE2D1A4">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -486,7 +485,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX9A2DB15A6ECC452F9D777227C0C74296">
+			<Item class="TextLabel" referent="RBX2B9A01F2FB674023BAEBCA7B4A1AFD50">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>

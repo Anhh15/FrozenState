@@ -2,7 +2,7 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="ScreenGui" referent="RBX0A22627D74394E13990F8B649C95CE50">
+	<Item class="ScreenGui" referent="RBXBF99ED8F5C554B07B0B6472A43216F32">
 		<Properties>
 			<bool name="ClipToDeviceSafeArea">true</bool>
 			<int name="DisplayOrder">-10</int>
@@ -10,7 +10,6 @@
 			<token name="ScreenInsets">2</token>
 			<bool name="Enabled">true</bool>
 			<bool name="ResetOnSpawn">false</bool>
-			<bool name="TabKeyboardNavigation">false</bool>
 			<token name="ZIndexBehavior">1</token>
 			<bool name="AutoLocalize">true</bool>
 			<Ref name="RootLocalizationTable">null</Ref>
@@ -26,7 +25,7 @@
 			<int64 name="SourceAssetId">-1</int64>
 			<BinaryString name="Tags"></BinaryString>
 		</Properties>
-		<Item class="Frame" referent="RBXE2A75034D91D4845AAB007720944C885">
+		<Item class="Frame" referent="RBX0BA625C4253546FAB2ED36569DFE5362">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -90,7 +89,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="ImageButton" referent="RBX079C3E8D432845B68B4292B0E11E8D9D">
+			<Item class="ImageButton" referent="RBX530AFAF5D7F640E3908B8F936F7F75A8">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://116957647784907</url></Content>
@@ -195,7 +194,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="TextLabel" referent="RBX80D4C55F4B8B4AD2A1A64EC4E17AE343">
+				<Item class="TextLabel" referent="RBXDAC36AC1254D43D4A375789CF8FB3F51">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -289,7 +288,7 @@
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="UIGradient" referent="RBXB7C7D3D77CC64FEAB5C8D90664A928F9">
+					<Item class="UIGradient" referent="RBX99571F5878C14361A3696C02D6787B70">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -307,7 +306,7 @@
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX3E087917CD4B4109878B6C0EB8B539D6">
+					<Item class="UIStroke" referent="RBXB0923F8F858345C2BAB4DE1989DC5F28">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -335,7 +334,7 @@
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="ImageLabel" referent="RBX8C96FA606AD7498B8E93CCF48B1E4F23">
+				<Item class="ImageLabel" referent="RBX5F91DF8BBBA4440FB837274980D28930">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://116154859134178</url></Content>
 						<Color3 name="ImageColor3">
@@ -434,7 +433,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBX6EA1E1D5535C435E887F935580A4A658">
+			<Item class="ImageButton" referent="RBX5C2D6C5BB7F044EEB076D39869F14812">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://91816296127392</url></Content>
@@ -539,7 +538,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="TextLabel" referent="RBX3236FAADE08940D6991C104A0CBA2E3C">
+				<Item class="TextLabel" referent="RBXCC6A834E62E24749A24877A4BE7FD54F">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -633,7 +632,7 @@
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX6624810BD35C42759756F9505CD7E8A5">
+					<Item class="UIGradient" referent="RBXCB6C144ACA63467EA90602C1F8A2843E">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -651,7 +650,7 @@
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX86689C41E074456E9AD98B1FC2937C87">
+					<Item class="UIStroke" referent="RBX309AB020FF8D49EDBCC42088360DCB5B">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -679,7 +678,7 @@
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="ImageLabel" referent="RBXD1BEF52D57AB415994F6D101BA1D2B81">
+				<Item class="ImageLabel" referent="RBX046DDD20FF124E61B3422F9F8E9D1D37">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://124969714936528</url></Content>
 						<Color3 name="ImageColor3">
@@ -778,7 +777,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBX75109CE4DD0141A89A9E14D389842C16">
+			<Item class="ImageButton" referent="RBXB9863740ED304905B86256DF1B3DADEA">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://81060784743014</url></Content>
@@ -883,7 +882,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="TextLabel" referent="RBXBBF7522D856449ADAFA2AA3B4FF7AB72">
+				<Item class="TextLabel" referent="RBX20BAE54421324B679C4EC574F6FB8F9B">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -977,7 +976,7 @@
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX33B2509B1A614B8D9049992127DD0DDE">
+					<Item class="UIGradient" referent="RBXE09631FED69641349B30977573F76D6C">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -995,7 +994,7 @@
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX7D6D7A4519E048B5A11F2E05E1DD8EC6">
+					<Item class="UIStroke" referent="RBX101BB60D230A45A091257A205AF8E1AD">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -1023,7 +1022,7 @@
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="ImageLabel" referent="RBXE268328E615B4C1496714CAAE5C1BCF8">
+				<Item class="ImageLabel" referent="RBX98400324CEFE44D9B70BA986F4CF9DBA">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://82240673298792</url></Content>
 						<Color3 name="ImageColor3">
@@ -1122,7 +1121,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBXDCB0664F97AB4278A68E4330CAE1D41D">
+			<Item class="ImageButton" referent="RBX3B8F00E46A404BEABE2397CE52E02F35">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://74377945968884</url></Content>
@@ -1227,7 +1226,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="TextLabel" referent="RBX21C7C3980D6C4E039B72A6D2F717D046">
+				<Item class="TextLabel" referent="RBX94DEDFCC97E5471ABBD4DE78D5A1B27B">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -1321,7 +1320,7 @@
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX1380C9A2269D4D00B7E3E8282EB724CE">
+					<Item class="UIGradient" referent="RBX4318B5EC866B4CCEBEE2D53ED9BB3792">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -1339,7 +1338,7 @@
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX5E7B642B0ABD4BF5BD12B681C270B58F">
+					<Item class="UIStroke" referent="RBXDD87131E882A428798A9C5CB24AD5229">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -1367,7 +1366,7 @@
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="ImageLabel" referent="RBX7CB55CD852534C448B9398F95894D55C">
+				<Item class="ImageLabel" referent="RBX85A90C73EE6B4126B360FF7E52C00A30">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://86206971559594</url></Content>
 						<Color3 name="ImageColor3">
@@ -1466,7 +1465,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBXB43A451364E44C38B26AD06F41C2A8C0">
+			<Item class="ImageButton" referent="RBX3A2396E23AB44C9A8973DED1185DE5A5">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://74377945968884</url></Content>
@@ -1571,7 +1570,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBX044DC4BEB1394ECC8EEB858D1801291F">
+				<Item class="ImageLabel" referent="RBXB4718A2E62094F8887C60C89A0FCA446">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://80438284104083</url></Content>
 						<Color3 name="ImageColor3">
@@ -1670,7 +1669,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="UIAspectRatioConstraint" referent="RBXEC65B0007EC14D6B8E54AB24EDDA8955">
+			<Item class="UIAspectRatioConstraint" referent="RBX827000986BE84A41B9E94E565442DD57">
 				<Properties>
 					<float name="AspectRatio">2.9284296</float>
 					<token name="AspectType">0</token>
@@ -1683,7 +1682,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ImageButton" referent="RBX20CC19C1D21C4D0D99EAB87A41982A8F">
+			<Item class="ImageButton" referent="RBXBD6CA4B245A84F10A319FDF8E8802C52">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://74377945968884</url></Content>
@@ -1788,7 +1787,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBXA6D428E6EB7C434E8C8CEE2BD328120D">
+				<Item class="ImageLabel" referent="RBXD0FD3B1F3F9845AEBCA6B5A36C0FDEA5">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://80438284104083</url></Content>
 						<Color3 name="ImageColor3">
@@ -1888,7 +1887,7 @@
 				</Item>
 			</Item>
 		</Item>
-		<Item class="Frame" referent="RBXE41E8AE7212E4CAA87D92E14F6B25057">
+		<Item class="Frame" referent="RBX92BAAAA79A304D2DADB788D733570AE9">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -1952,7 +1951,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="ImageLabel" referent="RBXFDCB39EAE3C149E68A3107249DF6F1BB">
+			<Item class="ImageLabel" referent="RBXD1FFDC6D27ED4255BDA23707ABDD56A0">
 				<Properties>
 					<Content name="Image"><url>rbxassetid://116948840564591</url></Content>
 					<Color3 name="ImageColor3">
@@ -2050,7 +2049,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ImageLabel" referent="RBX4FC0E13436084C63A1F303285F45FCA5">
+			<Item class="ImageLabel" referent="RBX17BA446AFBD440C390ADDD3570D43ECE">
 				<Properties>
 					<Content name="Image"><url>rbxassetid://96012355867963</url></Content>
 					<Color3 name="ImageColor3">
@@ -2148,7 +2147,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX04948E8BDA6A45F0B418B62D131F0A66">
+			<Item class="TextLabel" referent="RBXB0DB034ECCA74747A60A2AE850C2ABBF">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -2242,7 +2241,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="UIStroke" referent="RBX81378AD9777249F68A62C5E75D418DD6">
+				<Item class="UIStroke" referent="RBXE67D4CF4195D4201848675CA00D8176E">
 					<Properties>
 						<token name="ApplyStrokeMode">0</token>
 						<UDim name="BorderOffset">
@@ -2270,7 +2269,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="UIAspectRatioConstraint" referent="RBX0E1D4965D79E49CAAFF654A6DD7D82F0">
+			<Item class="UIAspectRatioConstraint" referent="RBXB9E641AF2606437DAE7E9AFFECA4C2E8">
 				<Properties>
 					<float name="AspectRatio">5.0638299</float>
 					<token name="AspectType">0</token>

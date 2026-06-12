@@ -55,6 +55,16 @@ local GameConfig = {
 		                               -- Tăng để zoom ra, giảm để zoom vào
 	},
 
+	-- =========================================================
+	-- RARITY: Độ hiếm vật phẩm và màu hiển thị (Hex)
+	-- =========================================================
+	Rarity = {
+		Common    = { Color = "#FFFFFF" },  -- Trắng
+		Rare      = { Color = "#4A90D9" },  -- Xanh lam
+		Epic      = { Color = "#9B59B6" },  -- Tím
+		Legendary = { Color = "#F1C40F" },  -- Vàng
+	},
+
 }
 
 return GameConfig
