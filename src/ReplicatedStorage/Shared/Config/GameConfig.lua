@@ -47,6 +47,14 @@ local GameConfig = {
 		HitboxRange    = 8,    -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
 	},
 
+	-- =========================================================
+	-- GUI: VIEWPORT FRAME
+	-- =========================================================
+	GUI = {
+		ViewportCameraDistance = 2.5,  -- Khoảng cách camera đến đầu nhân vật trong ViewportFrame (studs)
+		                               -- Tăng để zoom ra, giảm để zoom vào
+	},
+
 }
 
 return GameConfig

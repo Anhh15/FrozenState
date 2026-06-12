@@ -92,60 +92,75 @@ local function SetupPlayerViewport(viewportFrame, userId)
 	local function AlignCameraToModel(model)
 		model.Parent = worldModel
 
-		-- Xóa Script và Sound thừa trong model (đặc biệt khi clone Character đang sống)
+		-- Khóa cứng mô hình tĩnh (Anchor) và xóa bỏ các script/animator thừa để tránh chuyển động
 		for _, descendant in ipairs(model:GetDescendants()) do
-			if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Sound") then
+			if descendant:IsA("BasePart") then
+				descendant.Anchored = true
+			elseif descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Sound") or descendant:IsA("Animator") then
 				descendant:Destroy()
 			end
+		end
+
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.PlatformStand = true
 		end
 
 		-- Đưa toàn bộ avatar về gốc tọa độ cố định để camera không bị lệch
 		model:PivotTo(CFrame.new(0, 0, 0))
 
-		-- Tính toán vị trí camera tự động theo kích thước bounding box của avatar
-		-- (xử lý đúng avatar cao/thấp/béo/gầy và phụ kiện cồng kềnh)
-		local pivotCFrame, size = model:GetBoundingBox()
-		local avatarHeight  = size.Y
-		local avatarCenter  = pivotCFrame.Position
+		-- Tìm bộ phận Head để chỉnh camera trực diện vào khuôn mặt (Portrait Face View)
+		local head = model:FindFirstChild("Head")
+		if head then
+			local distance = GameConfig.GUI.ViewportCameraDistance -- Chỉnh tại GameConfig.GUI.ViewportCameraDistance
+			local headCFrame = head.CFrame
+			-- Trong Roblox, mặt của nhân vật hướng theo LookVector của Head
+			local cameraPos = headCFrame.Position + (headCFrame.LookVector * distance)
+			camera.CFrame = CFrame.new(cameraPos, headCFrame.Position)
+		else
+			-- Fallback: Căn chỉnh camera tự động theo bounding box nếu không tìm thấy Head
+			local pivotCFrame, size = model:GetBoundingBox()
+			local avatarHeight  = size.Y
+			local avatarCenter  = pivotCFrame.Position
 
-		-- Khoảng cách camera dựa trên chiều cao để luôn thấy toàn thân
-		local distance = avatarHeight * 0.9
-		local lookAtTarget = avatarCenter + Vector3.new(0, avatarHeight * 0.1, 0)
-		local cameraPos    = avatarCenter + Vector3.new(0, avatarHeight * 1, -distance)
+			local distance = avatarHeight * 0.9
+			local lookAtTarget = avatarCenter + Vector3.new(0, avatarHeight * 0.1, 0)
+			local cameraPos    = avatarCenter + Vector3.new(0, avatarHeight * 1, -distance)
 
-		camera.CFrame = CFrame.new(cameraPos, lookAtTarget)
+			camera.CFrame = CFrame.new(cameraPos, lookAtTarget)
+		end
 	end
 
 	-- Chạy tiến trình tải model bất đồng bộ để không làm đơ client
 	task.spawn(function()
-		-- Ưu tiên 1: Clone Character hiện tại nếu player còn trong server (0ms latency)
-		local targetPlayer = nil
-		for _, player in ipairs(Players:GetPlayers()) do
-			if player.UserId == userId then
-				targetPlayer = player
-				break
+		local clonedModel = nil
+
+		-- Ưu tiên 1: Lấy model tĩnh đã được Server chuẩn bị sẵn trong ReplicatedStorage (cho Top 1, 2, 3)
+		local PlayerAvatars = ReplicatedStorage:WaitForChild("PlayerAvatars", 5)
+		local pregeneratedModel = PlayerAvatars and PlayerAvatars:WaitForChild(tostring(userId), 5)
+
+		if pregeneratedModel then
+			clonedModel = pregeneratedModel:Clone()
+		else
+			-- Ưu tiên 2: Clone Character hiện tại của người chơi (dành cho PlayerStats/LocalPlayer)
+			local targetPlayer = nil
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player.UserId == userId then
+					targetPlayer = player
+					break
+				end
+			end
+
+			if targetPlayer and targetPlayer.Character then
+				local character = targetPlayer.Character
+				character.Archivable = true
+				clonedModel = character:Clone()
+				character.Archivable = false
 			end
 		end
 
-		if targetPlayer and targetPlayer.Character then
-			local character = targetPlayer.Character
-			character.Archivable = true
-			local clonedModel = character:Clone()
-			character.Archivable = false
-
-			if clonedModel then
-				AlignCameraToModel(clonedModel)
-				return
-			end
-		end
-
-		-- Ưu tiên 2: Fallback — tải từ Roblox API nếu player đã thoát hoặc Character chưa sẵn sàng
-		local success, backupModel = pcall(function()
-			return Players:CreateHumanoidModelFromUserId(userId)
-		end)
-
-		if success and backupModel then
-			AlignCameraToModel(backupModel)
+		if clonedModel then
+			AlignCameraToModel(clonedModel)
 		end
 	end)
 end
@@ -174,7 +189,7 @@ local function FillTopPlayers(topPlayers)
 
 			-- Render mô hình 3D cho Top player — dùng UserId trực tiếp từ server
 			local userId = data.UserId or 0
-			if userId > 0 then
+			if userId ~= 0 then
 				SetupPlayerViewport(slot.PlayerViewport, userId)
 			end
 

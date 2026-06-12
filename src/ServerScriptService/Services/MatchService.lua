@@ -240,6 +240,8 @@ local function RunSetup()
 	SessionService.ResetSession()
 	FreezeService.ResetRound()
 
+	-- Xóa bỏ dọn dẹp TempTopPlayers (chuyển sang AvatarCacheService)
+
 	-- Load map ngẫu nhiên
 	MapService.LoadRandomMap()
 
@@ -338,7 +340,7 @@ local function RunInGame()
 	return _earlyWinner or ResolveWinner()
 end
 
---- GameOver: đếm ngược, teleport về lobby, dọn dẹp, rồi mới hiện bảng thống kê
+--- GameOver: đếm ngược song song với tạo model, hold tại t=0 cho đến khi model sẵn sàng
 local function RunGameOver(WinTeam)
 	_currentPhase  = "GameOver"
 	local Duration = GameConfig.Phase.GameOverDuration
@@ -353,7 +355,7 @@ local function RunGameOver(WinTeam)
 	-- Thaw tất cả người bị đóng băng ngay lập tức
 	FreezeService.ThawAll()
 
-	-- Đếm ngược để player xem thống kê
+	-- Đếm ngược GameOverDuration
 	for t = Duration, 0, -1 do
 		BroadcastGameState("GameOver", t, false)
 		if t == 0 then break end
@@ -385,6 +387,7 @@ local function RunGameOver(WinTeam)
 	-- (player đã về Lobby trước khi thấy bảng thống kê)
 	BroadcastGameOver(WinTeam)
 end
+
 
 -- =========================================================
 -- GAME LOOP
