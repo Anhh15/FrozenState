@@ -27,22 +27,29 @@
 - Spawn skin Icicle theo `EquippedIcicle` của người chơi
 - Spawn Block theo skin của attacker khi freeze
 - Hệ số đồng nhất như rarity Common màu trắng, Rare màu lam,... (theo Hex)
-- Các model Block và Icicle sẽ được chứa trong các folder riêng ServerStorage/Icicles, ServerStorage/Blocks
+- Các model Block và Icicle sẽ được chứa trong các folder rieegns ServerStorage/Icicles, ServerStorage/Blocks
 ---
 ## Phase 3:  Inventory
 > **Mục tiêu:** Hệ thống inventory
-- Cấu trúc GUI sẽ được cập nhật chi tiết khi đến phase
-- Inventory GUI
-- StarterGui/Menu/Inventory sẽ được mở khi bấm vào Navigationbutton/Button/Inventory
-- Người chơi có thể di chuyển qua lại giữa các cate (icicles/block) bằng nút 
 - Cấu trúc Frame Item:
-	- Mỗi Frame sẽ luôn chứa Backgound (ImageLabel) phụ thuộc vào Rarity của item (Icicles/Block) đó, điều này chỉ nhầm mục đích thẩm mĩ khi các item hiêm sẽ có background chi tiết và đầu tư hơn
+	- Mỗi Frame sẽ luôn chứa Background (ImageLabel) phụ thuộc vào Rarity của item (Icicles/Block) đó, điều này chỉ nhầm mục đích thẩm mĩ khi các item hiêm sẽ có background chi tiết và đầu tư hơn
 	- Layer trên background sẽ là ViewportFrame để display Item đó, tránh việc phải tạo icon cho từng item một
-	- Layer cuối đơn giản là toàn bộ tên item, rarity, nói chung là các text/thông tin item
-- Cấu trúc Frame Item sẽ xuất hiện không chỉ trong Inventory Gui mà còn có gui Shop, Gui profile,...
+	- Layer cuối đơn giản là toàn bộ tên item, rarity, nói chung là các text/thông tin item. RarityText sẽ có màu phụ thuộc vào rarity
+	- Như toàn bộ các Gui khác, toàn bộ thiết kế gui này sẽ do tôi đảm nhận
+- Cấu trúc GUI:
+	- MenuLabel và Background không cần quan tâm
+	- CloseButton để tắt Inventory
+	- TabContainer: Sẽ chứa 2 nút bấm để hiển thị 2 mục khác nhau là Icicles và Blocks
+	- ItemList sẽ chứa một ScrollingFrame, bên trong ScrollingFrame sẽ chứa ItemFrame (đã được trình baỳ bên trên)
+	- ItemSelection sẽ luôn được hiển thị, khi người chơi nhấn vào ItemFrame thì sẽ biểu thị tại đây để người chơi có thể xem rõ hơn, bên trong ItemSelection sẽ có ItemViewport để hiển thị vật phẩm tưởng tụ ItemFrame, đồng thời có EquipButton (bấm vào thì người chơi sẽ trang bị skin này)
+- Inventory GUI
+- StarterGui/Menu/Inventory sẽ được mở khi bấm vào StarterGui/Navigationbutton/Button/Inventory
+**Lưu ý:** Frame Item sẽ xuất hiện không chỉ trong Inventory Gui mà còn có gui Shop, Gui profile,...
+Vấn đề cần bàn luận: Do Background của ItemFrame sẽ phụ thuộc vào rarity của item (rare màu xanh, epic màu cam,...) thì nên lưu trữ vào một nơi chứa và clone vào; hay thay đổi tùy biến Background và chỉ sử dụng duy nhất một Frame?
+
 ---
 # Phase 4: Profile
-> Mục tiêu: Hiện thị Gui profile của người chơi, cho phép theo dõi các thông ố
+> Mục tiêu: Hiện thị Gui profile của người chơi, cho phép theo dõi các thông số cá nhân
 ---
 # Phase 5: Shop
 > Mục Tiêu: Hệ thống shop cho phép người chơi mua các rương gacha vật phẩm

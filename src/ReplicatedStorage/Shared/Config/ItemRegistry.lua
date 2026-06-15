@@ -22,6 +22,18 @@ local IcicleCatalog = {
 		Rarity = "Common",
 		Type   = "Icicle",
 	},
+	{
+		Id     = "Green",
+		Name   = "Green Icicle",
+		Rarity = "Common",
+		Type   = "Icicle",
+	},
+	{
+		Id     = "Red",
+		Name   = "Red Icicle",
+		Rarity = "Common",
+		Type   = "Icicle",
+	},
 	-- Thêm skin Icicle mới vào đây
 	-- Ví dụ:
 	-- {
@@ -40,6 +52,18 @@ local BlockCatalog = {
 	{
 		Id     = "Default",
 		Name   = "Default Block",
+		Rarity = "Common",
+		Type   = "Block",
+	},
+	{
+		Id     = "Green",
+		Name   = "Green Block",
+		Rarity = "Common",
+		Type   = "Block",
+	},
+	{
+		Id     = "Red",
+		Name   = "Red Block",
 		Rarity = "Common",
 		Type   = "Block",
 	},

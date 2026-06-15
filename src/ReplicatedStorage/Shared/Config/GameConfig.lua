@@ -51,7 +51,7 @@ local GameConfig = {
 	-- GUI: VIEWPORT FRAME
 	-- =========================================================
 	GUI = {
-		ViewportCameraDistance = 2.5,  -- Khoảng cách camera đến đầu nhân vật trong ViewportFrame (studs)
+		ViewportCameraDistance = 5,  -- Khoảng cách camera đến đầu nhân vật trong ViewportFrame (studs)
 		                               -- Tăng để zoom ra, giảm để zoom vào
 	},
 

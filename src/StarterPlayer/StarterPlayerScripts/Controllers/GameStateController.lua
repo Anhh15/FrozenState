@@ -28,6 +28,20 @@ local StateShadowText = Frame:WaitForChild("StateShadowText")
 local MenuGui = PlayerGui:WaitForChild("Menu", 10)
 local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
 
+-- Inventory nằm bên trong Menu — lazy-require để tránh circular load
+-- InventoryController được load sau bởi Main.client.lua
+local _inventoryController = nil
+local function GetInventoryController()
+	if not _inventoryController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("InventoryController")
+		if Module then
+			_inventoryController = require(Module)
+		end
+	end
+	return _inventoryController
+end
+
 -- =========================================================
 -- CONFIG
 -- =========================================================
@@ -68,6 +82,13 @@ end
 local function SetLobbyGuisVisible(Visible)
 	if MenuGui then MenuGui.Enabled = Visible end
 	if NavGui  then NavGui.Enabled  = Visible end
+	-- Khi vào trận: buộc đóng Inventory nếu đang mở
+	if not Visible then
+		local InvCtrl = GetInventoryController()
+		if InvCtrl then
+			InvCtrl.SetVisible(false)
+		end
+	end
 end
 
 local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
