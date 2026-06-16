@@ -61,6 +61,22 @@ function PlayerDataController.GetData()
 	return _localData
 end
 
+--- Đồng bộ lại dữ liệu mới nhất từ Server về Client cache (hàm này sẽ yield)
+function PlayerDataController.RefreshData()
+	local GetPlayerDataFn = RemoteDefinitions.GetFunction("GetPlayerData")
+	local Success, Data = pcall(function()
+		return GetPlayerDataFn:InvokeServer()
+	end)
+
+	if Success and Data then
+		_localData = Data
+		UpdateMoneyDisplay(Data.Money or 0)
+	else
+		warn("[PlayerDataController] RefreshData: InvokeServer thất bại: " .. tostring(Data))
+	end
+	return _localData
+end
+
 function PlayerDataController:Init()
 	local GetPlayerDataFn  = RemoteDefinitions.GetFunction("GetPlayerData")
 	local UpdateMoneyEvent = RemoteDefinitions.GetEvent("UpdateMoney")

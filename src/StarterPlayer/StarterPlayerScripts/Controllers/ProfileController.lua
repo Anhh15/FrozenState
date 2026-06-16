@@ -321,9 +321,18 @@ local function OpenProfile()
 	if not Profile then return end
 	Profile.Visible = true
 
+	-- Hiển thị dữ liệu cũ trước từ cache để tránh giao diện trống/trễ
 	PopulatePlayerInfo()
 	RenderEquippedItems()
 	PopulateStats()
+
+	-- Tải dữ liệu mới bất đồng bộ từ Server và cập nhật lại giao diện
+	task.spawn(function()
+		PlayerDataController.RefreshData()
+		PopulatePlayerInfo()
+		RenderEquippedItems()
+		PopulateStats()
+	end)
 end
 
 local function CloseProfile()
