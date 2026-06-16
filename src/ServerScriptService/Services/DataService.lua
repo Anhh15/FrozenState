@@ -17,6 +17,7 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 
 local PROFILE_TEMPLATE = {
 	Money               = 0,
+	TotalWins           = 0,
 	TotalFreezes        = 0,
 	TotalThaws          = 0,
 	TotalFreezingSpree  = 0,
@@ -216,6 +217,7 @@ function DataService:Start()
 		-- Trả bản copy để tránh client modify trực tiếp
 		return {
 			Money              = Data.Money,
+			TotalWins          = Data.TotalWins,
 			TotalFreezes       = Data.TotalFreezes,
 			TotalThaws         = Data.TotalThaws,
 			TotalFreezingSpree = Data.TotalFreezingSpree,

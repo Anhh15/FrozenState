@@ -173,6 +173,11 @@ local function DistributeRewards(WinTeam)
 		DataService.AddMoney(Player, Reward)
 		SessionService.IncrementStat(Player, "MoneyEarned", Reward)
 
+		-- Cộng số trận thắng cho toàn bộ member đội chiến thắng
+		if Team == WinTeam then
+			DataService.IncrementStat(Player, "TotalWins")
+		end
+
 		-- Sync tiền về client
 		local Data = DataService.GetData(Player)
 		if Data then

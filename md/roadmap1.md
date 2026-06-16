@@ -50,6 +50,18 @@ Vấn đề cần bàn luận: Do Background của ItemFrame sẽ phụ thuộc 
 ---
 # Phase 4: Profile
 > Mục tiêu: Hiện thị Gui profile của người chơi, cho phép theo dõi các thông số cá nhân
+
+Cấu trúc Gui:
+- MenuLabel là Frame cho người chơi biết đang ở menu gì nên không cần quân tâm đến frame này
+- PlayerInfo hiển thị thông tin cá chân của người chơi, hiện tại có 2 phần chính là PlayerViewport để hiển thị avatar cho người chơi hoạt động tương tự Gui GameStatistic tại phase 1 và PlayerNameText đơn giản tên của người chơi và id (ví dụ: Max (@Max123))
+- ItemList hiển thị skin mà người chơi đang mang (Icicles và Blocks), bên trong đã có sẵn UIGridLayout, chỉ cần clone ItemTemplate vào và hiển thị skin người chơi đang sử dụng.
+- PlayerStats hiển thị thông số người chơi xuyên suốt từ lúc bắt đầu chơi; bên trong sẽ có 2 Frame: 
+	- GameWins: Thành phần duy nhất cần chỉnh sửa là ValueText cho biết người chơi đã thắng được tổng cộng bao nhiêu trận đấu
+	- Stats: Bên trong Stats sẽ chứa các Frame nữa như Freezes, Thaws, FirstBlood, ThawingSpree,... Bên trong mỗi Frame nhỏ này sẽ chứa 2 giá trị là NameText  và ValueText; tương tự frame GameWins chỉ cần thay đổi ValueText tương ứng với thông số của người chơi
+- CloseButton: Tắt Gui
+- Background: Không cần quan tâm
+Gui Sẽ Visible khi ấn vào StarterGui/NavigationButton/Button/Profile
+
 ---
 # Phase 5: Shop
 > Mục Tiêu: Hệ thống shop cho phép người chơi mua các rương gacha vật phẩm

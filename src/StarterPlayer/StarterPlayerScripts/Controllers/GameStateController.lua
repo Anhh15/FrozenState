@@ -42,6 +42,20 @@ local function GetInventoryController()
 	return _inventoryController
 end
 
+-- Profile nằm bên trong Menu — lazy-require để tránh circular load
+-- ProfileController được load sau bởi Main.client.lua
+local _profileController = nil
+local function GetProfileController()
+	if not _profileController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("ProfileController")
+		if Module then
+			_profileController = require(Module)
+		end
+	end
+	return _profileController
+end
+
 -- =========================================================
 -- CONFIG
 -- =========================================================
@@ -82,11 +96,15 @@ end
 local function SetLobbyGuisVisible(Visible)
 	if MenuGui then MenuGui.Enabled = Visible end
 	if NavGui  then NavGui.Enabled  = Visible end
-	-- Khi vào trận: buộc đóng Inventory nếu đang mở
+	-- Khi vào trận: buộc đóng Inventory và Profile nếu đang mở
 	if not Visible then
 		local InvCtrl = GetInventoryController()
 		if InvCtrl then
 			InvCtrl.SetVisible(false)
+		end
+		local ProfCtrl = GetProfileController()
+		if ProfCtrl then
+			ProfCtrl.SetVisible(false)
 		end
 	end
 end
