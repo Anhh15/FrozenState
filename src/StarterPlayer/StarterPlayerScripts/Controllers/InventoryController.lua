@@ -49,7 +49,9 @@ local IciclesTab       = TabContainer and TabContainer:FindFirstChild("IciclesTa
 local BlocksTab        = TabContainer and TabContainer:FindFirstChild("BlocksTab")
 local ItemList         = Inventory and Inventory:FindFirstChild("ItemList", true)
 local ScrollingFrame   = ItemList and ItemList:FindFirstChildOfClass("ScrollingFrame")
-local ItemTemplate     = ScrollingFrame and ScrollingFrame:FindFirstChild("ItemTemplate")
+local Assets           = ReplicatedStorage:FindFirstChild("Assets")
+local GuiFolder        = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
+local ItemTemplate     = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
 local ItemSelection    = Inventory and Inventory:FindFirstChild("ItemSelection", true)
 local SelectionViewport = ItemSelection and ItemSelection:FindFirstChild("ItemViewport")
 local SelectionName    = ItemSelection and ItemSelection:FindFirstChild("NameText")
@@ -119,7 +121,13 @@ local function RefreshEquipButton()
 	local CurrentEquip  = Data and Data[SlotKey] or "Default"
 	local IsEquipped    = (CurrentEquip == _selectedEntry.Id)
 
-	EquipButton.Text        = IsEquipped and "Equipped" or "Equip"
+	local StatusText = EquipButton:FindFirstChild("StatusText")
+	if StatusText then
+		StatusText.Text = IsEquipped and "Equipped" or "Equip"
+	else
+		EquipButton.Text = IsEquipped and "Equipped" or "Equip"
+	end
+
 	EquipButton.Active      = not IsEquipped
 	EquipButton.AutoButtonColor = not IsEquipped
 end
@@ -213,7 +221,12 @@ local function RenderList(ItemType)
 	if SelectionName   then SelectionName.Text   = "" end
 	if SelectionRarity then SelectionRarity.Text  = "" end
 	if EquipButton     then
-		EquipButton.Text   = "Equip"
+		local StatusText = EquipButton:FindFirstChild("StatusText")
+		if StatusText then
+			StatusText.Text = "Equip"
+		else
+			EquipButton.Text = "Equip"
+		end
 		EquipButton.Active = false
 	end
 
@@ -276,9 +289,19 @@ local function RenderList(ItemType)
 
 		-- Kết nối sự kiện click
 		local EntrySnapshot = Entry  -- closure capture
-		local Conn = Frame.MouseButton1Click:Connect(function()
-			SelectItem(EntrySnapshot)
-		end)
+		local ClickTarget = Frame:IsA("GuiButton") and Frame or Frame:FindFirstChildWhichIsA("GuiButton")
+		local Conn
+		if ClickTarget then
+			Conn = ClickTarget.MouseButton1Click:Connect(function()
+				SelectItem(EntrySnapshot)
+			end)
+		else
+			Conn = Frame.InputBegan:Connect(function(Input)
+				if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+					SelectItem(EntrySnapshot)
+				end
+			end)
+		end
 		table.insert(_listConnections, Conn)
 	end
 end
@@ -290,16 +313,13 @@ end
 local function SwitchTab(ItemType)
 	_currentTab = ItemType
 
-	-- Highlight tab đang chọn (thay đổi thuộc tính để GUI phản ánh selection)
-	if IciclesTab then IciclesTab.FontFace = Font.fromEnum(Enum.Font.GothamBold) end
-	if BlocksTab  then BlocksTab.FontFace  = Font.fromEnum(Enum.Font.GothamBold) end
-
+	-- Highlight tab đang chọn bằng màu nền (Active: FFFFFF, Inactive: 2F2F2F)
 	if ItemType == "Icicle" then
-		if IciclesTab then IciclesTab.TextTransparency = 0 end
-		if BlocksTab  then BlocksTab.TextTransparency  = 0.4 end
+		if IciclesTab then IciclesTab.BackgroundColor3 = Color3.fromHex("FFFFFF") end
+		if BlocksTab  then BlocksTab.BackgroundColor3  = Color3.fromHex("2F2F2F") end
 	else
-		if IciclesTab then IciclesTab.TextTransparency = 0.4 end
-		if BlocksTab  then BlocksTab.TextTransparency  = 0 end
+		if IciclesTab then IciclesTab.BackgroundColor3 = Color3.fromHex("2F2F2F") end
+		if BlocksTab  then BlocksTab.BackgroundColor3  = Color3.fromHex("FFFFFF") end
 	end
 
 	RenderList(ItemType)
