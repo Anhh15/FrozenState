@@ -1,3 +1,5 @@
 aftman.toml
 
-.agents/
+.agents/rules/
+.agents/skills/
+.agents/workflows/
