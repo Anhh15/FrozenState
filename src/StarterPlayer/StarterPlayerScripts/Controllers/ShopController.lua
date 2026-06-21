@@ -25,10 +25,11 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
-local ChestConfig       = require(ReplicatedStorage.Shared.Config.ChestConfig)
-local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
-local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local RemoteDefinitions    = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local ChestConfig          = require(ReplicatedStorage.Shared.Config.ChestConfig)
+local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local PlayerDataController = require(script.Parent.PlayerDataController)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -251,7 +252,13 @@ local function OpenPopUp(ChestEntry)
 		local Conn = Buy1Button.MouseButton1Click:Connect(function()
 			if _selectedChest then
 				local BuyChestFn = RemoteDefinitions.GetFunction("BuyChest")
-				BuyChestFn:InvokeServer(_selectedChest.Id, 1)
+				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 1)
+				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
+				if Result and Result.Success then
+					task.spawn(function()
+						PlayerDataController.RefreshData()
+					end)
+				end
 			end
 		end)
 		table.insert(_popupConnections, Conn)
@@ -262,7 +269,13 @@ local function OpenPopUp(ChestEntry)
 		local Conn = Buy3Button.MouseButton1Click:Connect(function()
 			if _selectedChest then
 				local BuyChestFn = RemoteDefinitions.GetFunction("BuyChest")
-				BuyChestFn:InvokeServer(_selectedChest.Id, 3)
+				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 3)
+				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
+				if Result and Result.Success then
+					task.spawn(function()
+						PlayerDataController.RefreshData()
+					end)
+				end
 			end
 		end)
 		table.insert(_popupConnections, Conn)

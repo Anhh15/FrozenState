@@ -204,7 +204,7 @@ local function ClearItemList()
 end
 
 --- Render danh sách item vào ScrollingFrame theo ItemType
---- Chỉ hiển thị: item "Default" + item đã sở hữu (OwnedCosmetics)
+--- Chỉ hiển thị: item "Default" + item đã sở hữu (OwnedIcicles / OwnedBlocks)
 --- @param ItemType string — "Icicle" hoặc "Block"
 local function RenderList(ItemType)
 	if not ScrollingFrame or not ItemTemplate then
@@ -232,9 +232,19 @@ local function RenderList(ItemType)
 
 	local Data         = PlayerDataController.GetData()
 	local OwnedSet     = {}
-	if Data and Data.OwnedCosmetics then
-		for _, Id in ipairs(Data.OwnedCosmetics) do
-			OwnedSet[Id] = true
+	if Data then
+		-- Đọc đúng danh sách sở hữu theo tab hiện tại (Phase 5 schema)
+		local OwnedList = (ItemType == "Icicle") and Data.OwnedIcicles or Data.OwnedBlocks
+		if OwnedList then
+			for _, Id in ipairs(OwnedList) do
+				OwnedSet[Id] = true
+			end
+		end
+		-- Tương thích ngược: dữ liệu cũ từ OwnedCosmetics (nếu có)
+		if Data.OwnedCosmetics then
+			for _, Id in ipairs(Data.OwnedCosmetics) do
+				OwnedSet[Id] = true
+			end
 		end
 	end
 
