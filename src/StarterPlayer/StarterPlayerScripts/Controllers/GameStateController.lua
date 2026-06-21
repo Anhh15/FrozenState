@@ -56,6 +56,20 @@ local function GetProfileController()
 	return _profileController
 end
 
+-- Shop nằm bên trong Menu — lazy-require để tránh circular load
+-- ShopController được load sau bởi Main.client.lua
+local _shopController = nil
+local function GetShopController()
+	if not _shopController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("ShopController")
+		if Module then
+			_shopController = require(Module)
+		end
+	end
+	return _shopController
+end
+
 -- =========================================================
 -- CONFIG
 -- =========================================================
@@ -96,7 +110,7 @@ end
 local function SetLobbyGuisVisible(Visible)
 	if MenuGui then MenuGui.Enabled = Visible end
 	if NavGui  then NavGui.Enabled  = Visible end
-	-- Khi vào trận: buộc đóng Inventory và Profile nếu đang mở
+	-- Kếi vào trận: buộc đóng Inventory, Profile và Shop nếu đang mở
 	if not Visible then
 		local InvCtrl = GetInventoryController()
 		if InvCtrl then
@@ -105,6 +119,10 @@ local function SetLobbyGuisVisible(Visible)
 		local ProfCtrl = GetProfileController()
 		if ProfCtrl then
 			ProfCtrl.SetVisible(false)
+		end
+		local ShopCtrl = GetShopController()
+		if ShopCtrl then
+			ShopCtrl.SetVisible(false)
 		end
 	end
 end

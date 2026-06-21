@@ -45,6 +45,9 @@ local REMOTE_FUNCTIONS = {
 
 	-- Client → Server: Lấy dữ liệu ban đầu khi client vừa join
 	"GetPlayerData",
+
+	-- Client → Server: Mua rương gacha (Phase 5)
+	"BuyChest",
 }
 
 -- =========================================================

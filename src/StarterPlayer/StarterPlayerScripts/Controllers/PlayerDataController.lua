@@ -21,7 +21,7 @@ local _localData  = {}    -- Cache dữ liệu player
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Tìm Money label trong NavigationButton GUI
--- Đường dẫn mong đợi: NavigationButton/Money/Text (hoặc tương tự)
+-- Đường dẫn: NavigationButton/Stats/MoneyStats/MoneyText
 local function FindMoneyLabel()
 	local NavGui = PlayerGui:WaitForChild("NavigationButton", 5)
 	if not NavGui then
@@ -29,14 +29,15 @@ local function FindMoneyLabel()
 		return nil
 	end
 
-	-- Tìm element Money theo tên (FindFirstChild recursive = true)
-	local MoneyFrame = NavGui:FindFirstChild("Money", true)
-	if MoneyFrame then
-		local TextLabel = MoneyFrame:FindFirstChildOfClass("TextLabel")
-		return TextLabel
-	end
+	-- Path: Stats → MoneyStats → MoneyText
+	local Stats      = NavGui:FindFirstChild("Stats", true)
+	local MoneyStats = Stats and Stats:FindFirstChild("MoneyStats")
+	local MoneyText  = MoneyStats and MoneyStats:FindFirstChild("MoneyText")
 
-	return nil
+	if not MoneyText then
+		warn("[PlayerDataController] Không tìm thấy MoneyText trong NavigationButton/Stats/MoneyStats/.")
+	end
+	return MoneyText
 end
 
 local MoneyLabel = nil  -- lazy-init khi cần

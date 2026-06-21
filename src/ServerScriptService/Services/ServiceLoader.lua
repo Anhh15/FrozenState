@@ -31,6 +31,9 @@ local SERVICES = {
 	-- IcicleService: cấp / thu hồi Tool
 	require(script.Parent.IcicleService),
 
+	-- ShopService: xử lý logic mua rương gacha (Phase 5)
+	require(script.Parent.ShopService),
+
 	-- MatchService: game loop (phải cuối cùng vì phụ thuộc vào tất cả service trên)
 	require(script.Parent.MatchService),
 }

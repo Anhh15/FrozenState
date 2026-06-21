@@ -24,7 +24,9 @@ local PROFILE_TEMPLATE = {
 	TotalThawingSpree   = 0,
 	TotalFirstBlood     = 0,
 	TotalLastStanding   = 0,
-	OwnedCosmetics      = {},
+	OwnedCosmetics      = {},   -- Giữ lại để tương thích ngược (không xóa)
+	OwnedIcicles        = {},   -- Phase 5: danh sách Icicle skin sở hữu
+	OwnedBlocks         = {},   -- Phase 5: danh sách Block skin sở hữu
 	EquippedIcicle      = "Default",
 	EquippedIceBlock    = "Default",
 }
@@ -156,8 +158,12 @@ function DataService.EquipCosmetic(Player, SlotName, ItemId)
 
 	-- Kiểm tra quyền sở hữu (Default luôn được phép)
 	if ItemId ~= "Default" then
+		-- Xác định array sở hữu đúng theo slot
+		local OwnedList = (SlotName == "EquippedIcicle")
+			and Profile.Data.OwnedIcicles
+			or  Profile.Data.OwnedBlocks
 		local Owned = false
-		for _, OwnedId in ipairs(Profile.Data.OwnedCosmetics) do
+		for _, OwnedId in ipairs(OwnedList) do
 			if OwnedId == ItemId then
 				Owned = true
 				break
@@ -173,18 +179,63 @@ function DataService.EquipCosmetic(Player, SlotName, ItemId)
 	return true
 end
 
---- Thêm cosmetic vào danh sách sở hữu
+--- Kiểm tra player có sở hữu item không
+--- @param Player Player
+--- @param ItemType string  -- "Icicle" hoặc "Block"
+--- @param ItemId string
+--- @return boolean
+function DataService.HasItem(Player, ItemType, ItemId)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return false end
+
+	if ItemId == "Default" then return true end
+
+	local OwnedList = (ItemType == "Icicle")
+		and Profile.Data.OwnedIcicles
+		or  Profile.Data.OwnedBlocks
+
+	for _, OwnedId in ipairs(OwnedList) do
+		if OwnedId == ItemId then return true end
+	end
+	return false
+end
+
+--- Thêm Icicle skin vào danh sách sở hữu (không trùng lặp)
+--- @param Player Player
+--- @param ItemId string
+function DataService.AddIcicle(Player, ItemId)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+
+	for _, OwnedId in ipairs(Profile.Data.OwnedIcicles) do
+		if OwnedId == ItemId then return end
+	end
+	table.insert(Profile.Data.OwnedIcicles, ItemId)
+end
+
+--- Thêm Block skin vào danh sách sở hữu (không trùng lặp)
+--- @param Player Player
+--- @param ItemId string
+function DataService.AddBlock(Player, ItemId)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+
+	for _, OwnedId in ipairs(Profile.Data.OwnedBlocks) do
+		if OwnedId == ItemId then return end
+	end
+	table.insert(Profile.Data.OwnedBlocks, ItemId)
+end
+
+--- Thêm cosmetic vào danh sách sở hữu (giữ lại cho tương thích ngược)
 --- @param Player Player
 --- @param ItemId string
 function DataService.AddCosmetic(Player, ItemId)
 	local Profile = ActiveProfiles[Player]
 	if not Profile then return end
 
-	-- Tránh duplicate
 	for _, OwnedId in ipairs(Profile.Data.OwnedCosmetics) do
 		if OwnedId == ItemId then return end
 	end
-
 	table.insert(Profile.Data.OwnedCosmetics, ItemId)
 end
 
@@ -224,7 +275,8 @@ function DataService:Start()
 			TotalThawingSpree  = Data.TotalThawingSpree,
 			TotalFirstBlood    = Data.TotalFirstBlood,
 			TotalLastStanding  = Data.TotalLastStanding,
-			OwnedCosmetics     = Data.OwnedCosmetics,
+			OwnedIcicles       = Data.OwnedIcicles,
+			OwnedBlocks        = Data.OwnedBlocks,
 			EquippedIcicle     = Data.EquippedIcicle,
 			EquippedIceBlock   = Data.EquippedIceBlock,
 		}

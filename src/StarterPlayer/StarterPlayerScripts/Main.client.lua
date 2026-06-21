@@ -18,15 +18,17 @@ local HighlightController      = require(Controllers:WaitForChild("HighlightCont
 local PlayerDataController     = require(Controllers:WaitForChild("PlayerDataController"))
 local InventoryController      = require(Controllers:WaitForChild("InventoryController"))
 local ProfileController        = require(Controllers:WaitForChild("ProfileController"))
+local ShopController           = require(Controllers:WaitForChild("ShopController"))
 
 -- Bước 3: Init tất cả controller
 -- (Init theo thứ tự — GameState trước để UI sẵn sàng ngay khi data đến)
--- PlayerDataController phải Init trước InventoryController và ProfileController để cache data sẵn sàng
+-- PlayerDataController phải Init trước InventoryController, ProfileController và ShopController để cache data sẵn sàng
 GameStateController:Init()
 GameStatisticController:Init()
 HighlightController:Init()
 PlayerDataController:Init()
 InventoryController:Init()
 ProfileController:Init()
+ShopController:Init()
 
 print("[Client] FrozenState đã sẵn sàng.")

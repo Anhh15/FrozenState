@@ -65,8 +65,53 @@ Gui Sẽ Visible khi ấn vào StarterGui/NavigationButton/Button/Profile
 ---
 # Phase 5: Shop
 > Mục Tiêu: Hệ thống shop cho phép người chơi mua các rương gacha vật phẩm
----
+
+Đường dẫn với Shop StarterGui/Menu/Shop
+
+Shop sẽ được bật khi nhấn StarterGui/NavigationButton/Button/Shop
+
+Cấu trúc Gui:
+- CloseButton: Bấm để tắt Shop gui
+- TabContainer: Chứa 2 ImageButton Blocks và Icicles, để chuyển sang mua skin cho vật phẩm tương ứng
+- MenuLabel và Background đơn giản là hiện thông tin, không cần quan tâm đến
+- ChestList (Frame) chứa 1 ScrollingFrame (đã có UIGridLayout) là khu vực display chest sử dụng ChestTemplate tại ReplicatedStorage/Asset/Gui/ChestTemplate
+	- ChestTemplate sẽ chứa ChestViewport (đã có CurrentCamera) display model chest từ ReplicatedStorage/Assets/Chests, Một Background không cần quan tâm đến và NameText hiển thị tên của chest.
+- ChestPopUp (Frame) xuất hiện khi nhấn vào ChestTemplate tại ChestList, tại đây sẽ hiển thị thông tin vật phẩm và số tiền cần trả để mua 1 chest hoặc 3 chest, cấu trúc bao gồm
+	- Background và Curtain không cần quan tâm đến
+	- CloseButton (ImageButton) để tắt ChestPopUp
+	- Buy1Button và Buy3Button (ImageButton), người chơi nhấn vào để mua số lượng tương ứng. Bên trong mỗi nút chứa BuyText (TextlLabel) hiển thị thông tin và số tiền (Buy 1: xxx và Buy 3: xxxx), số tiền tùy loại chest
+	- ChestTemplate tương tụ như là ReplicatedStorage/Asset/Gui/ChestTemplate nhưng không clone mà điều chỉnh tên, model,... Theo chest mà người chơi lựa chọn.
+	- ItemInfo sẽ chứa 1 ScrollingFrame hiển thị thông tin vật phẩm mà chest có xác suất xuất hiện, các ItemTemplate sẽ được clone từ ReplicatedStorage/Asset/Gui/ItemTemplate và điều chỉnh tương ứng, đồng thời cho mục DropRateText bên trong ItemTemplate visible để hiển thị phần trăm rơi của vật phẩm
+
+Một người chơi không thể sở hữu 2 skin giống nhau nên nếu mở giống thì sẽ được hoàn trả tiền theo độ hiểm (càng hiếm thì hoàn trả càng nhiều theo phần trăm, nên có config để điều chỉnh) ví dụ rương 1000 khi mở rare sẽ hoàn trả 20% tức 200 tức là theo % giá tiền của rương đó
+
+Khi mở sẽ có hoạt ảnh nhưng tạm thời bỏ qua mà hãy cho thẳng vật phẩm vào skin thuộc sở hữu của người chơi đó, tức là không có gì màu mè; nhấn buy là sở hữu vật phẩm ngay; không pop up, không amm thanh, không gì cả, chỉ đơn giản là đưa vật phẩm vào vật phẩm sở hữu của người chơi. Toàn bộ hoạt ảnh, âm thanh, pop up sẽ được thêm sau. Lý do việc này là game vẫn còn đang trong giai đoạn phát triển, việc thiết kế hoạt ảnh hiện tại sẽ ảnh hưởng đến tiến độ, các hiệu ứng sẽ được thêm vào những giai đoạn cuối
+
+Cập nhật nhỏ tại NavigationButton/Stats/MoneyStats/MoneyText để hiển số tiền mà người chơi sở hữu, Text sẽ thay đổi khi số tiền người chơi có thay đổi. Từ giờ gọi tiền là Cash
+
+Model Chest được lưu tại ReplicatedStorage/Asset/Chestsx
+
+Khi di chuyển bằng các nút trong Tabcontainer thì ScrollingFrame cũng phải chuyển theo. Ví dụ: đang ở Icicles thì Shop/ChestList/ScrollingFrame nên hiển thị rương chứa các Icicles, với Blocks cũng tương tự nhưng là rương và vật phẩm cho Blocks. Ở đây sẽ không có 2 ScrollingFrame mà thay vào đó là một ScrollingFrame để clear và clone lại các chest
+
+Nếu ChestPopUp đang mở nhưng ngươi chơi tương tác với TabContainer hoặc đóng cả Shop thì thực hiện việc clean ChestPopUp như cách nhấn CloseButton tại ChestPopUp
 # Phase 6: Spectate
+> Mục tiêu: Tạo cơ chế cho phép những người đang không tham gia vào trận đấu có thể quan sát người chơi
+> Ý tưởng: Tạo một vòng lặp, khi người chơi không tham gia trận đấu bắt đầu quan sát thì sẽ hướng camera vào người chơi đó (giống như đang điều camera người chơi nhưng focus vào người đang quan sát), có 2 nút bấm để có thể quan sát người tiếp theo hoặc quay lại người trước trong vòng lặp
+
+Cấu trúc Gui:
+- Path: StarterGui/Menu/Spectate
+- Để tắt Gui thì CloseButton (ImageButton)
+- NextButton (ImageButton) được sử đụng đến quan sát người tiếp theo trong vòng lặp, BackButton tương tự nhưng đi ngược về phía sau
+- PlayerName (Frame) chỉ cần quan tâm đến PlayerNameText (TextLabel) bên trong, đây sẽ display tên và id của người đang quan sát (ví dụ: Max (@Max123))
+
+Chế độ Spectate sẽ được bật khi nhấn vào Starter/NavigationButton/Spectate
+
+Khi Spectate này được bật thì tương tự với toàn bộ Gui trong Starter/Menu là sẽ tắt các Frame còn lại, đồng thời ần toàn bộ gui thuộc Starter/NavigationButton
+
+Thông tin thêm:
+- nếu đang quan sát 1 người chơi nhưng bị đóng băng/out game thì lập tức chuyển sang người chơi khác
+- Chỉ khi trong phase InGame, chỉ người không tham gia vào trận đấu hiện tại (ở lobby, mới vào server, không được phân vào team nào)
+
 ---
 ## Phase 7: Polish
 > **Mục tiêu:** Hoàn thiện trải nghiệm âm thanh và hình ảnh.

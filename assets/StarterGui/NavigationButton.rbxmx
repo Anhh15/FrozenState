@@ -2,7 +2,7 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="ScreenGui" referent="RBX9E748B4D96554DD2A5CD284F1121EF14">
+	<Item class="ScreenGui" referent="RBX2B9165EF19844B37A7D24ACB00823409">
 		<Properties>
 			<bool name="ClipToDeviceSafeArea">true</bool>
 			<int name="DisplayOrder">-10</int>
@@ -25,7 +25,7 @@
 			<int64 name="SourceAssetId">-1</int64>
 			<BinaryString name="Tags"></BinaryString>
 		</Properties>
-		<Item class="Frame" referent="RBX6CC51A4EEDA94457A64C30893711732C">
+		<Item class="Frame" referent="RBX958DD3FB46754929AFD558BD9DE492A9">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -89,351 +89,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="ImageButton" referent="RBXC862F51F91384516976F01869D4BF7B9">
-				<Properties>
-					<Content name="HoverImage"><null></null></Content>
-					<Content name="Image"><url>rbxassetid://116957647784907</url></Content>
-					<Color3 name="ImageColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<Vector2 name="ImageRectOffset">
-						<X>0</X>
-						<Y>0</Y>
-					</Vector2>
-					<Vector2 name="ImageRectSize">
-						<X>0</X>
-						<Y>0</Y>
-					</Vector2>
-					<float name="ImageTransparency">0</float>
-					<Content name="PressedImage"><null></null></Content>
-					<token name="ResampleMode">0</token>
-					<token name="ScaleType">0</token>
-					<Rect2D name="SliceCenter">
-						<min>
-							<X>0</X>
-							<Y>0</Y>
-						</min>
-						<max>
-							<X>0</X>
-							<Y>0</Y>
-						</max>
-					</Rect2D>
-					<float name="SliceScale">1</float>
-					<UDim2 name="TileSize">
-						<XS>1</XS>
-						<XO>0</XO>
-						<YS>1</YS>
-						<YO>0</YO>
-					</UDim2>
-					<bool name="AutoButtonColor">true</bool>
-					<Ref name="HoverHapticEffect">null</Ref>
-					<bool name="Modal">false</bool>
-					<Ref name="PressHapticEffect">null</Ref>
-					<bool name="Selected">false</bool>
-					<token name="Style">0</token>
-					<bool name="Active">false</bool>
-					<Vector2 name="AnchorPoint">
-						<X>0.5</X>
-						<Y>0.5</Y>
-					</Vector2>
-					<token name="AutomaticSize">0</token>
-					<Color3 name="BackgroundColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<float name="BackgroundTransparency">1</float>
-					<Color3 name="BorderColor3">
-						<R>0</R>
-						<G>0</G>
-						<B>0</B>
-					</Color3>
-					<token name="BorderMode">0</token>
-					<int name="BorderSizePixel">0</int>
-					<bool name="ClipsDescendants">false</bool>
-					<bool name="Draggable">false</bool>
-					<token name="InputSink">0</token>
-					<bool name="Interactable">true</bool>
-					<int name="LayoutOrder">0</int>
-					<Ref name="NextSelectionDown">null</Ref>
-					<Ref name="NextSelectionLeft">null</Ref>
-					<Ref name="NextSelectionRight">null</Ref>
-					<Ref name="NextSelectionUp">null</Ref>
-					<UDim2 name="Position">
-						<XS>0.27252841</XS>
-						<XO>0</XO>
-						<YS>0.290850461</YS>
-						<YO>0</YO>
-					</UDim2>
-					<float name="Rotation">0</float>
-					<bool name="Selectable">false</bool>
-					<Ref name="SelectionImageObject">null</Ref>
-					<int name="SelectionOrder">0</int>
-					<UDim2 name="Size">
-						<XS>0.154482648</XS>
-						<XO>0</XO>
-						<YS>0.452391535</YS>
-						<YO>0</YO>
-					</UDim2>
-					<token name="SizeConstraint">0</token>
-					<bool name="Visible">true</bool>
-					<int name="ZIndex">0</int>
-					<bool name="AutoLocalize">true</bool>
-					<Ref name="RootLocalizationTable">null</Ref>
-					<token name="SelectionBehaviorDown">0</token>
-					<token name="SelectionBehaviorLeft">0</token>
-					<token name="SelectionBehaviorRight">0</token>
-					<token name="SelectionBehaviorUp">0</token>
-					<bool name="SelectionGroup">false</bool>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<string name="Name">Inventory</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
-				</Properties>
-				<Item class="TextLabel" referent="RBX184FB8D9D2D645948737B59E4474DC15">
-					<Properties>
-						<Font name="FontFace">
-							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
-							<Weight>400</Weight>
-							<Style>Normal</Style>
-						</Font>
-						<float name="LineHeight">1</float>
-						<string name="LocalizationMatchIdentifier"></string>
-						<string name="LocalizationMatchedSourceText"></string>
-						<int name="MaxVisibleGraphemes">-1</int>
-						<string name="OpenTypeFeatures"></string>
-						<bool name="RichText">false</bool>
-						<string name="Text">Inventory</string>
-						<Color3 name="TextColor3">
-							<R>1</R>
-							<G>1</G>
-							<B>1</B>
-						</Color3>
-						<token name="TextDirection">0</token>
-						<bool name="TextScaled">true</bool>
-						<float name="TextSize">14</float>
-						<Color3 name="TextStrokeColor3">
-							<R>0</R>
-							<G>0</G>
-							<B>0</B>
-						</Color3>
-						<float name="TextStrokeTransparency">1</float>
-						<float name="TextTransparency">0</float>
-						<token name="TextTruncate">0</token>
-						<bool name="TextWrapped">true</bool>
-						<token name="TextXAlignment">2</token>
-						<token name="TextYAlignment">1</token>
-						<bool name="Active">false</bool>
-						<Vector2 name="AnchorPoint">
-							<X>0.5</X>
-							<Y>0.5</Y>
-						</Vector2>
-						<token name="AutomaticSize">0</token>
-						<Color3 name="BackgroundColor3">
-							<R>1</R>
-							<G>1</G>
-							<B>1</B>
-						</Color3>
-						<float name="BackgroundTransparency">1</float>
-						<Color3 name="BorderColor3">
-							<R>0</R>
-							<G>0</G>
-							<B>0</B>
-						</Color3>
-						<token name="BorderMode">0</token>
-						<int name="BorderSizePixel">0</int>
-						<bool name="ClipsDescendants">false</bool>
-						<bool name="Draggable">false</bool>
-						<token name="InputSink">0</token>
-						<bool name="Interactable">true</bool>
-						<int name="LayoutOrder">0</int>
-						<Ref name="NextSelectionDown">null</Ref>
-						<Ref name="NextSelectionLeft">null</Ref>
-						<Ref name="NextSelectionRight">null</Ref>
-						<Ref name="NextSelectionUp">null</Ref>
-						<UDim2 name="Position">
-							<XS>0.5</XS>
-							<XO>0</XO>
-							<YS>0.937570035</YS>
-							<YO>0</YO>
-						</UDim2>
-						<float name="Rotation">0</float>
-						<bool name="Selectable">false</bool>
-						<Ref name="SelectionImageObject">null</Ref>
-						<int name="SelectionOrder">0</int>
-						<UDim2 name="Size">
-							<XS>1</XS>
-							<XO>0</XO>
-							<YS>0.314534038</YS>
-							<YO>0</YO>
-						</UDim2>
-						<token name="SizeConstraint">0</token>
-						<bool name="Visible">true</bool>
-						<int name="ZIndex">1</int>
-						<bool name="AutoLocalize">true</bool>
-						<Ref name="RootLocalizationTable">null</Ref>
-						<token name="SelectionBehaviorDown">0</token>
-						<token name="SelectionBehaviorLeft">0</token>
-						<token name="SelectionBehaviorRight">0</token>
-						<token name="SelectionBehaviorUp">0</token>
-						<bool name="SelectionGroup">false</bool>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<string name="Name">Text</string>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-					</Properties>
-					<Item class="UIGradient" referent="RBXF5DE4515F9364142B1EE18E1121EF856">
-						<Properties>
-							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
-							<bool name="Enabled">true</bool>
-							<Vector2 name="Offset">
-								<X>0</X>
-								<Y>0</Y>
-							</Vector2>
-							<float name="Rotation">90</float>
-							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
-							<BinaryString name="AttributesSerialize"></BinaryString>
-							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-							<bool name="DefinesCapabilities">false</bool>
-							<string name="Name">UIGradient</string>
-							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
-						</Properties>
-					</Item>
-					<Item class="UIStroke" referent="RBX40CA2AF431EA4CA2AE84A9FAF2589F66">
-						<Properties>
-							<token name="ApplyStrokeMode">0</token>
-							<UDim name="BorderOffset">
-								<S>0</S>
-								<O>0</O>
-							</UDim>
-							<token name="BorderStrokePosition">0</token>
-							<Color3 name="Color">
-								<R>0</R>
-								<G>0</G>
-								<B>0</B>
-							</Color3>
-							<bool name="Enabled">true</bool>
-							<token name="LineJoinMode">0</token>
-							<token name="StrokeSizingMode">1</token>
-							<float name="Thickness">0.150000006</float>
-							<float name="Transparency">0</float>
-							<int name="ZIndex">1</int>
-							<BinaryString name="AttributesSerialize"></BinaryString>
-							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-							<bool name="DefinesCapabilities">false</bool>
-							<string name="Name">UIStroke</string>
-							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
-						</Properties>
-					</Item>
-				</Item>
-				<Item class="ImageLabel" referent="RBXF9ECB8C797AF4734B031EABB78970F22">
-					<Properties>
-						<Content name="Image"><url>rbxassetid://116154859134178</url></Content>
-						<Color3 name="ImageColor3">
-							<R>1</R>
-							<G>1</G>
-							<B>1</B>
-						</Color3>
-						<Vector2 name="ImageRectOffset">
-							<X>0</X>
-							<Y>0</Y>
-						</Vector2>
-						<Vector2 name="ImageRectSize">
-							<X>0</X>
-							<Y>0</Y>
-						</Vector2>
-						<float name="ImageTransparency">0</float>
-						<token name="ResampleMode">0</token>
-						<token name="ScaleType">0</token>
-						<Rect2D name="SliceCenter">
-							<min>
-								<X>0</X>
-								<Y>0</Y>
-							</min>
-							<max>
-								<X>0</X>
-								<Y>0</Y>
-							</max>
-						</Rect2D>
-						<float name="SliceScale">1</float>
-						<UDim2 name="TileSize">
-							<XS>1</XS>
-							<XO>0</XO>
-							<YS>1</YS>
-							<YO>0</YO>
-						</UDim2>
-						<bool name="Active">false</bool>
-						<Vector2 name="AnchorPoint">
-							<X>0.5</X>
-							<Y>0.5</Y>
-						</Vector2>
-						<token name="AutomaticSize">0</token>
-						<Color3 name="BackgroundColor3">
-							<R>1</R>
-							<G>1</G>
-							<B>1</B>
-						</Color3>
-						<float name="BackgroundTransparency">1</float>
-						<Color3 name="BorderColor3">
-							<R>0</R>
-							<G>0</G>
-							<B>0</B>
-						</Color3>
-						<token name="BorderMode">0</token>
-						<int name="BorderSizePixel">0</int>
-						<bool name="ClipsDescendants">false</bool>
-						<bool name="Draggable">false</bool>
-						<token name="InputSink">0</token>
-						<bool name="Interactable">true</bool>
-						<int name="LayoutOrder">0</int>
-						<Ref name="NextSelectionDown">null</Ref>
-						<Ref name="NextSelectionLeft">null</Ref>
-						<Ref name="NextSelectionRight">null</Ref>
-						<Ref name="NextSelectionUp">null</Ref>
-						<UDim2 name="Position">
-							<XS>0.493876398</XS>
-							<XO>0</XO>
-							<YS>0.462829798</YS>
-							<YO>0</YO>
-						</UDim2>
-						<float name="Rotation">0</float>
-						<bool name="Selectable">false</bool>
-						<Ref name="SelectionImageObject">null</Ref>
-						<int name="SelectionOrder">0</int>
-						<UDim2 name="Size">
-							<XS>0.708878756</XS>
-							<XO>0</XO>
-							<YS>0.708878756</YS>
-							<YO>0</YO>
-						</UDim2>
-						<token name="SizeConstraint">0</token>
-						<bool name="Visible">true</bool>
-						<int name="ZIndex">1</int>
-						<bool name="AutoLocalize">true</bool>
-						<Ref name="RootLocalizationTable">null</Ref>
-						<token name="SelectionBehaviorDown">0</token>
-						<token name="SelectionBehaviorLeft">0</token>
-						<token name="SelectionBehaviorRight">0</token>
-						<token name="SelectionBehaviorUp">0</token>
-						<bool name="SelectionGroup">false</bool>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<string name="Name">Icon</string>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-					</Properties>
-				</Item>
-			</Item>
-			<Item class="ImageButton" referent="RBX0719A7D938A64EBBA5880B699E238641">
+			<Item class="ImageButton" referent="RBX4D92CE59AA364CCE8C29340C7F29A603">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://91816296127392</url></Content>
@@ -488,7 +144,7 @@
 						<G>1</G>
 						<B>1</B>
 					</Color3>
-					<float name="BackgroundTransparency">1</float>
+					<float name="BackgroundTransparency">0.99000001</float>
 					<Color3 name="BorderColor3">
 						<R>0</R>
 						<G>0</G>
@@ -538,7 +194,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="TextLabel" referent="RBX4EE3B4B55918460788F6291C8D093C38">
+				<Item class="TextLabel" referent="RBX8EC2CFB3C32C4CB8959423FFD41F1CCC">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -632,7 +288,7 @@
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX17D2B5EC48A84E6B9939C2E8E7052231">
+					<Item class="UIGradient" referent="RBX4EAD92E3715C4997916597C415D3191A">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -641,7 +297,10 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
@@ -650,7 +309,7 @@
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX401BFEE9BDD14966B45427F2D39E3F49">
+					<Item class="UIStroke" referent="RBXBC4E101851104817B72094D3E85B4437">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -678,7 +337,7 @@
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="ImageLabel" referent="RBX30CD1D32B1E84802B5A9AF511E03AA04">
+				<Item class="ImageLabel" referent="RBXC4C87AF8CED340BDACBEE39B7FFF6C64">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://124969714936528</url></Content>
 						<Color3 name="ImageColor3">
@@ -777,7 +436,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBX5DF0076FB10043F080D97D4F98859DCB">
+			<Item class="ImageButton" referent="RBXADEED99C445C417986AAE10F9CAB1F1A">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://81060784743014</url></Content>
@@ -832,7 +491,7 @@
 						<G>1</G>
 						<B>1</B>
 					</Color3>
-					<float name="BackgroundTransparency">1</float>
+					<float name="BackgroundTransparency">0.99000001</float>
 					<Color3 name="BorderColor3">
 						<R>0</R>
 						<G>0</G>
@@ -882,7 +541,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="TextLabel" referent="RBXE262CDEB1EE74EBB96AF36BEC5D8EAF0">
+				<Item class="TextLabel" referent="RBXAAB1DFB111C2455D8B2637AE7712B35D">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -976,7 +635,7 @@
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX9EA7AF6FFA3E43709C2D58D26A17B5A1">
+					<Item class="UIGradient" referent="RBX2C25EAAFC61C4195AA993E477163BE85">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -985,7 +644,10 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
@@ -994,7 +656,7 @@
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBXE7D7787FD56E4A5FB5FD83C7580E4FF7">
+					<Item class="UIStroke" referent="RBXCEC8C3048CE244FA9F2EE2EFDC5C0C04">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -1022,7 +684,7 @@
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="ImageLabel" referent="RBXFF5316BFD4844EAD95095AE68DF7D10C">
+				<Item class="ImageLabel" referent="RBX09E4A7088120440FB85847AC57B32B60">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://82240673298792</url></Content>
 						<Color3 name="ImageColor3">
@@ -1121,7 +783,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBXFFAC82BDCDD84145B913007115E8A4E3">
+			<Item class="ImageButton" referent="RBXE068E13F871C4831B0D78EF7BA17B6F5">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://74377945968884</url></Content>
@@ -1176,7 +838,7 @@
 						<G>1</G>
 						<B>1</B>
 					</Color3>
-					<float name="BackgroundTransparency">1</float>
+					<float name="BackgroundTransparency">0.99000001</float>
 					<Color3 name="BorderColor3">
 						<R>0</R>
 						<G>0</G>
@@ -1222,11 +884,11 @@
 					<BinaryString name="AttributesSerialize"></BinaryString>
 					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 					<bool name="DefinesCapabilities">false</bool>
-					<string name="Name">Watch</string>
+					<string name="Name">Spectate</string>
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="TextLabel" referent="RBX88DAAE43D4DA40CEAA6C972CFB71FAAC">
+				<Item class="TextLabel" referent="RBX7A79FEBDE0134FFBA2DD966AA57A3315">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -1320,7 +982,7 @@
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="UIGradient" referent="RBXFD0451A3F7FB44E98626093F97206E8A">
+					<Item class="UIGradient" referent="RBXAFECFF1E8DDC438D948F1D6E5282FBFC">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -1329,7 +991,10 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
@@ -1338,7 +1003,7 @@
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX6B734C7220DB4307B454A2CFC330B04A">
+					<Item class="UIStroke" referent="RBX84973011BEAB49F3AEBA17FFE4F06108">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -1366,7 +1031,7 @@
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="ImageLabel" referent="RBX6E1CF33F197E459DA0887B03090C9E7C">
+				<Item class="ImageLabel" referent="RBX39C759C4E01C4A8F9D435A2BA394284E">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://86206971559594</url></Content>
 						<Color3 name="ImageColor3">
@@ -1465,7 +1130,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBX650C01C2B4F6484992AEFA43E06EF1BE">
+			<Item class="ImageButton" referent="RBX639DB39A430A49D092D27D361234EEC4">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://74377945968884</url></Content>
@@ -1520,7 +1185,7 @@
 						<G>1</G>
 						<B>1</B>
 					</Color3>
-					<float name="BackgroundTransparency">1</float>
+					<float name="BackgroundTransparency">0.99000001</float>
 					<Color3 name="BorderColor3">
 						<R>0</R>
 						<G>0</G>
@@ -1570,7 +1235,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBX5ABDC11DC32E449AB3CBBC345CD5F1B3">
+				<Item class="ImageLabel" referent="RBX70F0A5D72DBC428BBF24DAF7AAC79932">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://80438284104083</url></Content>
 						<Color3 name="ImageColor3">
@@ -1669,7 +1334,7 @@
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="UIAspectRatioConstraint" referent="RBX2CDD6C906EB84554B31DB76C7FF9F683">
+			<Item class="UIAspectRatioConstraint" referent="RBX1FD25AD28DCA44DEAAD612763B9F1C00">
 				<Properties>
 					<float name="AspectRatio">2.9284296</float>
 					<token name="AspectType">0</token>
@@ -1682,7 +1347,7 @@
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ImageButton" referent="RBXE7B75D760EE3415A8C8BADCCB1BF3997">
+			<Item class="ImageButton" referent="RBX15B75F7AAB884EDBA363D1DCDC92911A">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://74377945968884</url></Content>
@@ -1737,7 +1402,7 @@
 						<G>1</G>
 						<B>1</B>
 					</Color3>
-					<float name="BackgroundTransparency">1</float>
+					<float name="BackgroundTransparency">0.99000001</float>
 					<Color3 name="BorderColor3">
 						<R>0</R>
 						<G>0</G>
@@ -1787,7 +1452,7 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBX82AEB70729424DCA93D93D0F35395997">
+				<Item class="ImageLabel" referent="RBXCCEDE4B251654CBF856DE01BB306D4EE">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://80438284104083</url></Content>
 						<Color3 name="ImageColor3">
@@ -1886,8 +1551,355 @@
 					</Properties>
 				</Item>
 			</Item>
+			<Item class="ImageButton" referent="RBX75761CB4767A4A07B7BAA23E842D881A">
+				<Properties>
+					<Content name="HoverImage"><null></null></Content>
+					<Content name="Image"><url>rbxassetid://116957647784907</url></Content>
+					<Color3 name="ImageColor3">
+						<R>1</R>
+						<G>1</G>
+						<B>1</B>
+					</Color3>
+					<Vector2 name="ImageRectOffset">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Vector2 name="ImageRectSize">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<float name="ImageTransparency">0</float>
+					<Content name="PressedImage"><null></null></Content>
+					<token name="ResampleMode">0</token>
+					<token name="ScaleType">0</token>
+					<Rect2D name="SliceCenter">
+						<min>
+							<X>0</X>
+							<Y>0</Y>
+						</min>
+						<max>
+							<X>0</X>
+							<Y>0</Y>
+						</max>
+					</Rect2D>
+					<float name="SliceScale">1</float>
+					<UDim2 name="TileSize">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>1</YS>
+						<YO>0</YO>
+					</UDim2>
+					<bool name="AutoButtonColor">true</bool>
+					<Ref name="HoverHapticEffect">null</Ref>
+					<bool name="Modal">false</bool>
+					<Ref name="PressHapticEffect">null</Ref>
+					<bool name="Selected">false</bool>
+					<token name="Style">0</token>
+					<bool name="Active">false</bool>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>0.5</Y>
+					</Vector2>
+					<token name="AutomaticSize">0</token>
+					<Color3 name="BackgroundColor3">
+						<R>1</R>
+						<G>1</G>
+						<B>1</B>
+					</Color3>
+					<float name="BackgroundTransparency">0.99000001</float>
+					<Color3 name="BorderColor3">
+						<R>0</R>
+						<G>0</G>
+						<B>0</B>
+					</Color3>
+					<token name="BorderMode">0</token>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<token name="InputSink">0</token>
+					<bool name="Interactable">true</bool>
+					<int name="LayoutOrder">0</int>
+					<Ref name="NextSelectionDown">null</Ref>
+					<Ref name="NextSelectionLeft">null</Ref>
+					<Ref name="NextSelectionRight">null</Ref>
+					<Ref name="NextSelectionUp">null</Ref>
+					<UDim2 name="Position">
+						<XS>0.27252841</XS>
+						<XO>0</XO>
+						<YS>0.290850461</YS>
+						<YO>0</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<bool name="Selectable">false</bool>
+					<Ref name="SelectionImageObject">null</Ref>
+					<int name="SelectionOrder">0</int>
+					<UDim2 name="Size">
+						<XS>0.154482648</XS>
+						<XO>0</XO>
+						<YS>0.452391535</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">0</int>
+					<bool name="AutoLocalize">true</bool>
+					<Ref name="RootLocalizationTable">null</Ref>
+					<token name="SelectionBehaviorDown">0</token>
+					<token name="SelectionBehaviorLeft">0</token>
+					<token name="SelectionBehaviorRight">0</token>
+					<token name="SelectionBehaviorUp">0</token>
+					<bool name="SelectionGroup">false</bool>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<string name="Name">Inventory</string>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="TextLabel" referent="RBX95DE4C2DED9F43D3A2ABBF571D55C99A">
+					<Properties>
+						<Font name="FontFace">
+							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
+							<Weight>400</Weight>
+							<Style>Normal</Style>
+						</Font>
+						<float name="LineHeight">1</float>
+						<string name="LocalizationMatchIdentifier"></string>
+						<string name="LocalizationMatchedSourceText"></string>
+						<int name="MaxVisibleGraphemes">-1</int>
+						<string name="OpenTypeFeatures"></string>
+						<bool name="RichText">false</bool>
+						<string name="Text">Inventory</string>
+						<Color3 name="TextColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<token name="TextDirection">0</token>
+						<bool name="TextScaled">true</bool>
+						<float name="TextSize">14</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">0</token>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0.5</X>
+							<Y>0.5</Y>
+						</Vector2>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="InputSink">0</token>
+						<bool name="Interactable">true</bool>
+						<int name="LayoutOrder">0</int>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0.5</XS>
+							<XO>0</XO>
+							<YS>0.937570035</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0.314534038</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+						<bool name="AutoLocalize">true</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">Text</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+					<Item class="UIGradient" referent="RBX71E0D1AA93A54DCDA0E908EE9B14E933">
+						<Properties>
+							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
+							<bool name="Enabled">true</bool>
+							<Vector2 name="Offset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
+							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+							<bool name="DefinesCapabilities">false</bool>
+							<string name="Name">UIGradient</string>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="UIStroke" referent="RBX76DCBABFC28D4DA0AE6599D206F6C0E0">
+						<Properties>
+							<token name="ApplyStrokeMode">0</token>
+							<UDim name="BorderOffset">
+								<S>0</S>
+								<O>0</O>
+							</UDim>
+							<token name="BorderStrokePosition">0</token>
+							<Color3 name="Color">
+								<R>0</R>
+								<G>0</G>
+								<B>0</B>
+							</Color3>
+							<bool name="Enabled">true</bool>
+							<token name="LineJoinMode">0</token>
+							<token name="StrokeSizingMode">1</token>
+							<float name="Thickness">0.150000006</float>
+							<float name="Transparency">0</float>
+							<int name="ZIndex">1</int>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+							<bool name="DefinesCapabilities">false</bool>
+							<string name="Name">UIStroke</string>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="ImageLabel" referent="RBX0A2596DE0AC14EE3A36F9AC2573E2757">
+					<Properties>
+						<Content name="Image"><url>rbxassetid://116154859134178</url></Content>
+						<Color3 name="ImageColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<Vector2 name="ImageRectOffset">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Vector2 name="ImageRectSize">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<float name="ImageTransparency">0</float>
+						<token name="ResampleMode">0</token>
+						<token name="ScaleType">0</token>
+						<Rect2D name="SliceCenter">
+							<min>
+								<X>0</X>
+								<Y>0</Y>
+							</min>
+							<max>
+								<X>0</X>
+								<Y>0</Y>
+							</max>
+						</Rect2D>
+						<float name="SliceScale">1</float>
+						<UDim2 name="TileSize">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0.5</X>
+							<Y>0.5</Y>
+						</Vector2>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="InputSink">0</token>
+						<bool name="Interactable">true</bool>
+						<int name="LayoutOrder">0</int>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0.493876398</XS>
+							<XO>0</XO>
+							<YS>0.462829798</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>0.708878756</XS>
+							<XO>0</XO>
+							<YS>0.708878756</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+						<bool name="AutoLocalize">true</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">Icon</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+			</Item>
 		</Item>
-		<Item class="Frame" referent="RBXC496E93F209546808E3F6F21902BB717">
+		<Item class="Frame" referent="RBX8149A0F3D53444CBAC9F322CA559DCC8">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -1951,325 +1963,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="ImageLabel" referent="RBX1D06F048956E4E578B5EC6F87D364338">
-				<Properties>
-					<Content name="Image"><url>rbxassetid://116948840564591</url></Content>
-					<Color3 name="ImageColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<Vector2 name="ImageRectOffset">
-						<X>0</X>
-						<Y>0</Y>
-					</Vector2>
-					<Vector2 name="ImageRectSize">
-						<X>0</X>
-						<Y>0</Y>
-					</Vector2>
-					<float name="ImageTransparency">0</float>
-					<token name="ResampleMode">0</token>
-					<token name="ScaleType">0</token>
-					<Rect2D name="SliceCenter">
-						<min>
-							<X>0</X>
-							<Y>0</Y>
-						</min>
-						<max>
-							<X>0</X>
-							<Y>0</Y>
-						</max>
-					</Rect2D>
-					<float name="SliceScale">1</float>
-					<UDim2 name="TileSize">
-						<XS>1</XS>
-						<XO>0</XO>
-						<YS>1</YS>
-						<YO>0</YO>
-					</UDim2>
-					<bool name="Active">false</bool>
-					<Vector2 name="AnchorPoint">
-						<X>0.5</X>
-						<Y>0.5</Y>
-					</Vector2>
-					<token name="AutomaticSize">0</token>
-					<Color3 name="BackgroundColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<float name="BackgroundTransparency">1</float>
-					<Color3 name="BorderColor3">
-						<R>0</R>
-						<G>0</G>
-						<B>0</B>
-					</Color3>
-					<token name="BorderMode">0</token>
-					<int name="BorderSizePixel">0</int>
-					<bool name="ClipsDescendants">false</bool>
-					<bool name="Draggable">false</bool>
-					<token name="InputSink">0</token>
-					<bool name="Interactable">true</bool>
-					<int name="LayoutOrder">0</int>
-					<Ref name="NextSelectionDown">null</Ref>
-					<Ref name="NextSelectionLeft">null</Ref>
-					<Ref name="NextSelectionRight">null</Ref>
-					<Ref name="NextSelectionUp">null</Ref>
-					<UDim2 name="Position">
-						<XS>0.549100578</XS>
-						<XO>0</XO>
-						<YS>0.5</YS>
-						<YO>0</YO>
-					</UDim2>
-					<float name="Rotation">0</float>
-					<bool name="Selectable">false</bool>
-					<Ref name="SelectionImageObject">null</Ref>
-					<int name="SelectionOrder">0</int>
-					<UDim2 name="Size">
-						<XS>0.901798368</XS>
-						<XO>0</XO>
-						<YS>1</YS>
-						<YO>0</YO>
-					</UDim2>
-					<token name="SizeConstraint">0</token>
-					<bool name="Visible">true</bool>
-					<int name="ZIndex">1</int>
-					<bool name="AutoLocalize">true</bool>
-					<Ref name="RootLocalizationTable">null</Ref>
-					<token name="SelectionBehaviorDown">0</token>
-					<token name="SelectionBehaviorLeft">0</token>
-					<token name="SelectionBehaviorRight">0</token>
-					<token name="SelectionBehaviorUp">0</token>
-					<bool name="SelectionGroup">false</bool>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<string name="Name">Background</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
-				</Properties>
-			</Item>
-			<Item class="ImageLabel" referent="RBX59F07CDDEB004773BF35C9F3E3411548">
-				<Properties>
-					<Content name="Image"><url>rbxassetid://96012355867963</url></Content>
-					<Color3 name="ImageColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<Vector2 name="ImageRectOffset">
-						<X>0</X>
-						<Y>0</Y>
-					</Vector2>
-					<Vector2 name="ImageRectSize">
-						<X>0</X>
-						<Y>0</Y>
-					</Vector2>
-					<float name="ImageTransparency">0</float>
-					<token name="ResampleMode">0</token>
-					<token name="ScaleType">0</token>
-					<Rect2D name="SliceCenter">
-						<min>
-							<X>0</X>
-							<Y>0</Y>
-						</min>
-						<max>
-							<X>0</X>
-							<Y>0</Y>
-						</max>
-					</Rect2D>
-					<float name="SliceScale">1</float>
-					<UDim2 name="TileSize">
-						<XS>1</XS>
-						<XO>0</XO>
-						<YS>1</YS>
-						<YO>0</YO>
-					</UDim2>
-					<bool name="Active">false</bool>
-					<Vector2 name="AnchorPoint">
-						<X>0.5</X>
-						<Y>0.5</Y>
-					</Vector2>
-					<token name="AutomaticSize">0</token>
-					<Color3 name="BackgroundColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<float name="BackgroundTransparency">1</float>
-					<Color3 name="BorderColor3">
-						<R>0</R>
-						<G>0</G>
-						<B>0</B>
-					</Color3>
-					<token name="BorderMode">0</token>
-					<int name="BorderSizePixel">0</int>
-					<bool name="ClipsDescendants">false</bool>
-					<bool name="Draggable">false</bool>
-					<token name="InputSink">0</token>
-					<bool name="Interactable">true</bool>
-					<int name="LayoutOrder">0</int>
-					<Ref name="NextSelectionDown">null</Ref>
-					<Ref name="NextSelectionLeft">null</Ref>
-					<Ref name="NextSelectionRight">null</Ref>
-					<Ref name="NextSelectionUp">null</Ref>
-					<UDim2 name="Position">
-						<XS>0.0924369767</XS>
-						<XO>0</XO>
-						<YS>0.5</YS>
-						<YO>0</YO>
-					</UDim2>
-					<float name="Rotation">0</float>
-					<bool name="Selectable">false</bool>
-					<Ref name="SelectionImageObject">null</Ref>
-					<int name="SelectionOrder">0</int>
-					<UDim2 name="Size">
-						<XS>0.184873953</XS>
-						<XO>0</XO>
-						<YS>0.93617022</YS>
-						<YO>0</YO>
-					</UDim2>
-					<token name="SizeConstraint">0</token>
-					<bool name="Visible">true</bool>
-					<int name="ZIndex">1</int>
-					<bool name="AutoLocalize">true</bool>
-					<Ref name="RootLocalizationTable">null</Ref>
-					<token name="SelectionBehaviorDown">0</token>
-					<token name="SelectionBehaviorLeft">0</token>
-					<token name="SelectionBehaviorRight">0</token>
-					<token name="SelectionBehaviorUp">0</token>
-					<bool name="SelectionGroup">false</bool>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<string name="Name">icon</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
-				</Properties>
-			</Item>
-			<Item class="TextLabel" referent="RBXC561BAD421794F9C90CC885562118C94">
-				<Properties>
-					<Font name="FontFace">
-						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
-						<Weight>400</Weight>
-						<Style>Normal</Style>
-					</Font>
-					<float name="LineHeight">1</float>
-					<string name="LocalizationMatchIdentifier"></string>
-					<string name="LocalizationMatchedSourceText"></string>
-					<int name="MaxVisibleGraphemes">-1</int>
-					<string name="OpenTypeFeatures"></string>
-					<bool name="RichText">false</bool>
-					<string name="Text">999,999,999</string>
-					<Color3 name="TextColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<token name="TextDirection">0</token>
-					<bool name="TextScaled">true</bool>
-					<float name="TextSize">14</float>
-					<Color3 name="TextStrokeColor3">
-						<R>0</R>
-						<G>0</G>
-						<B>0</B>
-					</Color3>
-					<float name="TextStrokeTransparency">1</float>
-					<float name="TextTransparency">0</float>
-					<token name="TextTruncate">0</token>
-					<bool name="TextWrapped">true</bool>
-					<token name="TextXAlignment">2</token>
-					<token name="TextYAlignment">1</token>
-					<bool name="Active">false</bool>
-					<Vector2 name="AnchorPoint">
-						<X>0.5</X>
-						<Y>0.5</Y>
-					</Vector2>
-					<token name="AutomaticSize">0</token>
-					<Color3 name="BackgroundColor3">
-						<R>1</R>
-						<G>1</G>
-						<B>1</B>
-					</Color3>
-					<float name="BackgroundTransparency">1</float>
-					<Color3 name="BorderColor3">
-						<R>0</R>
-						<G>0</G>
-						<B>0</B>
-					</Color3>
-					<token name="BorderMode">0</token>
-					<int name="BorderSizePixel">0</int>
-					<bool name="ClipsDescendants">false</bool>
-					<bool name="Draggable">false</bool>
-					<token name="InputSink">0</token>
-					<bool name="Interactable">true</bool>
-					<int name="LayoutOrder">0</int>
-					<Ref name="NextSelectionDown">null</Ref>
-					<Ref name="NextSelectionLeft">null</Ref>
-					<Ref name="NextSelectionRight">null</Ref>
-					<Ref name="NextSelectionUp">null</Ref>
-					<UDim2 name="Position">
-						<XS>0.584033608</XS>
-						<XO>0</XO>
-						<YS>0.500000238</YS>
-						<YO>0</YO>
-					</UDim2>
-					<float name="Rotation">0</float>
-					<bool name="Selectable">false</bool>
-					<Ref name="SelectionImageObject">null</Ref>
-					<int name="SelectionOrder">0</int>
-					<UDim2 name="Size">
-						<XS>0.758169234</XS>
-						<XO>0</XO>
-						<YS>0.674906492</YS>
-						<YO>0</YO>
-					</UDim2>
-					<token name="SizeConstraint">0</token>
-					<bool name="Visible">true</bool>
-					<int name="ZIndex">1</int>
-					<bool name="AutoLocalize">true</bool>
-					<Ref name="RootLocalizationTable">null</Ref>
-					<token name="SelectionBehaviorDown">0</token>
-					<token name="SelectionBehaviorLeft">0</token>
-					<token name="SelectionBehaviorRight">0</token>
-					<token name="SelectionBehaviorUp">0</token>
-					<bool name="SelectionGroup">false</bool>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<string name="Name">MoneyText</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
-				</Properties>
-				<Item class="UIStroke" referent="RBX055CAE2C7BB94DF6AEBD1EE67EFD2EC7">
-					<Properties>
-						<token name="ApplyStrokeMode">0</token>
-						<UDim name="BorderOffset">
-							<S>0</S>
-							<O>0</O>
-						</UDim>
-						<token name="BorderStrokePosition">0</token>
-						<Color3 name="Color">
-							<R>0</R>
-							<G>0</G>
-							<B>0</B>
-						</Color3>
-						<bool name="Enabled">true</bool>
-						<token name="LineJoinMode">0</token>
-						<token name="StrokeSizingMode">1</token>
-						<float name="Thickness">0.100000001</float>
-						<float name="Transparency">0</float>
-						<int name="ZIndex">1</int>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<string name="Name">UIStroke</string>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-					</Properties>
-				</Item>
-			</Item>
-			<Item class="UIAspectRatioConstraint" referent="RBX230DDF9730AB4970AF3AEBB60CA48070">
+			<Item class="UIAspectRatioConstraint" referent="RBX6EB74224EBF148659CB34C22F160E331">
 				<Properties>
 					<float name="AspectRatio">5.0638299</float>
 					<token name="AspectType">0</token>
@@ -2281,6 +1975,389 @@
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
+			</Item>
+			<Item class="Frame" referent="RBX5B034278D6204D0492989EBBFE7E1443">
+				<Properties>
+					<token name="Style">0</token>
+					<bool name="Active">false</bool>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>0.5</Y>
+					</Vector2>
+					<token name="AutomaticSize">0</token>
+					<Color3 name="BackgroundColor3">
+						<R>1</R>
+						<G>1</G>
+						<B>1</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">
+						<R>0</R>
+						<G>0</G>
+						<B>0</B>
+					</Color3>
+					<token name="BorderMode">0</token>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<token name="InputSink">0</token>
+					<bool name="Interactable">true</bool>
+					<int name="LayoutOrder">0</int>
+					<Ref name="NextSelectionDown">null</Ref>
+					<Ref name="NextSelectionLeft">null</Ref>
+					<Ref name="NextSelectionRight">null</Ref>
+					<Ref name="NextSelectionUp">null</Ref>
+					<UDim2 name="Position">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0.5</YS>
+						<YO>0</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<bool name="Selectable">false</bool>
+					<Ref name="SelectionImageObject">null</Ref>
+					<int name="SelectionOrder">0</int>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>1</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+					<bool name="AutoLocalize">true</bool>
+					<Ref name="RootLocalizationTable">null</Ref>
+					<token name="SelectionBehaviorDown">0</token>
+					<token name="SelectionBehaviorLeft">0</token>
+					<token name="SelectionBehaviorRight">0</token>
+					<token name="SelectionBehaviorUp">0</token>
+					<bool name="SelectionGroup">false</bool>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<string name="Name">MoneyStats</string>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX2C1FA0F0127C4A9E9B123DEFE2CDEFA9">
+					<Properties>
+						<Content name="Image"><url>rbxassetid://116948840564591</url></Content>
+						<Color3 name="ImageColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<Vector2 name="ImageRectOffset">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Vector2 name="ImageRectSize">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<float name="ImageTransparency">0</float>
+						<token name="ResampleMode">0</token>
+						<token name="ScaleType">0</token>
+						<Rect2D name="SliceCenter">
+							<min>
+								<X>0</X>
+								<Y>0</Y>
+							</min>
+							<max>
+								<X>0</X>
+								<Y>0</Y>
+							</max>
+						</Rect2D>
+						<float name="SliceScale">1</float>
+						<UDim2 name="TileSize">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0.5</X>
+							<Y>0.5</Y>
+						</Vector2>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="InputSink">0</token>
+						<bool name="Interactable">true</bool>
+						<int name="LayoutOrder">0</int>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0.54831934</XS>
+							<XO>0</XO>
+							<YS>0.5</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>0.901260495</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+						<bool name="AutoLocalize">true</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">Background</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+				<Item class="ImageLabel" referent="RBX1F464F55ADC24BA68B607EFCF794784A">
+					<Properties>
+						<Content name="Image"><url>rbxassetid://96012355867963</url></Content>
+						<Color3 name="ImageColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<Vector2 name="ImageRectOffset">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Vector2 name="ImageRectSize">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<float name="ImageTransparency">0</float>
+						<token name="ResampleMode">0</token>
+						<token name="ScaleType">0</token>
+						<Rect2D name="SliceCenter">
+							<min>
+								<X>0</X>
+								<Y>0</Y>
+							</min>
+							<max>
+								<X>0</X>
+								<Y>0</Y>
+							</max>
+						</Rect2D>
+						<float name="SliceScale">1</float>
+						<UDim2 name="TileSize">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0.5</X>
+							<Y>0.5</Y>
+						</Vector2>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="InputSink">0</token>
+						<bool name="Interactable">true</bool>
+						<int name="LayoutOrder">0</int>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0.0924369767</XS>
+							<XO>0</XO>
+							<YS>0.5</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>0.184873953</XS>
+							<XO>0</XO>
+							<YS>0.93617022</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+						<bool name="AutoLocalize">true</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">icon</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX66A4065F23764E3DB5AABB92B6DD4058">
+					<Properties>
+						<Font name="FontFace">
+							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
+							<Weight>400</Weight>
+							<Style>Normal</Style>
+						</Font>
+						<float name="LineHeight">1</float>
+						<string name="LocalizationMatchIdentifier"></string>
+						<string name="LocalizationMatchedSourceText"></string>
+						<int name="MaxVisibleGraphemes">-1</int>
+						<string name="OpenTypeFeatures"></string>
+						<bool name="RichText">false</bool>
+						<string name="Text">999,999,999</string>
+						<Color3 name="TextColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<token name="TextDirection">0</token>
+						<bool name="TextScaled">true</bool>
+						<float name="TextSize">14</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">0</token>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0.5</X>
+							<Y>0.5</Y>
+						</Vector2>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="InputSink">0</token>
+						<bool name="Interactable">true</bool>
+						<int name="LayoutOrder">0</int>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0.584033608</XS>
+							<XO>0</XO>
+							<YS>0.5</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>0.758403361</XS>
+							<XO>0</XO>
+							<YS>0.670212746</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+						<bool name="AutoLocalize">true</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">MoneyText</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+					<Item class="UIStroke" referent="RBX8B3B7AC85E85473C9BBC7D4CEC0E246A">
+						<Properties>
+							<token name="ApplyStrokeMode">0</token>
+							<UDim name="BorderOffset">
+								<S>0</S>
+								<O>0</O>
+							</UDim>
+							<token name="BorderStrokePosition">0</token>
+							<Color3 name="Color">
+								<R>0</R>
+								<G>0</G>
+								<B>0</B>
+							</Color3>
+							<bool name="Enabled">true</bool>
+							<token name="LineJoinMode">0</token>
+							<token name="StrokeSizingMode">1</token>
+							<float name="Thickness">0.100000001</float>
+							<float name="Transparency">0</float>
+							<int name="ZIndex">1</int>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+							<bool name="DefinesCapabilities">false</bool>
+							<string name="Name">UIStroke</string>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+				</Item>
 			</Item>
 		</Item>
 	</Item>
