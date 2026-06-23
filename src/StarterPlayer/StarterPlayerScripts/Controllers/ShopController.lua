@@ -30,6 +30,7 @@ local ChestConfig          = require(ReplicatedStorage.Shared.Config.ChestConfig
 local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local PlayerDataController = require(script.Parent.PlayerDataController)
+local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -87,14 +88,10 @@ local _popupChestModel  = nil       -- Model chest đang hiển thị trong PopU
 -- HELPERS
 -- =========================================================
 
---- Dọn dẹp ViewportFrame tránh memory leak
+--- Dọn dẹp ViewportFrame tránh memory leak (cả Camera lẫn Model)
+--- Ủy quyền cho ViewportManager thay vì giữ lại Camera tĩnh cũ
 local function CleanViewport(Viewport)
-	if not Viewport then return end
-	for _, Child in ipairs(Viewport:GetChildren()) do
-		if not Child:IsA("Camera") then
-			Child:Destroy()
-		end
-	end
+	ViewportManager.CleanViewport(Viewport)
 end
 
 --- Disconnect và xóa danh sách connections
@@ -119,7 +116,9 @@ local function UpdateTabHighlight(ActiveTab)
 	end
 end
 
---- Clone model Chest vào ViewportFrame
+--- Clone model Chest vào ViewportFrame và tự động tạo camera theo Bounding Box
+--- @param Viewport  ViewportFrame
+--- @param ChestId   string
 local function LoadChestModel(Viewport, ChestId)
 	CleanViewport(Viewport)
 	if not ChestsFolder then return end
@@ -130,6 +129,9 @@ local function LoadChestModel(Viewport, ChestId)
 	end
 	local Clone = Model:Clone()
 	Clone.Parent = Viewport
+
+	-- Tạo camera tự động dựa trên Bounding Box và cấu hình ViewportConfig
+	ViewportManager.RenderItem(Viewport, Clone, "Chest", ChestId)
 end
 
 --- Lấy BuyText label bên trong một button (ImageButton thường có TextLabel con)
@@ -228,17 +230,22 @@ local function OpenPopUp(ChestEntry)
 				Background.Image = RarityEntry.ImageId
 			end
 
-			-- Render item model vào ItemViewport (nếu có)
+			-- Render item model vào ItemViewport và tự động tạo camera (nếu có)
 			local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
 			if ItemViewport then
 				CleanViewport(ItemViewport)
-				local ItemAssetFolder = Assets
-					and Assets:FindFirstChild(ChestEntry.Type == "Icicle" and "Icicles" or "Blocks")
-				if ItemAssetFolder then
-					local ItemModel = ItemAssetFolder:FindFirstChild(FullEntry.Id)
+				local ItemPreviewFolder = ReplicatedStorage:FindFirstChild("Assets")
+					and ReplicatedStorage.Assets:FindFirstChild("ItemPreview")
+					and ReplicatedStorage.Assets.ItemPreview:FindFirstChild(
+						ChestEntry.Type == "Icicle" and "Icicles" or "Blocks"
+					)
+				if ItemPreviewFolder then
+					local ItemModel = ItemPreviewFolder:FindFirstChild(FullEntry.Id)
 					if ItemModel then
 						local Clone = ItemModel:Clone()
 						Clone.Parent = ItemViewport
+						-- Tạo camera tự động qua ViewportManager
+						ViewportManager.RenderItem(ItemViewport, Clone, FullEntry.Type, FullEntry.Id)
 					end
 				end
 			end

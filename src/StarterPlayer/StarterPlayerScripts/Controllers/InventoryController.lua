@@ -28,6 +28,7 @@ local RemoteDefinitions     = require(ReplicatedStorage.Shared.Remotes.RemoteDef
 local ItemRegistry          = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig          = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local PlayerDataController  = require(script.Parent.PlayerDataController)
+local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -75,15 +76,14 @@ local _listConnections = {}        -- Kết nối RenderItem (dọn dẹp khi re
 -- =========================================================
 
 --- Dọn dẹp toàn bộ nội dung ViewportFrame để tránh memory leak
+--- Ủy quyền cho ViewportManager để đảm bảo dọn đúng cả Camera lẫn Model
 local function CleanViewport(Viewport)
-	if not Viewport then return end
-	for _, Child in ipairs(Viewport:GetChildren()) do
-		Child:Destroy()
-	end
+	ViewportManager.CleanViewport(Viewport)
 end
 
---- Clone model preview từ ReplicatedStorage vào ViewportFrame
+--- Clone model preview từ ReplicatedStorage vào ViewportFrame và tự động căn camera
 --- Đường dẫn: ReplicatedStorage.Assets.ItemPreview.Icicles.<Id> hoặc .Blocks.<Id>
+--- Camera được tính tự động qua ViewportManager dựa trên Bounding Box của model
 --- @param Viewport ViewportFrame
 --- @param Entry    table  — entry từ ItemRegistry
 local function LoadPreviewModel(Viewport, Entry)
@@ -110,6 +110,9 @@ local function LoadPreviewModel(Viewport, Entry)
 
 	local Model = ModelTemplate:Clone()
 	Model.Parent = Viewport
+
+	-- Tạo camera tự động dựa trên Bounding Box và cấu hình ViewportConfig
+	ViewportManager.RenderItem(Viewport, Model, Entry.Type, Entry.Id)
 end
 
 --- Cập nhật trạng thái EquipButton dựa trên item đang được chọn
