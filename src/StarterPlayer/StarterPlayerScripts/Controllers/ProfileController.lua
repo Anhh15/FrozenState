@@ -30,6 +30,7 @@ local PlayerDataController = require(script.Parent.PlayerDataController)
 local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local GameConfig           = require(ReplicatedStorage.Shared.Config.GameConfig)
+local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -172,6 +173,10 @@ end
 local function ClearItemList()
 	for _, Frame in ipairs(_renderedItems) do
 		if Frame and Frame.Parent then
+			local ItemViewport = Frame:FindFirstChild("ItemViewport")
+			if ItemViewport then
+				ViewportManager.CleanViewport(ItemViewport)
+			end
 			Frame:Destroy()
 		end
 	end
@@ -228,6 +233,8 @@ local function RenderSingleItem(Entry, LayoutOrder)
 			if ModelTemplate then
 				local Model = ModelTemplate:Clone()
 				Model.Parent = ItemViewport
+				-- Tạo camera tự động qua ViewportManager
+				ViewportManager.RenderItem(ItemViewport, Model, Entry.Type, Entry.Id)
 			end
 		end
 	end
