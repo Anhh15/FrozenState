@@ -30,6 +30,7 @@ local _firstBloodClaimed = false
 local UpdatePlayerStateEvent
 local UpdateMoneyEvent
 local OnToolHitEvent
+local UpdateSpectateListEvent
 
 -- =========================================================
 -- PRIVATE: IceBlock
@@ -146,6 +147,12 @@ local function BroadcastPlayerState(Player)
 	})
 end
 
+--- Broadcast danh sách player Normal xuống tất cả client (Spectate system)
+local function BroadcastSpectateList()
+	local NormalPlayers = SessionService.GetAllNormalPlayers()
+	UpdateSpectateListEvent:FireAllClients(NormalPlayers)
+end
+
 --- Sau mỗi freeze: kiểm tra xem đội vừa bị đóng băng có bị wipe không
 local function CheckWinCondition(FrozenTeam)
 	if SessionService.IsTeamWiped(FrozenTeam) then
@@ -218,6 +225,9 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 
 	-- Kiểm tra điều kiện thắng
 	CheckWinCondition(SessionService.GetTeam(Victim))
+
+	-- Cập nhật danh sách Spectate (1 người bị loại khỏi Normal)
+	BroadcastSpectateList()
 end
 
 --- Giải cứu một player đang bị đóng băng
@@ -266,6 +276,9 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	end
 
 	print(("[FreezeService] %s đã giải cứu %s"):format(Rescuer.Name, Victim.Name))
+
+	-- Cập nhật danh sách Spectate (1 người trở lại Normal)
+	BroadcastSpectateList()
 end
 
 --- Thaw toàn bộ người đang bị frozen (gọi cuối GameOver)
@@ -343,9 +356,10 @@ end
 -- =========================================================
 
 function FreezeService:Init()
-	UpdatePlayerStateEvent = RemoteDefinitions.GetEvent("UpdatePlayerState")
-	UpdateMoneyEvent       = RemoteDefinitions.GetEvent("UpdateMoney")
-	OnToolHitEvent         = RemoteDefinitions.GetEvent("OnToolHit")
+	UpdatePlayerStateEvent   = RemoteDefinitions.GetEvent("UpdatePlayerState")
+	UpdateMoneyEvent         = RemoteDefinitions.GetEvent("UpdateMoney")
+	OnToolHitEvent           = RemoteDefinitions.GetEvent("OnToolHit")
+	UpdateSpectateListEvent  = RemoteDefinitions.GetEvent("UpdateSpectateList")
 
 	OnToolHitEvent.OnServerEvent:Connect(HandleToolHit)
 

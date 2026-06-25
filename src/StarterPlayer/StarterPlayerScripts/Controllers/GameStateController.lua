@@ -70,6 +70,20 @@ local function GetShopController()
 	return _shopController
 end
 
+-- Spectate nằm bên trong Menu — lazy-require để tránh circular load
+-- SpectateController được load sau bởi Main.client.lua
+local _spectateController = nil
+local function GetSpectateController()
+	if not _spectateController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("SpectateController")
+		if Module then
+			_spectateController = require(Module)
+		end
+	end
+	return _spectateController
+end
+
 -- =========================================================
 -- CONFIG
 -- =========================================================
@@ -110,7 +124,7 @@ end
 local function SetLobbyGuisVisible(Visible)
 	if MenuGui then MenuGui.Enabled = Visible end
 	if NavGui  then NavGui.Enabled  = Visible end
-	-- Kếi vào trận: buộc đóng Inventory, Profile và Shop nếu đang mở
+	-- Kếi vào trận: buộc đóng Inventory, Profile, Shop và Spectate nếu đang mở
 	if not Visible then
 		local InvCtrl = GetInventoryController()
 		if InvCtrl then
@@ -123,6 +137,10 @@ local function SetLobbyGuisVisible(Visible)
 		local ShopCtrl = GetShopController()
 		if ShopCtrl then
 			ShopCtrl.SetVisible(false)
+		end
+		local SpecCtrl = GetSpectateController()
+		if SpecCtrl then
+			SpecCtrl.SetVisible(false)
 		end
 	end
 end

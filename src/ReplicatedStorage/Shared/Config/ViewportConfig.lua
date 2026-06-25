@@ -26,9 +26,9 @@ local Default = {
 
 local TypeOverrides = {
 	Icicle = {
-		PitchAngle    = -20,  -- Nhìn xuống thêm để thấy hình dạng nhọn của Icicle
-		YawAngle      = 40,
-		PaddingFactor = 1.3,  -- Icicle thường dài và mảnh → cần khoảng đệm rộng hơn
+		PitchAngle    = 0,  -- Nhìn xuống thêm để thấy hình dạng nhọn của Icicle
+		YawAngle      = 0,
+		PaddingFactor = 1,  -- Icicle thường dài và mảnh → cần khoảng đệm rộng hơn
 	},
 	Block = {
 		PitchAngle    = -15,
@@ -36,9 +36,10 @@ local TypeOverrides = {
 		PaddingFactor = 1.2,
 	},
 	Chest = {
-		PitchAngle    = -20,  -- Góc hơi thấp để thấy nắp rương
-		YawAngle      = 30,
-		PaddingFactor = 1.4,  -- Rương thường to và rộng → cần nhiều khoảng đệm
+		FieldOfView   = 70,
+		PitchAngle    = -0,
+		YawAngle      = -90,
+		PaddingFactor = 0.80,
 	},
 }
 

@@ -153,6 +153,19 @@ function SessionService.IsTeamWiped(TeamName)
 	return true
 end
 
+--- Lấy danh sách tất cả player đang Normal (còn online)
+--- Dùng cho Spectate system broadcast
+--- @return table -- list of Player objects
+function SessionService.GetAllNormalPlayers()
+	local Result = {}
+	for Player, State in pairs(_playerStates) do
+		if State == "Normal" and Player:IsDescendantOf(Players) then
+			table.insert(Result, Player)
+		end
+	end
+	return Result
+end
+
 -- ── Stats ────────────────────────────────────────────────
 
 function SessionService.GetStats(Player)

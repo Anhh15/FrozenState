@@ -36,6 +36,9 @@ local REMOTE_EVENTS = {
 
 	-- Server → Client: Gửi bảng phân đội khi trận bắt đầu
 	"SetTeamAssignment",
+
+	-- Server → Client: Gửi danh sách Player đang Normal cho Spectate (Phase 6)
+	"UpdateSpectateList",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

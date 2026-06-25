@@ -32,6 +32,7 @@ local _earlyWinner  = nil  -- set khi FreezeService trigger MatchEndSignal
 
 local UpdateGameStateEvent
 local ShowGameOverEvent
+local UpdateSpectateListEvent
 
 -- =========================================================
 -- PRIVATE: Helpers
@@ -314,6 +315,10 @@ local function RunInGame()
 	local FSTThreshold   = GameConfig.Phase.FrozenStateThreshold
 	local FrozenStateOn  = false
 
+	-- Broadcast danh sách Spectate đầy đủ khi InGame bắt đầu
+	local NormalPlayers = SessionService.GetAllNormalPlayers()
+	UpdateSpectateListEvent:FireAllClients(NormalPlayers)
+
 	-- Lắng nghe MatchEndSignal (fired bởi SessionService khi team bị wipe)
 	local EndConn = SessionService.MatchEndSignal.Event:Connect(function(WinTeam)
 		_earlyWinner = WinTeam
@@ -355,6 +360,9 @@ local function RunGameOver(WinTeam)
 	-- Thu hồi tool và kết thúc trận
 	IcicleService.RemoveToolFromAll()
 	SessionService.SetMatchActive(false)
+
+	-- Broadcast danh sách Spectate rỗng — signal client tắt Spectate
+	UpdateSpectateListEvent:FireAllClients({})
 
 	-- Phát phần thưởng
 	DistributeRewards(WinTeam)
@@ -437,8 +445,9 @@ end
 -- =========================================================
 
 function MatchService:Init()
-	UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
-	ShowGameOverEvent    = RemoteDefinitions.GetEvent("ShowGameOver")
+	UpdateGameStateEvent    = RemoteDefinitions.GetEvent("UpdateGameState")
+	ShowGameOverEvent       = RemoteDefinitions.GetEvent("ShowGameOver")
+	UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
 	print("[MatchService] Đã khởi tạo.")
 end
 

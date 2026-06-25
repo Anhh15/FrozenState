@@ -28,7 +28,7 @@ local CHEST_CATALOG = {
 		Name   = "Basic Icicle Chest",
 		Type   = "Icicle",
 		Price1 = 10,
-		Price3 = 30,   -- ~13% discount so với mua lẻ 3 lần
+		Price3 = 30,
 		Items  = {
 			{ ItemId = "Green", DropRate = 60 },
 			{ ItemId = "Red",   DropRate = 40 },
