@@ -1,6 +1,6 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 23-06-2026
+> Cập nhật lần cuối: 26-06-2026
 
 ---
 
@@ -65,6 +65,11 @@
 - **Ngày:** 17-06-2026
 - **Chi tiết:** Thay vì đẩy dữ liệu stats của người chơi liên tục từ Server về Client khi có thay đổi, hoặc chỉ tải một lần duy nhất lúc người chơi mới kết nối (gây lỗi hiển thị stats cũ sau trận), áp dụng cơ chế Lazy-loading. Cung cấp hàm `PlayerDataController.RefreshData()` dùng để gọi RemoteFunction kéo dữ liệu mới nhất từ Server. Khi mở các GUI Menu liên quan (như Profile, Inventory), Client trước hết hiển thị dữ liệu cũ có sẵn trong cache, sau đó chạy một tiến trình bất đồng bộ (`task.spawn`) làm mới dữ liệu và cập nhật lại giao diện, đảm bảo thông tin luôn chính xác mà không block luồng giao diện chính.
 - **File liên quan:** [PlayerDataController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
+
+### Hệ thống Spectate cho Spectator (Spectate System)
+- **Ngày:** 26-06-2026
+- **Chi tiết:** Xây dựng hệ thống quan sát trận đấu (Spectate) dành riêng cho người chơi không có đội (Spectator) trong giai đoạn trận đấu đang diễn ra (`InGame`). Hệ thống sử dụng cơ chế Orbit Camera (CameraType.Custom, thiết lập `CameraSubject` trỏ đến `Humanoid` của người chơi đang thi đấu). Danh sách mục tiêu quan sát bao gồm các người chơi đang ở trạng thái `Normal` (không bị đóng băng) thuộc cả hai đội, được Server tổng hợp và đồng bộ qua RemoteEvent `UpdateSpectateList` mỗi khi có thay đổi trạng thái đóng băng/rã đông. Client có thể duyệt chuyển đổi qua lại giữa các mục tiêu thông qua các nút điều hướng (Next/Back).
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/SessionService.lua)
 
 ---
 
@@ -167,3 +172,24 @@
 - **Nguyên nhân:** Khác biệt cấu trúc lưu trữ asset trong ReplicatedStorage giữa các vật phẩm (Block là Model, Icicle là Part).
 - **Fix:** Thay vì sửa code ViewportManager phức tạp để tính toán AABB cho Part, người dùng thống nhất sửa thủ công bằng cách bọc (wrap) tất cả các asset preview dạng Part/MeshPart thành Model trong Roblox Studio để bảo toàn tính đồng nhất của hệ thống.
 - **File liên quan:** [ViewportManager.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+
+### Lỗi không thể spectate khi người chơi quá xa do StreamingEnabled
+- **Ngày:** 26-06-2026
+- **Vấn đề:** Khi người chơi bật spectate mục tiêu ở quá xa lobby, camera không chuyển sang mục tiêu mà chỉ focus tại chỗ.
+- **Nguyên nhân:** Dưới chế độ `StreamingEnabled`, character của người chơi ở xa bị stream out (bị hủy) hoàn toàn ở client, dẫn đến `TargetPlayer.Character` trả về `nil` và script không thể lấy vị trí để request stream hay set camera subject.
+- **Fix:** Chưa fix.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)
+
+### Lỗi timing khiến người chơi join muộn không tương tác được với nút Spectate
+- **Ngày:** 26-06-2026
+- **Vấn đề:** Khi người chơi mới kết nối vào server khi trận đấu đang diễn ra, các nút điều khiển spectate (Next/Back/Close) và nút Spectate chính không phản hồi khi bấm.
+- **Nguyên nhân:** Script client truy vấn các đối tượng GUI ở phần khai báo top-level bằng `WaitForChild(..., timeout)`. Do người chơi join muộn, một số UI element chưa kịp load xong trước khi timeout kết thúc, dẫn đến biến tham chiếu bị `nil` và làm crash luồng khởi tạo của controller.
+- **Fix:** Di chuyển toàn bộ các câu lệnh tìm kiếm UI element bằng `WaitForChild` từ top-level vào bên trong hàm khởi tạo `Init()`, đồng thời loại bỏ tham số timeout để đảm bảo script luôn đợi đến khi GUI load thành công.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)
+
+### Lỗi người chơi mới join giữa trận không nhận được danh sách Spectate
+- **Ngày:** 26-06-2026
+- **Vấn đề:** Người chơi mới kết nối vào server khi trận đấu đang diễn ra có thể mở được giao diện Spectate nhưng danh sách người chơi để quan sát trống rỗng, không thể spectate ai.
+- **Nguyên nhân:** Server chỉ broadcast danh sách người chơi thi đấu (`UpdateSpectateList`) tại thời điểm bắt đầu phase `InGame` hoặc khi có thay đổi trạng thái đóng băng/rã đông. Người chơi kết nối sau thời điểm đó sẽ không nhận được dữ liệu ban đầu.
+- **Fix:** Trong `MatchService:Init()`, bổ sung lắng nghe sự kiện `Players.PlayerAdded`. Khi có người chơi mới tham gia và game đang trong phase `InGame`, Server đợi 2 giây (để client load xong remote) rồi gửi riêng danh sách người chơi Normal hiện tại cho client đó qua `FireClient`.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)

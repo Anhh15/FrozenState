@@ -448,6 +448,17 @@ function MatchService:Init()
 	UpdateGameStateEvent    = RemoteDefinitions.GetEvent("UpdateGameState")
 	ShowGameOverEvent       = RemoteDefinitions.GetEvent("ShowGameOver")
 	UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
+
+	-- Khi player mới join giữa trận InGame:
+	-- Gửi ngay danh sách Spectate để client có targetList sẵn sàng
+	Players.PlayerAdded:Connect(function(NewPlayer)
+		task.wait(2)  -- Chờ client load xong RemoteDefinitions
+		if _currentPhase == "InGame" and SessionService.IsMatchActive() then
+			local NormalPlayers = SessionService.GetAllNormalPlayers()
+			UpdateSpectateListEvent:FireClient(NewPlayer, NormalPlayers)
+		end
+	end)
+
 	print("[MatchService] Đã khởi tạo.")
 end
 

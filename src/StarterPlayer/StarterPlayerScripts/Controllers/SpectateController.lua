@@ -10,30 +10,22 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
 -- =========================================================
--- GUI REFERENCES
+-- GUI REFERENCES (resolve lười trong Init để tránh lỗi timing)
 -- =========================================================
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 local Camera      = workspace.CurrentCamera
 
--- Menu GUI (Spectate nằm trong Menu)
-local MenuGui     = PlayerGui:WaitForChild("Menu", 10)
-local SpectateGui = MenuGui and MenuGui:WaitForChild("Spectate", 10)
-
--- NavigationButton GUI (ẩn khi spectate)
-local NavGui      = PlayerGui:WaitForChild("NavigationButton", 10)
-
--- Spectate GUI elements
-local CloseButton      = SpectateGui and SpectateGui:WaitForChild("CloseButton", 5)
-local NextButton       = SpectateGui and SpectateGui:WaitForChild("NextButton", 5)
-local BackButton       = SpectateGui and SpectateGui:WaitForChild("BackButton", 5)
-local PlayerNameFrame  = SpectateGui and SpectateGui:WaitForChild("PlayerName", 5)
-local PlayerNameText   = PlayerNameFrame and PlayerNameFrame:WaitForChild("PlayerNameText", 5)
-
--- Nút Spectate trong NavigationButton
-local NavButtons       = NavGui and NavGui:WaitForChild("Button", 5)
-local SpectateButton   = NavButtons and NavButtons:WaitForChild("Spectate", 5)
+-- Biến sẽ được gán trong Init() sau khi GUI đã load xong
+local MenuGui
+local SpectateGui
+local NavGui
+local CloseButton
+local NextButton
+local BackButton
+local PlayerNameText
+local SpectateButton
 
 -- =========================================================
 -- STATE
@@ -50,16 +42,38 @@ local _currentPhase       = "Intermission"  -- Cache phase hiện tại
 -- =========================================================
 
 --- Hướng camera Orbit vào target player
+--- Dùng RequestStreamAroundAsync để đảm bảo character được stream
+--- dù map và lobby ở xa nhau (giải quyết vấn đề StreamingEnabled)
 local function FocusOnTarget(TargetPlayer)
 	if not TargetPlayer then return end
 
-	local Character = TargetPlayer.Character
-	if not Character then return end
+	task.spawn(function()
+		-- Lấy vị trí hiện tại của target để request stream
+		local Character = TargetPlayer.Character
+		if not Character then return end
 
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not Humanoid then return end
+		local HRP = Character:FindFirstChild("HumanoidRootPart")
+		if not HRP then return end
 
-	Camera.CameraSubject = Humanoid
+		-- Yêu cầu Roblox stream content xung quanh vị trí target
+		-- Đảm bảo character được render dù Spectator ở xa (lobby ↔ map)
+		local StreamSuccess = pcall(function()
+			workspace:RequestStreamAroundAsync(HRP.Position)
+		end)
+
+		if not StreamSuccess then
+			warn("[SpectateController] RequestStreamAroundAsync thất bại, thử set camera trực tiếp.")
+		end
+
+		-- Sau khi stream xong, lấy lại Character (có thể đã được load đầy đủ hơn)
+		Character = TargetPlayer.Character
+		if not Character then return end
+
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+		if not Humanoid then return end
+
+		Camera.CameraSubject = Humanoid
+	end)
 end
 
 --- Khôi phục camera về nhân vật của LocalPlayer
@@ -265,36 +279,43 @@ end
 -- =========================================================
 
 function SpectateController:Init()
+	-- Resolve toàn bộ GUI references không có timeout
+	-- Đảm bảo luôn tìm được element dù player join giữa trận
+	MenuGui     = PlayerGui:WaitForChild("Menu")
+	SpectateGui = MenuGui:WaitForChild("Spectate")
+	NavGui      = PlayerGui:WaitForChild("NavigationButton")
+
+	CloseButton  = SpectateGui:WaitForChild("CloseButton")
+	NextButton   = SpectateGui:WaitForChild("NextButton")
+	BackButton   = SpectateGui:WaitForChild("BackButton")
+	local PlayerNameFrame = SpectateGui:WaitForChild("PlayerName")
+	PlayerNameText = PlayerNameFrame:WaitForChild("PlayerNameText")
+
+	local NavButtons = NavGui:WaitForChild("Button")
+	SpectateButton   = NavButtons:WaitForChild("Spectate")
+
 	-- Đảm bảo Spectate GUI ẩn lúc khởi tạo
-	if SpectateGui then SpectateGui.Visible = false end
+	SpectateGui.Visible = false
 
 	-- Kết nối nút Spectate trong NavigationButton
-	if SpectateButton then
-		if SpectateButton:IsA("GuiButton") then
-			SpectateButton.MouseButton1Click:Connect(function()
-				SpectateController.SetVisible(true)
-			end)
-		end
+	if SpectateButton:IsA("GuiButton") then
+		SpectateButton.MouseButton1Click:Connect(function()
+			SpectateController.SetVisible(true)
+		end)
 	end
 
 	-- Kết nối các nút điều khiển
-	if CloseButton then
-		CloseButton.MouseButton1Click:Connect(function()
-			SpectateController.SetVisible(false)
-		end)
-	end
+	CloseButton.MouseButton1Click:Connect(function()
+		SpectateController.SetVisible(false)
+	end)
 
-	if NextButton then
-		NextButton.MouseButton1Click:Connect(function()
-			CycleNext()
-		end)
-	end
+	NextButton.MouseButton1Click:Connect(function()
+		CycleNext()
+	end)
 
-	if BackButton then
-		BackButton.MouseButton1Click:Connect(function()
-			CycleBack()
-		end)
-	end
+	BackButton.MouseButton1Click:Connect(function()
+		CycleBack()
+	end)
 
 	-- Lắng nghe danh sách Spectate từ server
 	local UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
