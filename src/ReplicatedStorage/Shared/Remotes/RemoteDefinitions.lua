@@ -39,6 +39,9 @@ local REMOTE_EVENTS = {
 
 	-- Server → Client: Gửi danh sách Player đang Normal cho Spectate (Phase 6)
 	"UpdateSpectateList",
+
+	-- Client → Server: Spectator yêu cầu server set ReplicationFocus vào target được chọn
+	"RequestSpectateTarget",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

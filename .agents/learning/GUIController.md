@@ -1,6 +1,6 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 26-06-2026
+> Cập nhật lần cuối: 27-06-2026
 
 ---
 
@@ -18,58 +18,63 @@
 
 ### Thiết kế UI Template Động qua Module Config (Inventory)
 - **Ngày:** 15-06-2026
-- **Chi tiết:** Thay vì tạo nhiều file UI template cho từng Rarity, sử dụng duy nhất một template `ItemFrame` chung kết hợp với một `RarityConfig` chứa thông tin màu sắc, ID ảnh nền. Client khi render sẽ tự động gán thuộc tính động từ Config này. Thiết kế này giúp dễ dàng bảo trì cấu trúc UI ở một nơi duy nhất và tránh hardcode các thông số hiển thị trực tiếp trong logic code.
+- **Chi tiết:** Thay thế nhiều template UI bằng duy nhất một `ItemFrame` chung kết hợp với `RarityConfig` chứa màu sắc, ảnh nền của từng độ hiếm. Client render tự động gán thuộc tính động từ Config, tránh hardcode thông số hiển thị trực tiếp trong code.
 - **File liên quan:** [RarityConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/RarityConfig.lua)
 
 ### Quản lý Tài nguyên Đồ họa trong Dự án Sử dụng Rojo
 - **Ngày:** 15-06-2026
-- **Chi tiết:** Để tránh việc Rojo xóa mất folder chứa tài nguyên đồ họa (UI Templates, Mesh Previews...) trong `ReplicatedStorage` khi đồng bộ, thay vì ánh xạ toàn bộ `ReplicatedStorage`, hãy cấu hình `default.project.json` chỉ đồng bộ các thư mục con chứa Script (như `Controllers`, `Shared`...). Folder `ReplicatedStorage/Assets` sẽ được quản lý trực tiếp trong Roblox Studio và được bảo toàn nguyên vẹn cấu trúc Mesh/UI.
+- **Chi tiết:** Tránh Rojo xóa folder assets đồ họa (UI, Mesh Previews...) trong `ReplicatedStorage` khi sync bằng cách cấu hình `default.project.json` chỉ đồng bộ các thư mục con chứa Script (như `Controllers`, `Shared`...). Folder `ReplicatedStorage/Assets` được quản lý trực tiếp trong Roblox Studio để bảo toàn nguyên vẹn.
 - **File liên quan:** [default.project.json](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/default.project.json)
 
 ### Tự động hóa Camera ViewportFrame qua Bounding Box và Config (`ViewportManager`)
 - **Ngày:** 23-06-2026
-- **Chi tiết:** Thay thế camera tĩnh tạo thủ công trong Studio và việc scale model preview bằng module tiện ích chung `ViewportManager`. Module tự động tính toán khoảng cách và CFrame camera dựa trên kích thước bao quanh (`Bounding Box`) của mô hình 3D. Hỗ trợ ghi đè góc nhìn (Pitch, Yaw, FOV, Padding) linh hoạt thông qua cấu hình phân tầng `ViewportConfig` (Default -> Type -> ItemId). Tích hợp đồng nhất trên các module giao diện Inventory, Shop (Reward và Chest Preview), và Profile (Skin trang bị).
-- **File liên quan:** [ViewportManager.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ViewportConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/ViewportConfig.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
+- **Chi tiết:** Tự động hóa camera bằng `ViewportManager` dựa trên Bounding Box của mô hình 3D. Hỗ trợ ghi đè góc nhìn (Pitch, Yaw, FOV, Padding) qua cấu hình phân tầng `ViewportConfig` (Default -> Type -> ItemId) trên tất cả các tab Inventory, Shop và Profile.
+- **File liên quan:** [ViewportManager.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ViewportConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/ViewportConfig.lua)
 
 ### Tránh Circular Dependency giữa các Controller bằng Lazy-require
 - **Ngày:** 16-06-2026
-- **Chi tiết:** Khi `GameStateController` cần ẩn/hiện `InventoryController` theo trạng thái trận đấu, việc require trực tiếp ở top-level của hai controller sẽ gây lỗi circular dependency do cả hai đều được load lúc khởi động. Giải pháp là áp dụng lazy-require: định nghĩa hàm helper require `InventoryController` và cache lại trong lần đầu tiên được gọi, giúp phá vỡ vòng lặp dependency lúc khởi tạo.
+- **Chi tiết:** Khi `GameStateController` cần ẩn/hiện các tab menu, việc require chéo trực tiếp ở top-level của các controller gây crash. Áp dụng lazy-require: require bên trong hàm helper getter và cache lại cho lần gọi đầu tiên để phá vỡ vòng lặp dependency lúc khởi tạo.
 - **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
 ### Inventory Controller - Data Flow Pattern (Local Cache + Client State Update)
 - **Ngày:** 16-06-2026
-- **Chi tiết:** Để tối ưu hóa trải nghiệm người dùng, client lấy dữ liệu trang bị từ cache local (`PlayerDataController.GetData()`) thay vì liên tục gọi server. Khi người chơi nhấn trang bị (equip), Client gửi yêu cầu lên Server qua RemoteEvent. Sau khi nhận xác nhận thành công từ Server, Client cập nhật trực tiếp cache local (`Data[SlotName] = ItemId`) và làm mới giao diện ngay lập tức mà không cần round-trip tải lại toàn bộ dữ liệu.
+- **Chi tiết:** Để tối ưu UX, Client đọc dữ liệu từ local cache `PlayerDataController.GetData()` thay vì liên tục gọi server. Khi trang bị skin mới, Client gửi RemoteEvent lên Server. Nhận xác nhận thành công, Client tự cập nhật cache local và làm mới UI ngay lập tức.
 - **File liên quan:** [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [PlayerDataController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua)
 
 ### Logic hiển thị nút trang bị (EquipButton State Logic)
 - **Ngày:** 16-06-2026
-- **Chi tiết:** Trạng thái hiển thị của nút trang bị (EquipButton) được cập nhật động mỗi khi người chơi chọn một vật phẩm mới. Logic đối chiếu ID vật phẩm đang chọn (`_selectedEntry.Id`) với ID vật phẩm hiện đang trang bị trong cache local của slot tương ứng. Nếu trùng khớp, nút đổi nhãn thành "Equipped" và khóa tương tác (`Active = false`). Nếu khác biệt, nút hiển thị "Equip" và cho phép click (`Active = true`).
+- **Chi tiết:** Trạng thái của EquipButton cập nhật động khi chọn item. Đối chiếu ID vật phẩm chọn với cache local. Trùng khớp thì đổi nhãn thành "Equipped" và khóa click (`Active = false`), khác biệt thì hiện "Equip" và cho click (`Active = true`).
 - **File liên quan:** [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### Tách biệt UI Template cho mục đích tái sử dụng (Shared Assets)
 - **Ngày:** 17-06-2026
-- **Chi tiết:** Thay vì lưu trữ `ItemTemplate` trực tiếp bên trong đối tượng ScrollingFrame của Inventory GUI, template này được đưa ra thư mục dùng chung `ReplicatedStorage.Assets.Gui.ItemTemplate` (hỗ trợ cả `Gui` và `GUI`). Thiết kế này cho phép các hệ thống giao diện tương lai (như Shop, Gifts) dễ dàng nhân bản một template chuẩn duy nhất, giúp đồng bộ mỹ thuật UI và giảm thiểu trùng lặp asset.
+- **Chi tiết:** Đưa `ItemTemplate` ra thư mục dùng chung `ReplicatedStorage.Assets.Gui.ItemTemplate` để các controller khác (như Shop, Gifts) dễ dàng clone, đồng bộ mỹ thuật UI và giảm thiểu trùng lặp asset.
 - **File liên quan:** [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### Highlight Tab an toàn không phụ thuộc thuộc tính Font/Text (ImageButton-safe)
 - **Ngày:** 17-06-2026
-- **Chi tiết:** Khi sử dụng `ImageButton` thay vì `TextButton` để làm nút chuyển đổi tab, việc ghi đè trực tiếp các thuộc tính của Text (như `.FontFace` hay `.TextTransparency`) sẽ gây lỗi script do các thuộc tính này không tồn tại trên `ImageButton`. Giải pháp thay thế là thay đổi màu nền `.BackgroundColor3` trực tiếp trên nút (đặt màu trắng `#FFFFFF` khi active và xám `#2F2F2F` khi inactive), vừa đạt hiệu ứng chuyển đổi thị giác vừa đảm bảo an toàn tuyệt đối trước các lỗi crash thuộc tính.
+- **Chi tiết:** Khi dùng `ImageButton` thay cho `TextButton` làm nút chuyển tab, việc truy cập các thuộc tính Text sẽ gây crash. Sửa bằng cách thay đổi `.BackgroundColor3` trực tiếp trên nút (màu trắng `#FFFFFF` khi active và xám `#2F2F2F` khi inactive) để hiển thị active tab.
 - **File liên quan:** [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### Cơ chế click linh hoạt cho UI Template (Robust Click Event Binding)
 - **Ngày:** 17-06-2026
-- **Chi tiết:** Để tránh lỗi script dừng đột ngột khi liên kết sự kiện click chuột lên UI template không xác định (do thiết kế template có thể thay đổi từ `ImageButton`, `TextButton` sang `Frame` thông thường), script thực hiện kiểm tra động: (1) Nếu là `GuiButton` thì kết nối `MouseButton1Click` trực tiếp; (2) Nếu là `Frame` thì quét tìm `GuiButton` con; (3) Nếu không có nút con nào, lắng nghe sự kiện `InputBegan` để bắt hành động Click chuột/Chạm cảm ứng.
+- **Chi tiết:** Hỗ trợ click linh hoạt cho UI template: (1) Nếu là `GuiButton` thì kết nối `MouseButton1Click`; (2) Nếu là `Frame` thì tìm `GuiButton` con; (3) Nếu không có nút con nào, lắng nghe sự kiện `InputBegan` để bắt hành động Click/Touch.
 - **File liên quan:** [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### Tải và Đồng bộ hóa Dữ liệu Client theo yêu cầu (Lazy-load Data Sync)
 - **Ngày:** 17-06-2026
-- **Chi tiết:** Thay vì đẩy dữ liệu stats của người chơi liên tục từ Server về Client khi có thay đổi, hoặc chỉ tải một lần duy nhất lúc người chơi mới kết nối (gây lỗi hiển thị stats cũ sau trận), áp dụng cơ chế Lazy-loading. Cung cấp hàm `PlayerDataController.RefreshData()` dùng để gọi RemoteFunction kéo dữ liệu mới nhất từ Server. Khi mở các GUI Menu liên quan (như Profile, Inventory), Client trước hết hiển thị dữ liệu cũ có sẵn trong cache, sau đó chạy một tiến trình bất đồng bộ (`task.spawn`) làm mới dữ liệu và cập nhật lại giao diện, đảm bảo thông tin luôn chính xác mà không block luồng giao diện chính.
-- **File liên quan:** [PlayerDataController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
+- **Chi tiết:** Nhằm tránh dữ liệu stats cũ bị hiển thị sai sau trận đấu, áp dụng Lazy-loading. Cung cấp hàm `PlayerDataController.RefreshData()`. Khi mở GUI Profile/Inventory, Client hiện dữ liệu cache có sẵn trước, sau đó chạy `task.spawn` kéo dữ liệu mới từ Server để cập nhật lại UI bất đồng bộ mà không block giao diện.
+- **File liên quan:** [PlayerDataController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
 
 ### Hệ thống Spectate cho Spectator (Spectate System)
 - **Ngày:** 26-06-2026
-- **Chi tiết:** Xây dựng hệ thống quan sát trận đấu (Spectate) dành riêng cho người chơi không có đội (Spectator) trong giai đoạn trận đấu đang diễn ra (`InGame`). Hệ thống sử dụng cơ chế Orbit Camera (CameraType.Custom, thiết lập `CameraSubject` trỏ đến `Humanoid` của người chơi đang thi đấu). Danh sách mục tiêu quan sát bao gồm các người chơi đang ở trạng thái `Normal` (không bị đóng băng) thuộc cả hai đội, được Server tổng hợp và đồng bộ qua RemoteEvent `UpdateSpectateList` mỗi khi có thay đổi trạng thái đóng băng/rã đông. Client có thể duyệt chuyển đổi qua lại giữa các mục tiêu thông qua các nút điều hướng (Next/Back).
-- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/SessionService.lua)
+- **Chi tiết:** Xây dựng hệ thống quan sát trận đấu (Spectate) dành riêng cho người chơi không có đội (Spectator) trong phase `InGame`. Sử dụng Orbit Camera (CameraType.Custom, thiết lập `CameraSubject` trỏ đến `Humanoid` của người chơi đang thi đấu). Client duyệt chuyển đổi mục tiêu qua các nút điều hướng (Next/Back).
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Điều phối Streaming cho Spectate bằng ReplicationFocus và Lock Movement
+- **Ngày:** 27-06-2026
+- **Chi tiết:** Dưới chế độ `StreamingEnabled`, khi dời camera sang target ở xa, ta phải thay đổi tâm stream để tải dữ liệu đấu trường. Giải pháp là dịch chuyển `Player.ReplicationFocus` từ character của chính spectator sang `HumanoidRootPart` của target thông qua yêu cầu từ client gửi lên server. Đồng thời, trong khi spectate, cần khóa di chuyển (`WalkSpeed = 0`, `JumpPower = 0`, `JumpHeight = 0`) phía client để nhân vật spectator không bị trôi dạt do mất physics mô phỏng vùng lobby bị stream out. Khi tắt spectate, server trả lại `ReplicationFocus` về spectator HRP và client phục hồi tốc độ di chuyển gốc từ cấu hình `GameConfig`.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
 ---
 
@@ -156,7 +161,7 @@
 - **Ngày:** 17-06-2026
 - **Vấn đề:** Khi người chơi chiến thắng hoặc thực hiện đóng băng/rã đông trong trận đấu, các chỉ số thống kê trong Profile không thay đổi khi họ mở lại Profile ở Lobby, chỉ cập nhật khi thoát ra vào lại server.
 - **Nguyên nhân:** Client lưu trữ cache tĩnh `_localData` tại `PlayerDataController` và chỉ load một lần duy nhất khi join server. Khi kết thúc trận, Server lưu các chỉ số vào DataStore và chỉ đẩy sự kiện cập nhật tiền (`UpdateMoney`) chứ không đồng bộ lại toàn bộ thống kê về Client.
-- **Fix:** Bổ sung hàm `RefreshData()` trong `PlayerDataController` để gọi server lấy data mới, đồng thời gọi bất đồng bộ hàm này mỗi khi mở Profile (`ProfileController.lua`) và Inventory (`InventoryController.lua`) để cập nhật lại UI bằng dữ liệu mới nhất.
+- **Fix:** Bổ dung hàm `RefreshData()` trong `PlayerDataController` để gọi server lấy data mới, đồng thời gọi bất đồng bộ hàm này mỗi khi mở Profile (`ProfileController.lua`) và Inventory (`InventoryController.lua`) để cập nhật lại UI bằng dữ liệu mới nhất.
 - **File liên quan:** [PlayerDataController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### Vật phẩm mới mua không hiển thị trong Inventory sau khi mua rương
@@ -174,11 +179,25 @@
 - **File liên quan:** [ViewportManager.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
 
 ### Lỗi không thể spectate khi người chơi quá xa do StreamingEnabled
-- **Ngày:** 26-06-2026
+- **Ngày:** 26-06-2026 (cập nhật 27-06-2026)
 - **Vấn đề:** Khi người chơi bật spectate mục tiêu ở quá xa lobby, camera không chuyển sang mục tiêu mà chỉ focus tại chỗ.
-- **Nguyên nhân:** Dưới chế độ `StreamingEnabled`, character của người chơi ở xa bị stream out (bị hủy) hoàn toàn ở client, dẫn đến `TargetPlayer.Character` trả về `nil` và script không thể lấy vị trí để request stream hay set camera subject.
-- **Fix:** Chưa fix.
-- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)
+- **Nguyên nhân:** Dưới chế độ `StreamingEnabled`, character của người chơi ở xa bị stream out (bị hủy) hoàn toàn ở client, dẫn đến `TargetPlayer.Character` trả về `nil`. Client không có Vector3 vị trí để gọi `RequestStreamAroundAsync`.
+- **Fix:** client gửi RemoteEvent `RequestSpectateTarget` yêu cầu Server set `Player.ReplicationFocus` trỏ vào `HumanoidRootPart` của target player. Client poll kiểm tra nhân vật mỗi 0.1 giây (timeout 5s) và hướng camera khi nhân vật đã được tải đầy đủ.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Lỗi lơ lửng và mất di chuyển của Spectator khi tắt Spectate
+- **Ngày:** 27-06-2026
+- **Vấn đề:** Spectator bị lơ lửng khi đang spectate, và khi tắt (Close) spectate thì bị đóng băng tại chỗ, không thể di chuyển ở lobby.
+- **Nguyên nhân:** `ReplicationFocus` dời sang target khiến vùng lobby bị stream out (mất physics mô phỏng). Khi tắt spectate, camera quay lại lobby nhưng `ReplicationFocus` không được reset, khiến lobby vẫn bị stream out.
+- **Fix:** (1) Khóa di chuyển của spectator (`WalkSpeed = 0`, `JumpPower = 0`) khi đang xem để nhân vật không bị trôi do mất physics. (2) Gửi yêu cầu `RequestSpectateTarget` với tham số `nil` để server reset `ReplicationFocus` về chính spectator HRP khi tắt spectate, đồng thời khôi phục tốc độ di chuyển chuẩn.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Lỗi nhấp nháy/flickering của NavigationButton khi đang spectate
+- **Ngày:** 27-06-2026
+- **Vấn đề:** Khi đang spectate, nút NavigationButton bị ẩn đi rồi tự động hiện lại xen kẽ sau mỗi vài giây.
+- **Nguyên nhân:** `GameStateController` định kỳ cập nhật thông tin phase/thời gian từ server và gọi `SetLobbyGuisVisible(true)` để hiển thị các lobby GUI, ghi đè hành động ẩn nút của `SpectateController`.
+- **Fix:** Thay đổi `SetLobbyGuisVisible` trong `GameStateController` để kiểm tra trạng thái qua `SpectateController.IsSpectating()`. Chỉ kích hoạt lại `NavGui.Enabled = true` nếu người chơi không ở trong chế độ spectate.
+- **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)
 
 ### Lỗi timing khiến người chơi join muộn không tương tác được với nút Spectate
 - **Ngày:** 26-06-2026
@@ -193,3 +212,4 @@
 - **Nguyên nhân:** Server chỉ broadcast danh sách người chơi thi đấu (`UpdateSpectateList`) tại thời điểm bắt đầu phase `InGame` hoặc khi có thay đổi trạng thái đóng băng/rã đông. Người chơi kết nối sau thời điểm đó sẽ không nhận được dữ liệu ban đầu.
 - **Fix:** Trong `MatchService:Init()`, bổ sung lắng nghe sự kiện `Players.PlayerAdded`. Khi có người chơi mới tham gia và game đang trong phase `InGame`, Server đợi 2 giây (để client load xong remote) rồi gửi riêng danh sách người chơi Normal hiện tại cho client đó qua `FireClient`.
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+

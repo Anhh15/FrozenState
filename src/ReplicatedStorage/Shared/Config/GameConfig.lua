@@ -56,6 +56,15 @@ local GameConfig = {
 	},
 
 	-- =========================================================
+	-- PLAYER: Chỉ số di chuyển mặc định
+	-- =========================================================
+	Player = {
+		DefaultWalkSpeed  = 16,   -- WalkSpeed khi không bị lock
+		DefaultJumpPower  = 50,   -- JumpPower khi không bị lock (legacy)
+		DefaultJumpHeight = 7.2,  -- JumpHeight khi không bị lock
+	},
+
+	-- =========================================================
 	-- RARITY: Độ hiếm vật phẩm và màu hiển thị (Hex)
 	-- =========================================================
 	Rarity = {

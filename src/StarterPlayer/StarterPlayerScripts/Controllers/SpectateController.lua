@@ -8,6 +8,7 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 
 -- =========================================================
 -- GUI REFERENCES (resolve lười trong Init để tránh lỗi timing)
@@ -37,42 +38,72 @@ local _currentIndex       = 1       -- Vị trí hiện tại trong vòng lặp
 local _savedCameraSubject = nil     -- Lưu CameraSubject gốc để restore
 local _currentPhase       = "Intermission"  -- Cache phase hiện tại
 
+-- Remote
+local RequestSpectateTargetEvent
+
+-- Streaming: thời gian tối đa chờ Character stream in sau khi ReplicationFocus được set
+local STREAM_WAIT_TIMEOUT  = 5    -- giây
+local STREAM_POLL_INTERVAL = 0.1  -- giây
+
+-- =========================================================
+-- PRIVATE: Movement Lock
+-- =========================================================
+
+--- Khóa di chuyển của spectator trong khi đang xem
+--- Ngăn character trôi dạt khi ReplicationFocus được dời sang đấu trường
+local function LockSpectatorMovement()
+	local Character = LocalPlayer.Character
+	if not Character then return end
+	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+	if not Humanoid then return end
+	Humanoid.WalkSpeed  = 0
+	Humanoid.JumpPower  = 0
+	Humanoid.JumpHeight = 0
+end
+
+--- Khôi phục di chuyển của spectator sau khi tắt spectate
+local function UnlockSpectatorMovement()
+	local Character = LocalPlayer.Character
+	if not Character then return end
+	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+	if not Humanoid then return end
+	Humanoid.WalkSpeed  = GameConfig.Player.DefaultWalkSpeed
+	Humanoid.JumpPower  = GameConfig.Player.DefaultJumpPower
+	Humanoid.JumpHeight = GameConfig.Player.DefaultJumpHeight
+end
+
 -- =========================================================
 -- PRIVATE: Camera
 -- =========================================================
 
 --- Hướng camera Orbit vào target player
---- Dùng RequestStreamAroundAsync để đảm bảo character được stream
---- dù map và lobby ở xa nhau (giải quyết vấn đề StreamingEnabled)
+--- Gửi RequestSpectateTarget lên server để server set ReplicationFocus,
+--- sau đó poll chờ Character được stream in rồi mới set CameraSubject
 local function FocusOnTarget(TargetPlayer)
 	if not TargetPlayer then return end
 
 	task.spawn(function()
-		-- Lấy vị trí hiện tại của target để request stream
-		local Character = TargetPlayer.Character
-		if not Character then return end
+		-- Bước 1: Yêu cầu server set ReplicationFocus vào target
+		-- Engine sẽ tự stream world xung quanh target về cho client này
+		RequestSpectateTargetEvent:FireServer(TargetPlayer)
 
-		local HRP = Character:FindFirstChild("HumanoidRootPart")
-		if not HRP then return end
-
-		-- Yêu cầu Roblox stream content xung quanh vị trí target
-		-- Đảm bảo character được render dù Spectator ở xa (lobby ↔ map)
-		local StreamSuccess = pcall(function()
-			workspace:RequestStreamAroundAsync(HRP.Position)
-		end)
-
-		if not StreamSuccess then
-			warn("[SpectateController] RequestStreamAroundAsync thất bại, thử set camera trực tiếp.")
+		-- Bước 2: Poll chờ Character stream in (tối đa STREAM_WAIT_TIMEOUT giây)
+		local Elapsed = 0
+		while Elapsed < STREAM_WAIT_TIMEOUT do
+			local Character = TargetPlayer.Character
+			if Character then
+				local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+				if Humanoid then
+					Camera.CameraSubject = Humanoid
+					return
+				end
+			end
+			task.wait(STREAM_POLL_INTERVAL)
+			Elapsed = Elapsed + STREAM_POLL_INTERVAL
 		end
 
-		-- Sau khi stream xong, lấy lại Character (có thể đã được load đầy đủ hơn)
-		Character = TargetPlayer.Character
-		if not Character then return end
-
-		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-		if not Humanoid then return end
-
-		Camera.CameraSubject = Humanoid
+		warn("[SpectateController] Timeout chờ Character của "
+			.. TargetPlayer.Name .. " sau " .. STREAM_WAIT_TIMEOUT .. "s")
 	end)
 end
 
@@ -208,6 +239,13 @@ end
 
 local SpectateController = {}
 
+--- Trả về trạng thái đang spectate hay không
+--- Được dùng bởi GameStateController để tránh conflict NavGui
+--- @return boolean
+function SpectateController.IsSpectating()
+	return _isSpectating
+end
+
 --- Bật/tắt chế độ Spectate
 --- @param Visible boolean
 function SpectateController.SetVisible(Visible)
@@ -232,6 +270,9 @@ function SpectateController.SetVisible(Visible)
 		-- Bật spectate
 		_isSpectating = true
 		_currentIndex = 1
+
+		-- Lock movement: ngăn character trôi dạt khi ReplicationFocus dời sang đấu trường
+		LockSpectatorMovement()
 
 		-- Lưu camera hiện tại
 		_savedCameraSubject = Camera.CameraSubject
@@ -262,6 +303,15 @@ function SpectateController.SetVisible(Visible)
 		end
 
 		_isSpectating = false
+
+		-- Khôi phục movement trước khi restore camera
+		UnlockSpectatorMovement()
+
+		-- Yêu cầu server reset ReplicationFocus về chính spectator
+		-- Đảm bảo engine stream lại khu vực lobby nơi character spectator đứng
+		if RequestSpectateTargetEvent then
+			RequestSpectateTargetEvent:FireServer(nil)
+		end
 
 		-- Ẩn Spectate GUI, hiện lại NavigationButton
 		if SpectateGui then SpectateGui.Visible = false end
@@ -320,6 +370,9 @@ function SpectateController:Init()
 	-- Lắng nghe danh sách Spectate từ server
 	local UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
 	UpdateSpectateListEvent.OnClientEvent:Connect(OnSpectateListUpdated)
+
+	-- Resolve remote để gửi yêu cầu ReplicationFocus lên server
+	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
 
 	-- Lắng nghe phase game để auto-close khi rời InGame
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")

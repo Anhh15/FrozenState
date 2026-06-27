@@ -123,7 +123,18 @@ end
 --- Spectator (chưa có team) luôn thấy GUI dù ở phase nào
 local function SetLobbyGuisVisible(Visible)
 	if MenuGui then MenuGui.Enabled = Visible end
-	if NavGui  then NavGui.Enabled  = Visible end
+
+	-- NavGui: chỉ hiện khi Visible = true VÀ spectator không đang trong chế độ spectate
+	-- Tránh conflict với SpectateController (SpectateController tự quản lý NavGui.Enabled)
+	if NavGui then
+		local IsSpectating = false
+		local SpecCtrl = GetSpectateController()
+		if SpecCtrl and SpecCtrl.IsSpectating then
+			IsSpectating = SpecCtrl.IsSpectating()
+		end
+		NavGui.Enabled = Visible and not IsSpectating
+	end
+
 	-- Kếi vào trận: buộc đóng Inventory, Profile, Shop và Spectate nếu đang mở
 	if not Visible then
 		local InvCtrl = GetInventoryController()

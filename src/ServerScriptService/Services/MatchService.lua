@@ -33,6 +33,7 @@ local _earlyWinner  = nil  -- set khi FreezeService trigger MatchEndSignal
 local UpdateGameStateEvent
 local ShowGameOverEvent
 local UpdateSpectateListEvent
+local RequestSpectateTargetEvent
 
 -- =========================================================
 -- PRIVATE: Helpers
@@ -378,6 +379,7 @@ local function RunGameOver(WinTeam)
 	end
 
 	-- Teleport tất cả player về SpawnLocation (lobby) sau khi hết giờ
+	-- Đồng thời reset ReplicationFocus về chính player để stream lobby, không còn stream đấu trường
 	local LobbySpawn = workspace:FindFirstChild("SpawnLocation")
 	for _, Player in ipairs(Players:GetPlayers()) do
 		local Character = Player.Character
@@ -385,6 +387,10 @@ local function RunGameOver(WinTeam)
 		local HRP = Character:FindFirstChild("HumanoidRootPart")
 		if HRP and LobbySpawn then
 			HRP.CFrame = LobbySpawn.CFrame + Vector3.new(0, 4, 0)
+		end
+		-- Reset ReplicationFocus: engine sẽ stream xung quanh vị trí mới của chính player
+		if HRP then
+			Player.ReplicationFocus = HRP
 		end
 	end
 
@@ -445,9 +451,10 @@ end
 -- =========================================================
 
 function MatchService:Init()
-	UpdateGameStateEvent    = RemoteDefinitions.GetEvent("UpdateGameState")
-	ShowGameOverEvent       = RemoteDefinitions.GetEvent("ShowGameOver")
-	UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
+	UpdateGameStateEvent       = RemoteDefinitions.GetEvent("UpdateGameState")
+	ShowGameOverEvent          = RemoteDefinitions.GetEvent("ShowGameOver")
+	UpdateSpectateListEvent    = RemoteDefinitions.GetEvent("UpdateSpectateList")
+	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
 
 	-- Khi player mới join giữa trận InGame:
 	-- Gửi ngay danh sách Spectate để client có targetList sẵn sàng
@@ -457,6 +464,40 @@ function MatchService:Init()
 			local NormalPlayers = SessionService.GetAllNormalPlayers()
 			UpdateSpectateListEvent:FireClient(NewPlayer, NormalPlayers)
 		end
+	end)
+
+	-- Spectator yêu cầu focus vào một target cụ thể
+	-- Server set ReplicationFocus để engine stream world xung quanh target về cho spectator
+	-- Nếu TargetPlayer là nil → spectator đang tắt spectate → reset focus về chính họ
+	RequestSpectateTargetEvent.OnServerEvent:Connect(function(SpectatorPlayer, TargetPlayer)
+		-- Chỉ xử lý khi đang trong phase InGame
+		if _currentPhase ~= "InGame" then return end
+
+		-- SpectatorPlayer không được có team (phải là Spectator)
+		if SpectatorPlayer:GetAttribute("Team") then return end
+
+		-- nil = yêu cầu reset (tắt spectate) → trả focus về character của chính spectator
+		if TargetPlayer == nil then
+			local SpectatorCharacter = SpectatorPlayer.Character
+			if SpectatorCharacter then
+				local SpectatorHRP = SpectatorCharacter:FindFirstChild("HumanoidRootPart")
+				if SpectatorHRP then
+					SpectatorPlayer.ReplicationFocus = SpectatorHRP
+				end
+			end
+			return
+		end
+
+		-- TargetPlayer phải hợp lệ và đang trong game
+		if not TargetPlayer:IsDescendantOf(Players) then return end
+		local TargetCharacter = TargetPlayer.Character
+		if not TargetCharacter then return end
+
+		local TargetHRP = TargetCharacter:FindFirstChild("HumanoidRootPart")
+		if not TargetHRP then return end
+
+		-- Set ReplicationFocus: engine sẽ stream world xung quanh TargetHRP về cho SpectatorPlayer
+		SpectatorPlayer.ReplicationFocus = TargetHRP
 	end)
 
 	print("[MatchService] Đã khởi tạo.")
