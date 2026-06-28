@@ -2,7 +2,7 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="Frame" referent="RBXB25AA9FE6AAE49F5A68BC5F8952F7CC9">
+	<Item class="Frame" referent="RBX240A589473A944FDA4D37434E2C4A37C">
 		<Properties>
 			<token name="Style">0</token>
 			<bool name="Active">false</bool>
@@ -66,7 +66,7 @@
 			<int64 name="SourceAssetId">-1</int64>
 			<BinaryString name="Tags"></BinaryString>
 		</Properties>
-		<Item class="ImageLabel" referent="RBX0842C99EA2E542EC8B02CA26BBCE6098">
+		<Item class="ImageLabel" referent="RBX284424E4EC7D434D9E66C96BE3762A9B">
 			<Properties>
 				<Content name="Image"><url>rbxassetid://96508573886609</url></Content>
 				<Color3 name="ImageColor3">
@@ -164,7 +164,7 @@
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
 		</Item>
-		<Item class="TextLabel" referent="RBXBE5DA04CE2064984BC66E4B124802DE6">
+		<Item class="TextLabel" referent="RBX7DF06ABC1D1E47298FABFF2E7E741139">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -258,7 +258,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="UIStroke" referent="RBX613BCD32163047E8B612523F14D2CB23">
+			<Item class="UIStroke" referent="RBX84CE05083EF243F7B325ABBF78529AA3">
 				<Properties>
 					<token name="ApplyStrokeMode">0</token>
 					<UDim name="BorderOffset">
@@ -286,7 +286,7 @@
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="TextLabel" referent="RBXD4D839F1D3A245EA83B4127CA061F408">
+		<Item class="TextLabel" referent="RBX778A3AAD174840CB812662A66F165E27">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -380,7 +380,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="UIStroke" referent="RBX8E89A10496654D7D951AC0B63DCA64F8">
+			<Item class="UIStroke" referent="RBX0B73B82E36964623AC0DB07DA48015CC">
 				<Properties>
 					<token name="ApplyStrokeMode">0</token>
 					<UDim name="BorderOffset">
@@ -408,7 +408,7 @@
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="UIAspectRatioConstraint" referent="RBX4BFBBF82A165468B8358C44AA6C87AD2">
+		<Item class="UIAspectRatioConstraint" referent="RBX03AE27818C1E4536AC351C22F569BD4C">
 			<Properties>
 				<float name="AspectRatio">1</float>
 				<token name="AspectType">0</token>
@@ -421,7 +421,7 @@
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
 		</Item>
-		<Item class="ViewportFrame" referent="RBXCB3C9FD2CE654D27A866033765F4D553">
+		<Item class="ViewportFrame" referent="RBX33A97DB0C59B4EABA1298C2A83EA10B3">
 			<Properties>
 				<Color3 name="Ambient">
 					<R>1</R>
@@ -521,7 +521,7 @@
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
 		</Item>
-		<Item class="TextLabel" referent="RBXF9784889D4414F0E8D239ADFF5888E71">
+		<Item class="TextLabel" referent="RBX9E413D161CA449B4BF2F18594EB6308D">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -615,7 +615,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="UICorner" referent="RBXDC6DE8B54A434D29BB9920F0F30F67DB">
+			<Item class="UICorner" referent="RBX891BDDFA772A4988AECFB586EEA4D930">
 				<Properties>
 					<UDim name="BottomLeftRadius">
 						<S>0.5</S>
@@ -642,7 +642,7 @@
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="TextLabel" referent="RBXE6CF40F38C754FA9904AD1DAD01CBE64">
+		<Item class="TextLabel" referent="RBXF102F999D11D491E80C02D11628321F5">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -736,7 +736,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="UIStroke" referent="RBXBB47C26A718E4E37B1C5DC2C72649A63">
+			<Item class="UIStroke" referent="RBXB8297A1F492F46F19DD13D0120E8B163">
 				<Properties>
 					<token name="ApplyStrokeMode">0</token>
 					<UDim name="BorderOffset">

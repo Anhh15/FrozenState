@@ -54,6 +54,12 @@ local REMOTE_FUNCTIONS = {
 
 	-- Client → Server: Mua rương gacha (Phase 5)
 	"BuyChest",
+
+	-- Client → Server: Lấy danh sách quest + tiến trình (Phase 7)
+	"GetQuestData",
+
+	-- Client → Server: Claim phần thưởng quest (Phase 7)
+	"ClaimQuest",
 }
 
 -- =========================================================

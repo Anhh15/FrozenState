@@ -29,6 +29,14 @@ local PROFILE_TEMPLATE = {
 	OwnedBlocks         = {},   -- Phase 5: danh sách Block skin sở hữu
 	EquippedIcicle      = "Default",
 	EquippedIceBlock    = "Default",
+
+	-- Phase 7: Quest System
+	PlayTime            = 0,    -- Tổng thời gian chơi (giây), cộng dồn mỗi session
+	DailyQuestData      = {     -- Dữ liệu Daily Quest của chu kỳ hiện tại
+		ResetTimestamp = 0,     -- Unix timestamp thời điểm chu kỳ bắt đầu
+		ActiveQuests   = {},    -- Mảng 5 phần tử: { QuestId, BaseProgress, Claimed }
+	},
+	MilestoneQuestData  = {},   -- { [QuestId] = BaseProgress } mốc stat đã claim
 }
 
 -- =========================================================
@@ -226,6 +234,55 @@ function DataService.AddBlock(Player, ItemId)
 	table.insert(Profile.Data.OwnedBlocks, ItemId)
 end
 
+--- Cộng thêm thời gian chơi vào DataStore
+--- @param Player Player
+--- @param Seconds number  -- Số giây cần cộng thêm
+function DataService.AddPlayTime(Player, Seconds)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+	Profile.Data.PlayTime = Profile.Data.PlayTime + Seconds
+end
+
+--- Lấy bản copy toàn bộ dữ liệu liên quan đến Quest (để QuestService đọc)
+--- @param Player Player
+--- @return table | nil
+function DataService.GetQuestRawData(Player)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return nil end
+	local Data = Profile.Data
+	return {
+		PlayTime           = Data.PlayTime,
+		TotalWins          = Data.TotalWins,
+		TotalFreezes       = Data.TotalFreezes,
+		TotalThaws         = Data.TotalThaws,
+		TotalFreezingSpree = Data.TotalFreezingSpree,
+		TotalThawingSpree  = Data.TotalThawingSpree,
+		TotalFirstBlood    = Data.TotalFirstBlood,
+		TotalLastStanding  = Data.TotalLastStanding,
+		DailyQuestData     = Data.DailyQuestData,
+		MilestoneQuestData = Data.MilestoneQuestData,
+	}
+end
+
+--- Ghi lại toàn bộ DailyQuestData sau khi QuestService tính toán
+--- @param Player Player
+--- @param NewDailyData table  -- { ResetTimestamp, ActiveQuests }
+function DataService.SetDailyQuestData(Player, NewDailyData)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+	Profile.Data.DailyQuestData = NewDailyData
+end
+
+--- Cập nhật BaseProgress của 1 Milestone Quest (khi claim thành công)
+--- @param Player Player
+--- @param QuestId string
+--- @param NewBase number
+function DataService.SetMilestoneBase(Player, QuestId, NewBase)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+	Profile.Data.MilestoneQuestData[QuestId] = NewBase
+end
+
 --- Thêm cosmetic vào danh sách sở hữu (giữ lại cho tương thích ngược)
 --- @param Player Player
 --- @param ItemId string
@@ -279,6 +336,7 @@ function DataService:Start()
 			OwnedBlocks        = Data.OwnedBlocks,
 			EquippedIcicle     = Data.EquippedIcicle,
 			EquippedIceBlock   = Data.EquippedIceBlock,
+			PlayTime           = Data.PlayTime,
 		}
 	end
 

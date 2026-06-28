@@ -34,6 +34,9 @@ local SERVICES = {
 	-- ShopService: xử lý logic mua rương gacha (Phase 5)
 	require(script.Parent.ShopService),
 
+	-- QuestService: hệ thống nhiệm vụ Daily + Milestone (Phase 7)
+	require(script.Parent.QuestService),
+
 	-- MatchService: game loop (phải cuối cùng vì phụ thuộc vào tất cả service trên)
 	require(script.Parent.MatchService),
 }

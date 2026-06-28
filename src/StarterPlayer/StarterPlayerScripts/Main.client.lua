@@ -20,6 +20,7 @@ local InventoryController      = require(Controllers:WaitForChild("InventoryCont
 local ProfileController        = require(Controllers:WaitForChild("ProfileController"))
 local ShopController           = require(Controllers:WaitForChild("ShopController"))
 local SpectateController       = require(Controllers:WaitForChild("SpectateController"))
+local QuestController          = require(Controllers:WaitForChild("QuestController"))
 
 -- Bước 3: Init tất cả controller
 -- (Init theo thứ tự — GameState trước để UI sẵn sàng ngay khi data đến)
@@ -32,5 +33,6 @@ InventoryController:Init()
 ProfileController:Init()
 ShopController:Init()
 SpectateController:Init()
+QuestController:Init()
 
 print("[Client] FrozenState đã sẵn sàng.")

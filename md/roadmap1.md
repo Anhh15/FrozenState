@@ -74,22 +74,22 @@ Cấu trúc Gui:
 - CloseButton: Bấm để tắt Shop gui
 - TabContainer: Chứa 2 ImageButton Blocks và Icicles, để chuyển sang mua skin cho vật phẩm tương ứng
 - MenuLabel và Background đơn giản là hiện thông tin, không cần quan tâm đến
-- ChestList (Frame) chứa 1 ScrollingFrame (đã có UIGridLayout) là khu vực display chest sử dụng ChestTemplate tại ReplicatedStorage/Asset/Gui/ChestTemplate
+- ChestList (Frame) chứa 1 ScrollingFrame (đã có UIGridLayout) là khu vực display chest sử dụng ChestTemplate tại ReplicatedStorage/Assets/Gui/ChestTemplate
 	- ChestTemplate sẽ chứa ChestViewport (đã có CurrentCamera) display model chest từ ReplicatedStorage/Assets/Chests, Một Background không cần quan tâm đến và NameText hiển thị tên của chest.
 - ChestPopUp (Frame) xuất hiện khi nhấn vào ChestTemplate tại ChestList, tại đây sẽ hiển thị thông tin vật phẩm và số tiền cần trả để mua 1 chest hoặc 3 chest, cấu trúc bao gồm
 	- Background và Curtain không cần quan tâm đến
 	- CloseButton (ImageButton) để tắt ChestPopUp
 	- Buy1Button và Buy3Button (ImageButton), người chơi nhấn vào để mua số lượng tương ứng. Bên trong mỗi nút chứa BuyText (TextlLabel) hiển thị thông tin và số tiền (Buy 1: xxx và Buy 3: xxxx), số tiền tùy loại chest
-	- ChestTemplate tương tụ như là ReplicatedStorage/Asset/Gui/ChestTemplate nhưng không clone mà điều chỉnh tên, model,... Theo chest mà người chơi lựa chọn.
-	- ItemInfo sẽ chứa 1 ScrollingFrame hiển thị thông tin vật phẩm mà chest có xác suất xuất hiện, các ItemTemplate sẽ được clone từ ReplicatedStorage/Asset/Gui/ItemTemplate và điều chỉnh tương ứng, đồng thời cho mục DropRateText bên trong ItemTemplate visible để hiển thị phần trăm rơi của vật phẩm
+	- ChestTemplate tương tụ như là ReplicatedStorage/Assets/Gui/ChestTemplate nhưng không clone mà điều chỉnh tên, model,... Theo chest mà người chơi lựa chọn.
+	- ItemInfo sẽ chứa 1 ScrollingFrame hiển thị thông tin vật phẩm mà chest có xác suất xuất hiện, các ItemTemplate sẽ được clone từ ReplicatedStorage/Assets/Gui/ItemTemplate và điều chỉnh tương ứng, đồng thời cho mục DropRateText bên trong ItemTemplate visible để hiển thị phần trăm rơi của vật phẩm
 
 Một người chơi không thể sở hữu 2 skin giống nhau nên nếu mở giống thì sẽ được hoàn trả tiền theo độ hiểm (càng hiếm thì hoàn trả càng nhiều theo phần trăm, nên có config để điều chỉnh) ví dụ rương 1000 khi mở rare sẽ hoàn trả 20% tức 200 tức là theo % giá tiền của rương đó
 
-Khi mở sẽ có hoạt ảnh nhưng tạm thời bỏ qua mà hãy cho thẳng vật phẩm vào skin thuộc sở hữu của người chơi đó, tức là không có gì màu mè; nhấn buy là sở hữu vật phẩm ngay; không pop up, không amm thanh, không gì cả, chỉ đơn giản là đưa vật phẩm vào vật phẩm sở hữu của người chơi. Toàn bộ hoạt ảnh, âm thanh, pop up sẽ được thêm sau. Lý do việc này là game vẫn còn đang trong giai đoạn phát triển, việc thiết kế hoạt ảnh hiện tại sẽ ảnh hưởng đến tiến độ, các hiệu ứng sẽ được thêm vào những giai đoạn cuối
+Khi mở sẽ có hoạt ảnh nhưng tạm thời bỏ qua mà hãy cho thẳng vật phẩm vào skin thuộc sở hữu của người chơi đó, tức là không có gì màu mè; nhấn buy là sở hữu vật phẩm ngay; không pop up, không amm thanh, không gì cả, chỉ đơn giản là đưa vật phẩm vào vật phẩm sở hữu của người chơi. Toàn bộ hoạt ảnh, âm thanh, pop up sẽ được thêm sau. Lý do việc này là game vẫn còn đang trong giai đoạn phát triển, việc thiết kế hoạt ảnh hiện tại sẽ ảnh hưởng đến tiến độ, các hiệu ứng sẽ được thêm vào những giai đoạn cuối. Hiện tại chỉ cần hiển thị tại chat là "A đã mở được \[skin\]" hoặc "A mở trùng \[skin\] (hoàn trả xxx)" bằng tiếng Anh 
 
 Cập nhật nhỏ tại NavigationButton/Stats/MoneyStats/MoneyText để hiển số tiền mà người chơi sở hữu, Text sẽ thay đổi khi số tiền người chơi có thay đổi. Từ giờ gọi tiền là Cash
 
-Model Chest được lưu tại ReplicatedStorage/Asset/Chestsx
+Model Chest được lưu tại ReplicatedStorage/Assets/Chestsx
 
 Khi di chuyển bằng các nút trong Tabcontainer thì ScrollingFrame cũng phải chuyển theo. Ví dụ: đang ở Icicles thì Shop/ChestList/ScrollingFrame nên hiển thị rương chứa các Icicles, với Blocks cũng tương tự nhưng là rương và vật phẩm cho Blocks. Ở đây sẽ không có 2 ScrollingFrame mà thay vào đó là một ScrollingFrame để clear và clone lại các chest
 
@@ -113,18 +113,52 @@ Thông tin thêm:
 - Chỉ khi trong phase InGame, chỉ người không tham gia vào trận đấu hiện tại (ở lobby, mới vào server, không được phân vào team nào)
 
 ---
-## Phase 7: Polish
+# Phase 7: Quest
+> Mục tiêu: Xây dựng hệ thống nhiệm vụ có tiến trình và phần thưởng
+
+Đường dẫn đến gui: StarterGui/Menu/Quest (Frame)
+
+Quest được bật khi nhấn StarterGui/NavigationButton/Button/Quest
+
+Cấu trúc Gui:
+- Như đường dẫn đã trình bày, Quest là một Frame trong ScreenGui Menu
+- Background và MenuLabel không cần quan tâm
+- CloseButton (ImageButton): khi nhấn sẽ tắt ẩn gui Quest
+- QuestTemplates (Folder): Chứa template của nhiệm vụ, hiện tại chỉ có 1, có thể tương lại sẽ có thể có sự điều chỉnh hoặc thêm bớt
+	- QuestTemplate (Frame): Frame được clone khi có nhiệm vụ. Bên trong QuestTemplate sẽ có cấu trúc sau:
+		- Background không cần quan tâm đến
+		- QuestText (TextLabel) hiển thị thông tin nhiệm vụ (thắng 10 trận, freeze 10 người,...)
+		- ClaimButton (ImageButton): khi người chơi đã thực hiện đủ yêu cầu thì sẽ đổi hình (để placeholder) và cho phép người chơi nhấn để đổi thưởng đồng thời hiển thị RewardAnnouncement được nói ở phần sau
+		- Reward (Frame): Frame chứa thông tin phần thưởng với Icon (ImageLabel) hiển thị icon của phần thưởng (tiền,...) và Amount (TextLabel) cho biết số lượng phần thưởng
+		- ProgressBar (Frame) là một thanh dài hiển thị tiến trình cần đạt với bên trong có ProgressText (TextLabel) cho biết tiến trình cụ thể (ví dụ: 12/20), khi đạt đủ thì thay vì hiển thị 20/20 thì sẽ hiển thị DONE và Progress (Frame) có chiều cao (trục Y) tương tự Parent ProgressBar nhưng có màu khác và chiều dài thay đổi tùy thuộc vào tiến trình hiện tại của người chơi (ví dụ: 10/20 thì chiều dại sẽ bằng 1/2 ProgressBar)
+- QuestList (SrollingFrame): Chứa thông tin của những nhiệm vụ hiện có của người chơi. Trong QuestList hiện tại rỗng, khi có nhiệm vụ sẽ clone QuestTemplate từ QuestTemplates đã nói phía trên
+- TabConatainer (Frame) hiện tại chứa 2 tab (ImageButton) là DailyTab và MileStoneTab để hiển thị đúng với từng mục. Việc thay đổi sẽ dùng chung ScrollingFrame QuestList thay vì cần nhiều ScrollingFrame tương tự như Inventory hay Shop
+- RewardAnnouncement (Frame) hiển thị thông tin phần thưởng nhận được khi người hơi claim nhiệm vụ. Cấu trúc bên trong gồm Background không cần quan tâm, Icon (ImageLabel) hiển thị Icon của phần thưởng và Amount (TextLabel) hiển thị số lượng của phần thưởng.
+Quest sẽ bao gồm nhiệm vụ và tiến trình như đã trình bày tại cấu trúc gui, với mỗi quest sẽ có yêu cầu được tính dựa trên data của người chơi (thắng 10 trận, freeze 10 người). Để làm đa dạng nhiệm vụ thì sẽ thêm nhiều dữ liệu cho người chơi thay vì chỉ data hiện tại (freezes, thaws, spree, last stading,...) như thời gian chơi, số lần chiến thắng của mỗi map, số lần chiến thắng mỗi chế độ; những thông số này sẽ không đưa vào gui Profile (tức gui Profile không đụng đến) để người chơi không thể thấy mà chỉ đơn giản là lưu lấy dữ liệu thống kê. 
+Phần thưởng hiện tại là tiền, sau này có thể thêm như kinh nghiệm level (hiện tại chưa có ý định thêm vào), vật phẩm đặc trưng chỉ có thể có qua nhiệm vụ.
+Data mới cần lưu trữ cho hệ thông nhiệm vụ: thời gian chơi
+Nên có config nhiệm vụ để điều chỉnh phần thường, số lượng phần thưởng, loại nhiệm vụ (cần chơi trong bao lâu, freezes bao nhiêu,...) và yêu cầu số lượng cần đạt cho nhiệm vụ. Daily và MineStone hoặc bất cứ loại nào mới được thêm sau này cần tách riêng
+
+DailyTab sẽ hiển thị các nhiệm thường ngày được cập nhật mỗi 24 giờ bao gồm 5 nhiệm vụ khác được random từ bể nhiệm vụ (giả sử có 20 nhiệm vụ thì mỗi ngày lấy ngẫu nhiên 5 nhiệm vụ). Thời gian 24 giờ sẽ không theo khung giờ nào mà phụ thuộc vào người chơi; giả sử người chơi vào game lúc 13h26 theo giờ VN thì 24 giờ sẽ bắt đầu lúc đó và sẽ reset vào lần tiếp theo người chơi vào game sau 24 giờ (ví dụ vào game lúc 13h 23/6 tức hết thời gian vào 13h 24/6 nhưng 15h 26/6 người chơi vào thì vòng lặp tiếp theo sẽ bắt đầu lúc 15h 26/6). Khi người chơi hoàn thành và nhấn claim thì quest sẽ được loại bỏ 
+
+MineStoneTab sẽ hiển thị các nhiệm vụ lặp đi lặp lại tức là khi hoàn thành nhiệm vụ; giả sử đạt 10 trận thắng thì khi người chơi claim nhiệm vụ sẽ tự đồng reset mà không biến mất.
+
+RewardAnnouncement chỉ hiển thị khi người chơi claim quest và tồn tại trong 3 giây. hoạt ảnh là sẽ zoom lên kích thước hiện tại rồi sau 3 giây sẽ zoom nhỏ lại và ẩn đi
+
+Toàn bộ âm thanh sẽ được thêm tại phase sau 
+
+---
+
+## Phase 8: Polish
 > **Mục tiêu:** Hoàn thiện trải nghiệm âm thanh và hình ảnh.
 - Animation: Swing (Icicle), Freeze pose
 - SFX: hit, freeze, thaw, spree, UI, gacha
 - BGM: Lobby, InGame, Frozen State
 ---
-## Phase 8: Mở rộng
+## Phase 9: Mở rộng
 > **Mục tiêu:** Thêm các chế độ chơi đặc biệt.
 - **Chaos Mode:** Tất cả là kẻ thù của nhau (free-for-all)
 - **Multi-team Mode:** Chia thành 4 đội thay vì 2
 - Xoay tua chế độ: cứ 2 round bình thường sẽ có 1 round đặc biệt
-# Phase 9: Setting
+# Phase 10: Setting
 > Mục tiêu: Hệ thống cài đặt cho phép người chơi điều chỉnh như tắt nhạc, tắt tiếng,...
-# Phase 10: Quest
-> Mục tiêu: Xây dựng hệ thống quest

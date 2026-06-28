@@ -2,7 +2,7 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="Frame" referent="RBX440FB5B4D22D4BFDB412999BEF51CF68">
+	<Item class="Frame" referent="RBX2E7982FAC1C04F2E913F4DC3DBBFBB6A">
 		<Properties>
 			<token name="Style">0</token>
 			<bool name="Active">false</bool>
@@ -66,7 +66,7 @@
 			<int64 name="SourceAssetId">-1</int64>
 			<BinaryString name="Tags"></BinaryString>
 		</Properties>
-		<Item class="ImageLabel" referent="RBX151B50F6C74E4E0EBD4287FAEEF49666">
+		<Item class="ImageLabel" referent="RBX2A5F3BE1973A42EFA321FBC2B79140E7">
 			<Properties>
 				<Content name="Image"><url>rbxassetid://140684358903425</url></Content>
 				<Color3 name="ImageColor3">
@@ -164,7 +164,7 @@
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
 		</Item>
-		<Item class="TextLabel" referent="RBXCEFC22F04EFE4C66B339B2E17AD4638B">
+		<Item class="TextLabel" referent="RBX6AD5CCDDB2A64DA9B45952CF5029878D">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -258,7 +258,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="UIStroke" referent="RBX5D1805BAE2EF470987D79D9A9E4BD1E2">
+			<Item class="UIStroke" referent="RBX0CA4127C91E14FB3B21D66D8D06EA701">
 				<Properties>
 					<token name="ApplyStrokeMode">0</token>
 					<UDim name="BorderOffset">
@@ -286,26 +286,26 @@
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="ViewportFrame" referent="RBXCF79B10A46904D23AA730E76CAD8816B">
+		<Item class="ViewportFrame" referent="RBXB12D64C90C51446A9F85977CEF53873D">
 			<Properties>
 				<Color3 name="Ambient">
-					<R>0.784313738</R>
-					<G>0.784313738</G>
-					<B>0.784313738</B>
+					<R>0.274509817</R>
+					<G>0.274509817</G>
+					<B>0.274509817</B>
 				</Color3>
 				<CoordinateFrame name="CameraCFrame">
-					<X>0</X>
-					<Y>0</Y>
-					<Z>0</Z>
-					<R00>1</R00>
-					<R01>0</R01>
-					<R02>0</R02>
-					<R10>0</R10>
-					<R11>1</R11>
-					<R12>0</R12>
-					<R20>0</R20>
-					<R21>0</R21>
-					<R22>1</R22>
+					<X>11.2276688</X>
+					<Y>26.1941566</Y>
+					<Z>-6.94028616</Z>
+					<R00>-0.45047754</R00>
+					<R01>-0.666729987</R01>
+					<R02>0.593751848</R02>
+					<R10>-0</R10>
+					<R11>0.665053725</R11>
+					<R12>0.746795595</R12>
+					<R20>-0.892787814</R20>
+					<R21>0.336414635</R21>
+					<R22>-0.29959175</R22>
 				</CoordinateFrame>
 				<float name="CameraFieldOfView">1.22173059</float>
 				<Color3 name="ImageColor3">
@@ -315,14 +315,14 @@
 				</Color3>
 				<float name="ImageTransparency">0</float>
 				<Color3 name="LightColor">
-					<R>0.549019635</R>
-					<G>0.549019635</G>
-					<B>0.549019635</B>
+					<R>1</R>
+					<G>1</G>
+					<B>1</B>
 				</Color3>
 				<Vector3 name="LightDirection">
-					<X>-1</X>
+					<X>2</X>
 					<Y>-1</Y>
-					<Z>-1</Z>
+					<Z>0</Z>
 				</Vector3>
 				<bool name="Active">false</bool>
 				<Vector2 name="AnchorPoint">
@@ -353,9 +353,9 @@
 				<Ref name="NextSelectionRight">null</Ref>
 				<Ref name="NextSelectionUp">null</Ref>
 				<UDim2 name="Position">
-					<XS>0.5</XS>
+					<XS>0.498382121</XS>
 					<XO>0</XO>
-					<YS>0.5</YS>
+					<YS>0.497968316</YS>
 					<YO>0</YO>
 				</UDim2>
 				<float name="Rotation">0</float>
@@ -363,9 +363,9 @@
 				<Ref name="SelectionImageObject">null</Ref>
 				<int name="SelectionOrder">0</int>
 				<UDim2 name="Size">
-					<XS>0.625811696</XS>
+					<XS>0.913585722</XS>
 					<XO>0</XO>
-					<YS>0.625811696</YS>
+					<YS>0.923758209</YS>
 					<YO>0</YO>
 				</UDim2>
 				<token name="SizeConstraint">0</token>
@@ -381,12 +381,12 @@
 				<BinaryString name="AttributesSerialize"></BinaryString>
 				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 				<bool name="DefinesCapabilities">false</bool>
-				<string name="Name">ChestViewPort</string>
+				<string name="Name">ChestViewport</string>
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
 		</Item>
-		<Item class="UIAspectRatioConstraint" referent="RBX78B594A6B66745F282958DEF77EC5CB8">
+		<Item class="UIAspectRatioConstraint" referent="RBX1BA8495EA5024B0D8DF15729FB727A74">
 			<Properties>
 				<float name="AspectRatio">1</float>
 				<token name="AspectType">0</token>
