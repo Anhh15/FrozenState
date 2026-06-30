@@ -21,7 +21,8 @@ local AudioConfig = {
 	Default = {
 		-- Swing: random 1 trong 3 âm thanh mỗi lần vung
 		SwingAudios    = {136455914086398, 134318072265347, 136610895235499},
-		SwingAnimation = 123684645672968,  -- Animation khi vung Icicle
+		--SwingAnimation = 123684645672968,  -- Animation khi vung Icicle
+		SwingAnimation = 115062190615826,  -- Animation khi vung Icicle
 
 		FreezeAudio    = 92048469072346,   -- Âm thanh khi đóng băng ai đó
 		ThawAudio      = 138690892117059,  -- Âm thanh khi giải cứu ai đó

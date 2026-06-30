@@ -32,7 +32,8 @@ local AudioConfig   = require(
 local Hitbox        = Tool:WaitForChild("Hitbox")
 local COOLDOWN      = GameConfig.Tool.IcicleCooldown
 
-local _IsOnCooldown = false
+local _IsOnCooldown      = false
+local _CurrentSwingTrack = nil  -- Lưu Track đang chạy để dừng khi Unequip
 
 -- =========================================================
 -- PRIVATE: Audio & Animation
@@ -65,7 +66,8 @@ local function PlaySwingAudio(IcicleSkinId)
 end
 
 --- Play swing animation trên Humanoid của local player
---- Animation tự destroy sau khi kết thúc (không loop)
+--- Override Looped = false tại client để chặn loop vô hạn dù Studio set Loop
+--- CurrentSwingTrack được lưu ra ngoài scope để Unequipped handler có thể dừng
 local function PlaySwingAnimation(IcicleSkinId)
 	local Character = Player.Character
 	if not Character then return end
@@ -77,14 +79,41 @@ local function PlaySwingAnimation(IcicleSkinId)
 	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
 
 	local Track = Humanoid:LoadAnimation(Anim)
+	Track.Looped = false  -- Override: chắc chắn không loop dù Studio có set Loop
+	_CurrentSwingTrack = Track
 	Track:Play()
 
-	-- Dọn dẹp sau khi animation xong
-	Track.Stopped:Connect(function()
+	-- Helper dọn dẹp Track và Anim
+	local function Cleanup()
+		if _CurrentSwingTrack == Track then
+			_CurrentSwingTrack = nil
+		end
+		Track:Stop()
 		Track:Destroy()
 		Anim:Destroy()
+	end
+
+	-- Dọn dẹp khi animation kết thúc tự nhiên
+	Track.Stopped:Connect(Cleanup)
+
+	-- Fallback: dọn dẹp sau tối đa 5 giây phòng Stopped không fire
+	task.delay(5, function()
+		if _CurrentSwingTrack == Track then
+			Cleanup()
+		end
 	end)
 end
+
+-- =========================================================
+-- TOOL UNEQUIPPED: Dừng animation ngay lập tức
+-- =========================================================
+
+Tool.Unequipped:Connect(function()
+	if _CurrentSwingTrack then
+		_CurrentSwingTrack:Stop()
+		_CurrentSwingTrack = nil
+	end
+end)
 
 -- =========================================================
 -- TOOL ACTIVATED

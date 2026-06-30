@@ -43,7 +43,7 @@ local GameConfig = {
 	-- TOOL: ICICLE
 	-- =========================================================
 	Tool = {
-		IcicleCooldown = 0.8,  -- Thời gian hồi chiêu giữa 2 lần swing (giây)
+		IcicleCooldown = 1,  -- Thời gian hồi chiêu giữa 2 lần swing (giây)
 		HitboxRange    = 8,    -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
 	},
 
