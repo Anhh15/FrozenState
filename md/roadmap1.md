@@ -151,9 +151,39 @@ Toàn bộ âm thanh sẽ được thêm tại phase sau
 
 ## Phase 8: Polish
 > **Mục tiêu:** Hoàn thiện trải nghiệm âm thanh và hình ảnh.
-- Animation: Swing (Icicle), Freeze pose
-- SFX: hit, freeze, thaw, spree, UI, gacha
-- BGM: Lobby, InGame, Frozen State
+
+id audio
+swing audio 1 136455914086398
+swing audio 2 134318072265347
+swing audio 3 136610895235499
+
+thaw audio 138690892117059
+freeze audio 92048469072346
+
+gui button click 7249903719
+gui mouse enter 137872392480008
+gui close button click 103307955424380
+
+Nhạc lobby 1846271108
+Nhạc InGame 1846271109
+Nhạc InGame FrozenState 1846271110
+
+id animation
+swing animation 139026922747808
+pose animation 139714014570733
+### 8.1 Nhạc nền
+cả 3 id audio nhạc nhạc đã được đề cập phía trên
+Hệ thống cần đảm bảo khi người chơi không tham gia trận đấu sẽ có nhạc lobby, khi tham gia trận thì không có nhạc lobby mà thay vào đó là InGame hoạc FrozenState nếu đang trong giai đoạn đó.
+ví dụ: có 3 người trong server, 2 người đang trong trận (chưa vào FrozenState) và 1 người ở lobby (không có trong trận) thì người ở lobby sẽ có nhạc lobby, 2 người trong trận sẽ có nhạc InGame. Tuy nhiên nếu người chơi đang ở lobby (spectator) spectate người trong trận thì cũng nghe được những gì mà người được theo dõi nghe thấy
+### 8.2 animation và gameplay sfx
+Khi vung Icicle sẽ sử dụng 'swing animation' cùng với đó là random 1 trong 3 'swing audio'
+Khi người chơi bị đánh trúng (đóng băng) thì sẽ kích hoạt 'freeze audio' và người đó sẽ kích hoạt 'pose animation'
+Khi người chơi được thaw thì sẽ kích hoạt 'thaw audio'
+
+Hệ thống gameplay sfx cần có 2 tầng default và phần ghi đè. Mục đích là nếu người chơi sử dụng Icicle hay Block không có hiệu ứng riêng thì swing/freeze/thaw audio sẽ sử dụng mặc định (đã ghi phía trên), với các Icicle/Block đặc biệt thì sẽ có hiệu ứng âm thanh riêng biệt để tăng trải nghiệm
+Tương tự áp dụng 2 tầng với animation với người bị đóng băng, không thể thay đổi animation của icicle vì sẽ làm mất cân bằng, do đó chỉ có thể thay thế animation khi người chơi đang bị đóng băng vì animation không ảnh hưởng gì đến hitbox của blox.
+### 8.3 gui sfx
+
 ---
 ## Phase 9: Mở rộng
 > **Mục tiêu:** Thêm các chế độ chơi đặc biệt.

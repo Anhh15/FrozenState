@@ -3,6 +3,7 @@
 -- Xử lý OnToolHit RemoteEvent từ client
 -- Phase 2: IceBlock là Model clone từ ServerStorage/Blocks theo skin của Attacker
 -- Phase 3: Thu hồi tool khi Freeze, trao trả khi Thaw; Block Hitbox để client detect Thaw
+-- Phase 8.2: Play SFX spatial trong Character (server-side); fire pose animation đến victim client
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +15,7 @@ local IcicleService     = require(script.Parent.IcicleService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 
 -- =========================================================
 -- HẰNG SỐ (từ GameConfig để không hardcode)
@@ -33,6 +35,8 @@ local UpdatePlayerStateEvent
 local UpdateMoneyEvent
 local OnToolHitEvent
 local UpdateSpectateListEvent
+local PlayFreezeSFXEvent
+local PlayThawSFXEvent
 
 -- =========================================================
 -- PRIVATE: IceBlock
@@ -130,6 +134,35 @@ local function RemoveIceBlock(Victim)
 end
 
 -- =========================================================
+-- PRIVATE: Audio
+-- =========================================================
+
+--- Phát âm thanh spatial trong HumanoidRootPart của Character
+--- Roblox tự replication Sound instance đến tất cả client, đảm bảo spatial audio theo khoảng cách
+--- Sound sẽ tự hủy sau khi phát xong (hoặc sau 5 giây để tránh leak)
+--- @param Character Model
+--- @param SoundId number
+local function PlaySpatialSound(Character, SoundId)
+	if not Character then return end
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	if not HRP then return end
+
+	local Sound = Instance.new("Sound")
+	Sound.SoundId          = "rbxassetid://" .. tostring(SoundId)
+	Sound.RollOffMaxDistance = 60   -- studs — nghe được trong phạm vi hợp lý
+	Sound.Volume           = 1
+	Sound.Parent           = HRP
+	Sound:Play()
+
+	-- Tự dọn sau khi phát xong (hoặc tối đa 5 giây)
+	task.delay(5, function()
+		if Sound and Sound.Parent then
+			Sound:Destroy()
+		end
+	end)
+end
+
+-- =========================================================
 -- PRIVATE: Helpers
 -- =========================================================
 
@@ -196,6 +229,20 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 
 	-- Tạo Model IceBlock theo skin của attacker
 	SpawnIceBlock(Attacker, Victim)
+
+	-- Đọc skin Block của attacker để chọn đúng SFX
+	local BlockSkinId = "Default"
+	local AttackerData = DataService.GetData(Attacker)
+	if AttackerData and AttackerData.EquippedIceBlock then
+		local Entry = ItemRegistry.GetItem(AttackerData.EquippedIceBlock, "Block")
+		BlockSkinId = Entry and Entry.Id or "Default"
+	end
+
+	-- Play freeze SFX spatial tại Character của victim
+	PlaySpatialSound(Victim.Character, AudioConfig.GetFreezeAudio(BlockSkinId))
+
+	-- Báo victim client kích hoạt pose animation
+	PlayFreezeSFXEvent:FireClient(Victim, { BlockSkinId = BlockSkinId })
 
 	-- Victim bị đóng băng → reset cả 2 streak của victim
 	SessionService.ResetFreezeStreak(Victim)
@@ -270,6 +317,20 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 		IcicleService.GiveTool(Victim)
 	end
 
+	-- Đọc skin Block của rescuer để chọn đúng SFX
+	local BlockSkinId = "Default"
+	local RescuerData = DataService.GetData(Rescuer)
+	if RescuerData and RescuerData.EquippedIceBlock then
+		local Entry = ItemRegistry.GetItem(RescuerData.EquippedIceBlock, "Block")
+		BlockSkinId = Entry and Entry.Id or "Default"
+	end
+
+	-- Play thaw SFX spatial tại Character của victim
+	PlaySpatialSound(Victim.Character, AudioConfig.GetThawAudio(BlockSkinId))
+
+	-- Báo victim client dừng pose animation
+	PlayThawSFXEvent:FireClient(Victim)
+
 	-- Rescuer: tăng thaw stat + streak
 	SessionService.IncrementStat(Rescuer, "Thaws")
 	DataService.IncrementStat(Rescuer, "TotalThaws")
@@ -310,6 +371,9 @@ function FreezeService.ThawAll()
 			RemoveIceBlock(Player)
 			SessionService.SetState(Player, "Normal")
 			BroadcastPlayerState(Player)
+
+			-- Báo victim client dừng pose animation (cuối trận)
+			PlayThawSFXEvent:FireClient(Player)
 		end
 	end
 end
@@ -373,6 +437,8 @@ function FreezeService:Init()
 	UpdateMoneyEvent         = RemoteDefinitions.GetEvent("UpdateMoney")
 	OnToolHitEvent           = RemoteDefinitions.GetEvent("OnToolHit")
 	UpdateSpectateListEvent  = RemoteDefinitions.GetEvent("UpdateSpectateList")
+	PlayFreezeSFXEvent       = RemoteDefinitions.GetEvent("PlayFreezeSFX")
+	PlayThawSFXEvent         = RemoteDefinitions.GetEvent("PlayThawSFX")
 
 	OnToolHitEvent.OnServerEvent:Connect(HandleToolHit)
 

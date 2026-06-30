@@ -1,0 +1,112 @@
+-- AudioConfig.lua
+-- Cấu hình âm thanh và animation toàn game FrozenState
+-- Hệ thống 2 tầng: Default (mặc định) + Overrides (theo SkinId của Icicle hoặc Block)
+-- Thêm skin đặc biệt vào bảng Overrides để ghi đè âm thanh/animation tương ứng
+
+local AudioConfig = {
+
+	-- =========================================================
+	-- NHẠC NỀN
+	-- =========================================================
+	Music = {
+		Lobby       = 1846271108,   -- Nhạc khi ở lobby (không tham gia trận)
+		InGame      = 1846271108,   -- Nhạc khi đang trong trận
+		FrozenState = 1846271108,   -- Nhạc khi kích hoạt Frozen State (45 giây cuối)
+	},
+
+	-- =========================================================
+	-- ÂM THANH VÀ ANIMATION MẶC ĐỊNH
+	-- Dùng khi item trang bị không có override riêng
+	-- =========================================================
+	Default = {
+		-- Swing: random 1 trong 3 âm thanh mỗi lần vung
+		SwingAudios    = {136455914086398, 134318072265347, 136610895235499},
+		SwingAnimation = 123684645672968,  -- Animation khi vung Icicle
+
+		FreezeAudio    = 92048469072346,   -- Âm thanh khi đóng băng ai đó
+		ThawAudio      = 138690892117059,  -- Âm thanh khi giải cứu ai đó
+		PoseAnimation  = 127604545127643,  -- Animation của victim khi bị đóng băng
+	},
+
+	-- =========================================================
+	-- OVERRIDE THEO SKIN
+	-- Key là SkinId của Icicle hoặc Block (vd: "GoldenIcicle", "CrystalBlock")
+	-- Chỉ cần khai báo trường cần ghi đè, không cần khai báo hết
+	--
+	-- Icicle skin ghi đè:  SwingAudios, SwingAnimation
+	-- Block skin ghi đè:   FreezeAudio, ThawAudio, PoseAnimation
+	--
+	-- Ví dụ:
+	-- ["GoldenIcicle"] = {
+	--     SwingAudios    = { 111111111, 222222222, 333333333 },
+	--     SwingAnimation = 444444444,
+	-- },
+	-- ["CrystalBlock"] = {
+	--     FreezeAudio   = 555555555,
+	--     ThawAudio     = 666666666,
+	--     PoseAnimation = 777777777,
+	-- },
+	-- =========================================================
+	Overrides = {
+		-- Thêm override cho skin đặc biệt tại đây
+	},
+
+}
+
+-- =========================================================
+-- HELPER: Lấy âm thanh swing theo SkinId (Icicle)
+-- Trả về SwingAudios (table) từ override nếu có, không thì default
+-- =========================================================
+function AudioConfig.GetSwingAudios(IcicleSkinId)
+	local Override = IcicleSkinId and AudioConfig.Overrides[IcicleSkinId]
+	if Override and Override.SwingAudios then
+		return Override.SwingAudios
+	end
+	return AudioConfig.Default.SwingAudios
+end
+
+-- =========================================================
+-- HELPER: Lấy animation swing theo SkinId (Icicle)
+-- =========================================================
+function AudioConfig.GetSwingAnimation(IcicleSkinId)
+	local Override = IcicleSkinId and AudioConfig.Overrides[IcicleSkinId]
+	if Override and Override.SwingAnimation then
+		return Override.SwingAnimation
+	end
+	return AudioConfig.Default.SwingAnimation
+end
+
+-- =========================================================
+-- HELPER: Lấy freeze audio theo SkinId (Block)
+-- =========================================================
+function AudioConfig.GetFreezeAudio(BlockSkinId)
+	local Override = BlockSkinId and AudioConfig.Overrides[BlockSkinId]
+	if Override and Override.FreezeAudio then
+		return Override.FreezeAudio
+	end
+	return AudioConfig.Default.FreezeAudio
+end
+
+-- =========================================================
+-- HELPER: Lấy thaw audio theo SkinId (Block)
+-- =========================================================
+function AudioConfig.GetThawAudio(BlockSkinId)
+	local Override = BlockSkinId and AudioConfig.Overrides[BlockSkinId]
+	if Override and Override.ThawAudio then
+		return Override.ThawAudio
+	end
+	return AudioConfig.Default.ThawAudio
+end
+
+-- =========================================================
+-- HELPER: Lấy pose animation theo SkinId (Block)
+-- =========================================================
+function AudioConfig.GetPoseAnimation(BlockSkinId)
+	local Override = BlockSkinId and AudioConfig.Overrides[BlockSkinId]
+	if Override and Override.PoseAnimation then
+		return Override.PoseAnimation
+	end
+	return AudioConfig.Default.PoseAnimation
+end
+
+return AudioConfig

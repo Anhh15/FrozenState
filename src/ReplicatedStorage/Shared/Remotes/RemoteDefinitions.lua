@@ -42,6 +42,13 @@ local REMOTE_EVENTS = {
 
 	-- Client → Server: Spectator yêu cầu server set ReplicationFocus vào target được chọn
 	"RequestSpectateTarget",
+
+	-- Server → Victim Client: Báo bị đóng băng → kích hoạt pose animation (Phase 8.2)
+	-- Payload: { BlockSkinId = string }
+	"PlayFreezeSFX",
+
+	-- Server → Victim Client: Báo được giải cứu → dừng pose animation (Phase 8.2)
+	"PlayThawSFX",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

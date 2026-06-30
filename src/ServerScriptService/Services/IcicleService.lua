@@ -78,6 +78,10 @@ function IcicleService.GiveTool(Player)
 	if not Tool then return end
 
 	Tool.Parent = Player.Backpack
+
+	-- Gán SkinId lên Player attribute để IcicleScript.client đọc khi play audio/animation
+	Player:SetAttribute("EquippedIcicleSkinId", SkinId)
+
 	print(("[IcicleService] Đã cấp Icicle '%s' cho %s"):format(SkinId, Player.Name))
 end
 

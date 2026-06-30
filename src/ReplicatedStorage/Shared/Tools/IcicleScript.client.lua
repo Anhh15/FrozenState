@@ -8,6 +8,7 @@
 --   Một lần swing có thể đóng băng/giải cứu nhiều người cùng lúc (AoE).
 --
 -- Phase 3: phát hiện Block Model (VictimUserId attribute) → signal Thaw đồng đội
+-- Phase 8.2: play swing audio (random 1/3) + swing animation phía client mỗi lần Activated
 
 local Tool          = script.Parent
 local Player        = game.Players.LocalPlayer
@@ -21,12 +22,69 @@ local GameConfig    = require(
 		:WaitForChild("Config")
 		:WaitForChild("GameConfig")
 )
+local AudioConfig   = require(
+	ReplicatedStorage:WaitForChild("Shared")
+		:WaitForChild("Config")
+		:WaitForChild("AudioConfig")
+)
 
 -- Chờ Hitbox từ template
 local Hitbox        = Tool:WaitForChild("Hitbox")
 local COOLDOWN      = GameConfig.Tool.IcicleCooldown
 
 local _IsOnCooldown = false
+
+-- =========================================================
+-- PRIVATE: Audio & Animation
+-- =========================================================
+
+--- Phát swing audio ngẫu nhiên tại Character của local player (spatial)
+--- Các player xung quanh sẽ nghe được nhờ Roblox replication Sound trong Character
+local function PlaySwingAudio(IcicleSkinId)
+	local Character = Player.Character
+	if not Character then return end
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	if not HRP then return end
+
+	local Audios = AudioConfig.GetSwingAudios(IcicleSkinId)
+	local ChosenId = Audios[math.random(1, #Audios)]
+
+	local Sound = Instance.new("Sound")
+	Sound.SoundId            = "rbxassetid://" .. tostring(ChosenId)
+	Sound.RollOffMaxDistance = 60
+	Sound.Volume             = 1
+	Sound.Parent             = HRP
+	Sound:Play()
+
+	-- Tự dọn sau khi phát xong (tối đa 5 giây)
+	task.delay(5, function()
+		if Sound and Sound.Parent then
+			Sound:Destroy()
+		end
+	end)
+end
+
+--- Play swing animation trên Humanoid của local player
+--- Animation tự destroy sau khi kết thúc (không loop)
+local function PlaySwingAnimation(IcicleSkinId)
+	local Character = Player.Character
+	if not Character then return end
+	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+	if not Humanoid then return end
+
+	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
+	local Anim = Instance.new("Animation")
+	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
+
+	local Track = Humanoid:LoadAnimation(Anim)
+	Track:Play()
+
+	-- Dọn dẹp sau khi animation xong
+	Track.Stopped:Connect(function()
+		Track:Destroy()
+		Anim:Destroy()
+	end)
+end
 
 -- =========================================================
 -- TOOL ACTIVATED
@@ -36,6 +94,13 @@ Tool.Activated:Connect(function()
 	-- Cooldown check
 	if _IsOnCooldown then return end
 	_IsOnCooldown = true
+
+	-- Đọc SkinId của Icicle đang trang bị (gán bởi server qua Attribute)
+	local IcicleSkinId = Player:GetAttribute("EquippedIcicleSkinId") or "Default"
+
+	-- Play swing audio + animation ngay lập tức (không chờ server)
+	PlaySwingAudio(IcicleSkinId)
+	PlaySwingAnimation(IcicleSkinId)
 
 	-- Kiểm tra tất cả Part đang nằm trong vùng Hitbox tại thời điểm swing
 	local Params = OverlapParams.new()
