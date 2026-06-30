@@ -6,6 +6,8 @@
 --   Tool.Activated → GetPartsInPart(Hitbox) → FireServer(OnToolHit, TargetPlayer)
 --   Không dùng Raycast. Hitbox là Part vô hình trong Tool template (tạo trong Studio).
 --   Một lần swing có thể đóng băng/giải cứu nhiều người cùng lúc (AoE).
+--
+-- Phase 3: phát hiện Block Model (VictimUserId attribute) → signal Thaw đồng đội
 
 local Tool          = script.Parent
 local Player        = game.Players.LocalPlayer
@@ -50,8 +52,18 @@ Tool.Activated:Connect(function()
 		local TargetChar = Part:FindFirstAncestorOfClass("Model")
 		if not TargetChar then continue end
 
-		-- Xác định player từ character
+		-- Thử resolve player từ character (thường dùng để Freeze)
 		local TargetPlayer = game.Players:GetPlayerFromCharacter(TargetChar)
+
+		-- Fallback: nếu không phải character, kiểm tra xem Model có phải Block Model không
+		-- Block Model được đánh dấu bằng attribute VictimUserId (set bởi FreezeService)
+		if not TargetPlayer then
+			local VictimUserId = TargetChar:GetAttribute("VictimUserId")
+			if VictimUserId then
+				TargetPlayer = game.Players:GetPlayerByUserId(VictimUserId)
+			end
+		end
+
 		if not TargetPlayer or TargetPlayer == Player then continue end
 
 		-- Tránh hit cùng 1 player nhiều lần trong 1 swing

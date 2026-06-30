@@ -1,6 +1,6 @@
 # CoreGameplay
 > Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu) trong dự án.
-> Cập nhật lần cuối: 10-06-2026
+> Cập nhật lần cuối: 30-06-2026
 
 ---
 
@@ -17,9 +17,9 @@
 - **File liên quan:** [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [TeamService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/TeamService.lua)
 
 ### Cấp phát Tool động (Dynamic Tool Lifecycle)
-- **Ngày:** 05-06-2026
-- **Chi tiết:** Thay vì đặt Tool trong StarterPack (người chơi luôn có khi spawn), Tool được lưu ở ServerStorage và được IcicleService clone, hàn ghép skin động và đưa vào Backpack người chơi khi trận đấu vào trạng thái Ready, sau đó thu hồi khi GameOver để quản lý vòng đời chặt chẽ.
-- **File liên quan:** [IcicleService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/IcicleService.lua)
+- **Ngày:** 30-06-2026
+- **Chi tiết:** Thay vì đặt Tool trong StarterPack, Tool được lưu ở ServerStorage và được IcicleService clone, hàn ghép skin động và đưa vào Backpack người chơi khi trận đấu vào trạng thái Ready, sau đó thu hồi khi GameOver. Đồng thời, khi người chơi bị đóng băng (Freeze), tool sẽ bị tịch thu ngay lập tức và chỉ được trao trả lại sau khi được cứu (Thaw) nếu trận đấu vẫn đang diễn ra.
+- **File liên quan:** [IcicleService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/IcicleService.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
 
 ### Luồng GameOver: đếm ngược trước, teleport & dọn dẹp, sau đó mới hiện stat
 - **Ngày:** 06-06-2026
@@ -30,6 +30,11 @@
 - **Ngày:** 06-06-2026
 - **Chi tiết:** Thay vì sử dụng Raycast từ Camera dễ bị lệch góc bắn hoặc bị che khuất bởi các vật cản ngẫu nhiên, ta sử dụng cơ chế Spatial Query thông qua một part va chạm vô hình (`Hitbox`). Khi Tool được kích hoạt, Client quét không gian xung quanh vùng Hitbox bằng cách gọi `workspace:GetPartsInPart(Hitbox, OverlapParams)` nhằm phát hiện đa mục tiêu (AoE), lọc bỏ nhân vật của chính mình rồi gửi tín hiệu lên Server.
 - **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+
+### Hỗ trợ Va chạm Block Hitbox cho Thaw qua Spatial Query
+- **Ngày:** 30-06-2026
+- **Chi tiết:** Để hỗ trợ các skin khối băng (Ice Block) đa dạng nhưng vẫn đảm bảo công bằng, mỗi Model Block chứa một Part tên `Hitbox` có kích thước chuẩn. Khi đóng băng, server thiết lập `CanQuery = true` chỉ cho Hitbox của Block. Client khi kích hoạt Icicle Tool sẽ dùng `workspace:GetPartsInPart` để quét. Nếu chạm Block Hitbox, client đọc attribute `VictimUserId` trên Block Model để xác định người cần giải cứu (Thaw) thay vì tìm Character thông thường.
+- **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
 
 ### Cơ chế Spree Streak độc lập để khuyến khích tinh thần đồng đội
 - **Ngày:** 10-06-2026

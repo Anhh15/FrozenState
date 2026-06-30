@@ -2,6 +2,7 @@
 -- Logic Freeze / Thaw, quản lý IceBlock và Spree
 -- Xử lý OnToolHit RemoteEvent từ client
 -- Phase 2: IceBlock là Model clone từ ServerStorage/Blocks theo skin của Attacker
+-- Phase 3: Thu hồi tool khi Freeze, trao trả khi Thaw; Block Hitbox để client detect Thaw
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,6 +10,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local SessionService    = require(script.Parent.SessionService)
 local DataService       = require(script.Parent.DataService)
+local IcicleService     = require(script.Parent.IcicleService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
@@ -97,11 +99,14 @@ local function SpawnIceBlock(Attacker, Victim)
 
 	-- Tắt Anchored, CanCollide cho toàn bộ các part trong model (để di chuyển cùng nhân vật)
 	-- nhưng giữ nguyên các liên kết weld thủ công có sẵn giữa chúng
+	-- Hitbox (nếu có) được set CanQuery=true để IcicleScript.client detect được khi Thaw
 	for _, Part in ipairs(BlockModel:GetDescendants()) do
 		if Part:IsA("BasePart") then
 			Part.Anchored   = false
 			Part.CanCollide = false
 			Part.CastShadow = false
+			-- Hitbox phải CanQuery=true để GetPartsInPart() của Icicle có thể detect
+			Part.CanQuery   = (Part.Name == "Hitbox")
 		end
 	end
 
@@ -186,6 +191,9 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		end
 	end
 
+	-- Thu hồi tool của victim khi bị đóng băng
+	IcicleService.RemoveTool(Victim)
+
 	-- Tạo Model IceBlock theo skin của attacker
 	SpawnIceBlock(Attacker, Victim)
 
@@ -256,6 +264,11 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 
 	-- Xóa IceBlock
 	RemoveIceBlock(Victim)
+
+	-- Trao trả tool cho victim nếu trận đấu vẫn đang active
+	if SessionService.IsMatchActive() then
+		IcicleService.GiveTool(Victim)
+	end
 
 	-- Rescuer: tăng thaw stat + streak
 	SessionService.IncrementStat(Rescuer, "Thaws")
