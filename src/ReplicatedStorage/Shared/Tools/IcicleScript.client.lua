@@ -3,37 +3,41 @@
 -- Chạy khi player cầm Tool (context: Backpack / Character)
 --
 -- Cơ chế hit detection:
---   Tool.Activated → GetPartsInPart(Hitbox) → FireServer(OnToolHit, TargetPlayer)
+--   Tool.Activated → PlaySwingAnimation() → HitStart marker → Heartbeat poll GetPartsInPart(Hitbox)
+--   → FireServer(OnToolHit, TargetPlayer) ngay khi phát hiện hit mới → HitEnd marker → dừng poll
 --   Không dùng Raycast. Hitbox là Part vô hình trong Tool template (tạo trong Studio).
 --   Một lần swing có thể đóng băng/giải cứu nhiều người cùng lúc (AoE).
+--   Mỗi mục tiêu chỉ bị hit 1 lần duy nhất per swing (dedup bằng HitPlayers table).
 --
 -- Phase 3: phát hiện Block Model (VictimUserId attribute) → signal Thaw đồng đội
--- Phase 8.2: play swing audio (random 1/3) + swing animation phía client mỗi lần Activated
+-- Phase 8.2: play swing audio (random 1/3) tại HitStart + swing animation phía client mỗi lần Activated
 
-local Tool          = script.Parent
-local Player        = game.Players.LocalPlayer
+local Tool             = script.Parent
+local Player           = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService       = game:GetService("RunService")
 
 -- Chờ các dependency sẵn sàng
-local Remotes       = ReplicatedStorage:WaitForChild("Remotes")
-local OnToolHit     = Remotes:WaitForChild("OnToolHit")
-local GameConfig    = require(
+local Remotes          = ReplicatedStorage:WaitForChild("Remotes")
+local OnToolHit        = Remotes:WaitForChild("OnToolHit")
+local GameConfig       = require(
 	ReplicatedStorage:WaitForChild("Shared")
 		:WaitForChild("Config")
 		:WaitForChild("GameConfig")
 )
-local AudioConfig   = require(
+local AudioConfig      = require(
 	ReplicatedStorage:WaitForChild("Shared")
 		:WaitForChild("Config")
 		:WaitForChild("AudioConfig")
 )
 
 -- Chờ Hitbox từ template
-local Hitbox        = Tool:WaitForChild("Hitbox")
-local COOLDOWN      = GameConfig.Tool.IcicleCooldown
+local Hitbox           = Tool:WaitForChild("Hitbox")
+local COOLDOWN         = GameConfig.Tool.IcicleCooldown
 
 local _IsOnCooldown      = false
 local _CurrentSwingTrack = nil  -- Lưu Track đang chạy để dừng khi Unequip
+local _HitboxConnection  = nil  -- Heartbeat connection trong cửa sổ HitStart→HitEnd
 
 -- =========================================================
 -- PRIVATE: Audio & Animation
@@ -67,12 +71,13 @@ end
 
 --- Play swing animation trên Humanoid của local player
 --- Override Looped = false tại client để chặn loop vô hạn dù Studio set Loop
+--- Trả về Track để caller gắn Animation Marker signals (HitStart / HitEnd)
 --- CurrentSwingTrack được lưu ra ngoài scope để Unequipped handler có thể dừng
 local function PlaySwingAnimation(IcicleSkinId)
 	local Character = Player.Character
-	if not Character then return end
+	if not Character then return nil end
 	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not Humanoid then return end
+	if not Humanoid then return nil end
 
 	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
 	local Anim = Instance.new("Animation")
@@ -102,6 +107,8 @@ local function PlaySwingAnimation(IcicleSkinId)
 			Cleanup()
 		end
 	end)
+
+	return Track
 end
 
 -- =========================================================
@@ -116,6 +123,59 @@ Tool.Unequipped:Connect(function()
 end)
 
 -- =========================================================
+-- PRIVATE: Dừng Heartbeat poll nếu đang chạy
+-- =========================================================
+
+local function StopHitboxPoll()
+	if _HitboxConnection then
+		_HitboxConnection:Disconnect()
+		_HitboxConnection = nil
+	end
+end
+
+-- =========================================================
+-- PRIVATE: Bắt đầu Heartbeat poll trong cửa sổ HitStart→HitEnd
+-- HitPlayers: table dedup tránh fire nhiều lần cùng 1 mục tiêu
+-- =========================================================
+
+local function StartHitboxPoll(HitPlayers)
+	local Params = OverlapParams.new()
+	Params.FilterType                 = Enum.RaycastFilterType.Exclude
+	Params.FilterDescendantsInstances = { Player.Character }
+
+	_HitboxConnection = RunService.Heartbeat:Connect(function()
+		local TouchingParts = workspace:GetPartsInPart(Hitbox, Params)
+
+		for _, Part in ipairs(TouchingParts) do
+			-- Tìm Model chứa Part
+			local TargetChar = Part:FindFirstAncestorOfClass("Model")
+			if not TargetChar then continue end
+
+			-- Thử resolve player từ character (thường dùng để Freeze)
+			local TargetPlayer = game.Players:GetPlayerFromCharacter(TargetChar)
+
+			-- Fallback: nếu không phải character, kiểm tra xem Model có phải Block Model không
+			-- Block Model được đánh dấu bằng attribute VictimUserId (set bởi FreezeService)
+			if not TargetPlayer then
+				local VictimUserId = TargetChar:GetAttribute("VictimUserId")
+				if VictimUserId then
+					TargetPlayer = game.Players:GetPlayerByUserId(VictimUserId)
+				end
+			end
+
+			if not TargetPlayer or TargetPlayer == Player then continue end
+
+			-- Tránh hit cùng 1 player nhiều lần trong 1 swing
+			if HitPlayers[TargetPlayer] then continue end
+			HitPlayers[TargetPlayer] = true
+
+			-- Fire ngay khi phát hiện hit lần đầu (không đợi HitEnd)
+			OnToolHit:FireServer(TargetPlayer)
+		end
+	end)
+end
+
+-- =========================================================
 -- TOOL ACTIVATED
 -- =========================================================
 
@@ -127,45 +187,32 @@ Tool.Activated:Connect(function()
 	-- Đọc SkinId của Icicle đang trang bị (gán bởi server qua Attribute)
 	local IcicleSkinId = Player:GetAttribute("EquippedIcicleSkinId") or "Default"
 
-	-- Play swing audio + animation ngay lập tức (không chờ server)
-	PlaySwingAudio(IcicleSkinId)
-	PlaySwingAnimation(IcicleSkinId)
+	-- Bắt đầu animation (trả về Track để gắn marker signals)
+	local Track = PlaySwingAnimation(IcicleSkinId)
 
-	-- Kiểm tra tất cả Part đang nằm trong vùng Hitbox tại thời điểm swing
-	local Params = OverlapParams.new()
-	Params.FilterType                 = Enum.RaycastFilterType.Exclude
-	Params.FilterDescendantsInstances = { Player.Character }
+	if Track then
+		-- Dedup table cho swing này — dùng chung giữa HitStart và HitEnd
+		local HitPlayers = {}
 
-	local TouchingParts = workspace:GetPartsInPart(Hitbox, Params)
+		-- HitStart: bắt đầu giai đoạn vung
+		-- → phát audio + bắt đầu Heartbeat poll
+		Track:GetMarkerReachedSignal("HitStart"):Connect(function()
+			print("HitStart fired")
+			PlaySwingAudio(IcicleSkinId)
+			StopHitboxPoll()  -- Phòng trường hợp swing trước chưa kết thúc
+			StartHitboxPoll(HitPlayers)
+		end)
 
-	-- Tập hợp các TargetPlayer đã hit (tránh fire nhiều lần cùng 1 người)
-	local HitPlayers = {}
+		-- HitEnd: kết thúc giai đoạn vung → dừng poll
+		Track:GetMarkerReachedSignal("HitEnd"):Connect(function()
+			StopHitboxPoll()
+		end)
 
-	for _, Part in ipairs(TouchingParts) do
-		-- Tìm Model chứa Part
-		local TargetChar = Part:FindFirstAncestorOfClass("Model")
-		if not TargetChar then continue end
-
-		-- Thử resolve player từ character (thường dùng để Freeze)
-		local TargetPlayer = game.Players:GetPlayerFromCharacter(TargetChar)
-
-		-- Fallback: nếu không phải character, kiểm tra xem Model có phải Block Model không
-		-- Block Model được đánh dấu bằng attribute VictimUserId (set bởi FreezeService)
-		if not TargetPlayer then
-			local VictimUserId = TargetChar:GetAttribute("VictimUserId")
-			if VictimUserId then
-				TargetPlayer = game.Players:GetPlayerByUserId(VictimUserId)
-			end
-		end
-
-		if not TargetPlayer or TargetPlayer == Player then continue end
-
-		-- Tránh hit cùng 1 player nhiều lần trong 1 swing
-		if HitPlayers[TargetPlayer] then continue end
-		HitPlayers[TargetPlayer] = true
-
-		-- Fire lên server để validate và xử lý (server tự phân biệt Freeze/Thaw dựa vào team)
-		OnToolHit:FireServer(TargetPlayer)
+		-- Fallback: nếu animation kết thúc trước khi HitEnd fire (ví dụ Unequip)
+		-- → đảm bảo poll không bị leak
+		Track.Stopped:Connect(function()
+			StopHitboxPoll()
+		end)
 	end
 
 	-- Hồi chiêu

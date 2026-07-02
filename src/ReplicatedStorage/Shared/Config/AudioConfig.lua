@@ -10,8 +10,8 @@ local AudioConfig = {
 	-- =========================================================
 	Music = {
 		Lobby       = 1846271108,   -- Nhạc khi ở lobby (không tham gia trận)
-		InGame      = 1846271108,   -- Nhạc khi đang trong trận
-		FrozenState = 1846271108,   -- Nhạc khi kích hoạt Frozen State (45 giây cuối)
+		InGame      = 92288659295773,   -- Nhạc khi đang trong trận
+		FrozenState = 135654634674766,   -- Nhạc khi kích hoạt Frozen State (45 giây cuối)
 	},
 
 	-- =========================================================

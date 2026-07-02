@@ -1,6 +1,6 @@
 # CoreGameplay
 > Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu) trong dự án.
-> Cập nhật lần cuối: 30-06-2026
+> Cập nhật lần cuối: 02-07-2026
 
 ---
 
@@ -26,9 +26,9 @@
 - **Chi tiết:** Luồng GameOver đúng: (1) Thu tool + kết thúc match + phát thưởng, (2) ThawAll, (3) Đếm ngược GameOverDuration (player vẫn ở trong đấu trường, chưa thấy bảng thống kê), (4) **Sau hết giờ**: teleport tất cả player về `workspace.SpawnLocation` bằng cách set `HRP.CFrame`, (5) Dọn IceBlock tàn dư, (6) UnloadMap, (7) **Cuối cùng**: fire `ShowGameOver` để hiện bảng thống kê khi player đã về Lobby. Pattern này đảm bảo player thấy stat trong môi trường sạch sẽ (Lobby), không còn map chiến đấu phía sau.
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
 
-### Thiết kế va chạm Icicle Tool bằng Spatial Query
-- **Ngày:** 06-06-2026
-- **Chi tiết:** Thay vì sử dụng Raycast từ Camera dễ bị lệch góc bắn hoặc bị che khuất bởi các vật cản ngẫu nhiên, ta sử dụng cơ chế Spatial Query thông qua một part va chạm vô hình (`Hitbox`). Khi Tool được kích hoạt, Client quét không gian xung quanh vùng Hitbox bằng cách gọi `workspace:GetPartsInPart(Hitbox, OverlapParams)` nhằm phát hiện đa mục tiêu (AoE), lọc bỏ nhân vật của chính mình rồi gửi tín hiệu lên Server.
+### Thiết kế va chạm Icicle Tool bằng Spatial Query với Animation Marker Window
+- **Ngày:** 02-07-2026
+- **Chi tiết:** Hit detection dùng `workspace:GetPartsInPart(Hitbox, OverlapParams)` (Spatial Query) thay vì Raycast. Thay vì snapshot 1 frame tại `Tool.Activated`, Hitbox chỉ active trong cửa sổ giai đoạn “vung” — xác định bằng Animation Marker `HitStart`/`HitEnd` đặt trong Animation Editor. Trong cửa sổ đó, `RunService.Heartbeat` poll liên tục, mỗi mục tiêu chỉ bị hit 1 lần (dedup bằng HitPlayers table), `FireServer` ngay khi phát hiện hit lần đầu. Audio swing cũng phát tại `HitStart` thay vì tại `Activated` để khớp với thời điểm vùng thực tế. `PlaySwingAnimation()` trả về `Track` để caller gắn các marker signal.
 - **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
 
 ### Hỗ trợ Va chạm Block Hitbox cho Thaw qua Spatial Query
@@ -77,3 +77,10 @@
 - **Nguyên nhân:** `Hitbox` của Tool trong Template (`ServerStorage.Icicles.Default`) không được hàn (weld) với `Handle`. Khi người chơi trang bị Tool, chỉ có `Handle` được gắn vào tay nhân vật, còn `Hitbox` bị rơi rớt hoặc đứng yên tại chỗ ở tọa độ ban đầu.
 - **Fix:** Tạo `WeldConstraint` liên kết `Hitbox` sang `Handle` của Tool trong Template để `Hitbox` di chuyển theo nhân vật.
 - **File liên quan:** `ServerStorage/Icicles/Default` (Roblox Studio)
+
+### `GetMarkerReachedSignal` không fire khi dùng `Humanoid:LoadAnimation()` (deprecated)
+- **Ngày:** 02-07-2026
+- **Vấn đề:** Sau khi refactor hit detection sang Animation Marker window, marker signal `HitStart`/`HitEnd` không bao giờ fire. Animation vẫn chạy đúng, Output không có lỗi, nhưng print bên trong callback của `GetMarkerReachedSignal` không xuất hiện.
+- **Nguyên nhân:** `Humanoid:LoadAnimation()` là API deprecated. Có báo cáo trên Roblox DevForum rằng `GetMarkerReachedSignal` không hoạt động ổn định với API này.
+- **Fix (cần xác nhận):** Đổi sang `Animator:LoadAnimation()` — lấy Animator bằng `Humanoid:FindFirstChildOfClass("Animator")` rồi gọi `Animator:LoadAnimation(Anim)`. Đây là API chính thức, không deprecated.
+- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)

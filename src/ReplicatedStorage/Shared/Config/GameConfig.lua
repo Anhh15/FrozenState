@@ -44,7 +44,7 @@ local GameConfig = {
 	-- =========================================================
 	Tool = {
 		IcicleCooldown = 1,  -- Thời gian hồi chiêu giữa 2 lần swing (giây)
-		HitboxRange    = 8,    -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
+		HitboxRange    = 20,    -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
 	},
 
 	-- =========================================================
