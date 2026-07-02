@@ -26,10 +26,10 @@
 - **Chi tiết:** Luồng GameOver đúng: (1) Thu tool + kết thúc match + phát thưởng, (2) ThawAll, (3) Đếm ngược GameOverDuration (player vẫn ở trong đấu trường, chưa thấy bảng thống kê), (4) **Sau hết giờ**: teleport tất cả player về `workspace.SpawnLocation` bằng cách set `HRP.CFrame`, (5) Dọn IceBlock tàn dư, (6) UnloadMap, (7) **Cuối cùng**: fire `ShowGameOver` để hiện bảng thống kê khi player đã về Lobby. Pattern này đảm bảo player thấy stat trong môi trường sạch sẽ (Lobby), không còn map chiến đấu phía sau.
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
 
-### Thiết kế va chạm Icicle Tool bằng Spatial Query với Animation Marker Window
+### Thiết kế va chạm Icicle Tool bằng Spatial Query với task.delay Window
 - **Ngày:** 02-07-2026
-- **Chi tiết:** Hit detection dùng `workspace:GetPartsInPart(Hitbox, OverlapParams)` (Spatial Query) thay vì Raycast. Thay vì snapshot 1 frame tại `Tool.Activated`, Hitbox chỉ active trong cửa sổ giai đoạn “vung” — xác định bằng Animation Marker `HitStart`/`HitEnd` đặt trong Animation Editor. Trong cửa sổ đó, `RunService.Heartbeat` poll liên tục, mỗi mục tiêu chỉ bị hit 1 lần (dedup bằng HitPlayers table), `FireServer` ngay khi phát hiện hit lần đầu. Audio swing cũng phát tại `HitStart` thay vì tại `Activated` để khớp với thời điểm vùng thực tế. `PlaySwingAnimation()` trả về `Track` để caller gắn các marker signal.
-- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+- **Chi tiết:** Hit detection dùng `workspace:GetPartsInPart(Hitbox, OverlapParams)` (Spatial Query) thay vì Raycast. Hitbox chỉ active trong cửa sổ giai đoạn “vung” — xác định bằng `task.delay(HitStartTime)` và `task.delay(HitEndTime)`, timing được lưu trong `AudioConfig.Default` (per-skin) thay vì hardcode. Trong cửa sổ đó, `RunService.Heartbeat` poll liên tục; mỗi mục tiêu chỉ bị hit 1 lần (dedup bằng HitPlayers table), `FireServer` ngay khi phát hiện hit lần đầu. Audio phát tại HitStartTime. Guard `_CurrentSwingTrack ~= Track` bảo vệ trường hợp tool bị thu hồi trước khi delay fire. `PlaySwingAnimation()` trả về `Track` để caller gắn `Track.Stopped` fallback dừng poll khi Unequip.
+- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
 
 ### Hỗ trợ Va chạm Block Hitbox cho Thaw qua Spatial Query
 - **Ngày:** 30-06-2026
@@ -78,9 +78,10 @@
 - **Fix:** Tạo `WeldConstraint` liên kết `Hitbox` sang `Handle` của Tool trong Template để `Hitbox` di chuyển theo nhân vật.
 - **File liên quan:** `ServerStorage/Icicles/Default` (Roblox Studio)
 
-### `GetMarkerReachedSignal` không fire khi dùng `Humanoid:LoadAnimation()` (deprecated)
+### `GetMarkerReachedSignal` không fire — Workaround: `task.delay`
 - **Ngày:** 02-07-2026
-- **Vấn đề:** Sau khi refactor hit detection sang Animation Marker window, marker signal `HitStart`/`HitEnd` không bao giờ fire. Animation vẫn chạy đúng, Output không có lỗi, nhưng print bên trong callback của `GetMarkerReachedSignal` không xuất hiện.
-- **Nguyên nhân:** `Humanoid:LoadAnimation()` là API deprecated. Có báo cáo trên Roblox DevForum rằng `GetMarkerReachedSignal` không hoạt động ổn định với API này.
-- **Fix (cần xác nhận):** Đổi sang `Animator:LoadAnimation()` — lấy Animator bằng `Humanoid:FindFirstChildOfClass("Animator")` rồi gọi `Animator:LoadAnimation(Anim)`. Đây là API chính thức, không deprecated.
-- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+- **Vấn đề:** Marker signal `HitStart`/`HitEnd` không bao giờ fire dù animation có marker đúng tên, đúng ID, đã publish. Print bên trong callback không xuất hiện. Animation vẫn chạy bình thường.
+- **Nguyên nhân:** Chưa xác định chính xác. Đã thử: (1) Animation Marker trong Studio, (2) `Animator:LoadAnimation()` thay `Humanoid:LoadAnimation()` (deprecated), (3) Tạo animation mới, (4) Reset Roblox. Tất cả đều không giải quyết được.
+- **Workaround hiện tại (Hoướng B — đang dùng):** Dùng `task.delay(HitStartTime, ...)` và `task.delay(HitEndTime, ...)` với timing lưu trong `AudioConfig` (per-skin). Hoạt động ổn định nhưng cần sync timing thủ công với animation khi sửa.
+- **Hướng A (chưa giải quyết — cần quay lại):** Tiếp tục điều tra tại sao `GetMarkerReachedSignal` không fire. Có thể liên quan đến Roblox platform bug hoặc cấu hình LocalScript. Nếu giải quyết được, chuyển lại sang Marker để tiết kiệm công sức maintain.
+- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua)

@@ -22,7 +22,12 @@ local AudioConfig = {
 		-- Swing: random 1 trong 3 âm thanh mỗi lần vung
 		SwingAudios    = {136455914086398, 134318072265347, 136610895235499},
 		--SwingAnimation = 123684645672968,  -- Animation khi vung Icicle
-		SwingAnimation = 115062190615826,  -- Animation khi vung Icicle
+		SwingAnimation = 128425806238119,  -- Animation khi vung Icicle
+
+		-- Cửa sổ Hitbox active (giây) — phải khớp với giai đoạn 'vung' trong animation
+		-- HitStart: thời điểm bắt đầu đập xuống | HitEnd: thời điểm tay chạm đáy
+		HitStartTime   = 0.167,  -- Giây kể từ lúc Activated
+		HitEndTime     = 0.333,  -- Giây kể từ lúc Activated
 
 		FreezeAudio    = 92048469072346,   -- Âm thanh khi đóng băng ai đó
 		ThawAudio      = 138690892117059,  -- Âm thanh khi giải cứu ai đó
@@ -37,10 +42,12 @@ local AudioConfig = {
 	-- Icicle skin ghi đè:  SwingAudios, SwingAnimation
 	-- Block skin ghi đè:   FreezeAudio, ThawAudio, PoseAnimation
 	--
-	-- Ví dụ:
+	-- Í dụ:
 	-- ["GoldenIcicle"] = {
 	--     SwingAudios    = { 111111111, 222222222, 333333333 },
 	--     SwingAnimation = 444444444,
+	--     HitStartTime   = 0.2,   -- Nếu animation skin này có timing khác
+	--     HitEndTime     = 0.4,
 	-- },
 	-- ["CrystalBlock"] = {
 	--     FreezeAudio   = 555555555,
@@ -75,6 +82,28 @@ function AudioConfig.GetSwingAnimation(IcicleSkinId)
 		return Override.SwingAnimation
 	end
 	return AudioConfig.Default.SwingAnimation
+end
+
+-- =========================================================
+-- HELPER: Lấy thời điểm bắt đầu cửa sổ Hitbox theo SkinId (Icicle)
+-- =========================================================
+function AudioConfig.GetHitStartTime(IcicleSkinId)
+	local Override = IcicleSkinId and AudioConfig.Overrides[IcicleSkinId]
+	if Override and Override.HitStartTime then
+		return Override.HitStartTime
+	end
+	return AudioConfig.Default.HitStartTime
+end
+
+-- =========================================================
+-- HELPER: Lấy thời điểm kết thúc cửa sổ Hitbox theo SkinId (Icicle)
+-- =========================================================
+function AudioConfig.GetHitEndTime(IcicleSkinId)
+	local Override = IcicleSkinId and AudioConfig.Overrides[IcicleSkinId]
+	if Override and Override.HitEndTime then
+		return Override.HitEndTime
+	end
+	return AudioConfig.Default.HitEndTime
 end
 
 -- =========================================================

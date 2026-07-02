@@ -3,14 +3,15 @@
 -- Chạy khi player cầm Tool (context: Backpack / Character)
 --
 -- Cơ chế hit detection:
---   Tool.Activated → PlaySwingAnimation() → HitStart marker → Heartbeat poll GetPartsInPart(Hitbox)
---   → FireServer(OnToolHit, TargetPlayer) ngay khi phát hiện hit mới → HitEnd marker → dừng poll
+--   Tool.Activated → PlaySwingAnimation() → task.delay(HitStartTime) → Heartbeat poll GetPartsInPart(Hitbox)
+--   → FireServer(OnToolHit, TargetPlayer) ngay khi phát hiện hit mới → task.delay(HitEndTime) → dừng poll
 --   Không dùng Raycast. Hitbox là Part vô hình trong Tool template (tạo trong Studio).
 --   Một lần swing có thể đóng băng/giải cứu nhiều người cùng lúc (AoE).
 --   Mỗi mục tiêu chỉ bị hit 1 lần duy nhất per swing (dedup bằng HitPlayers table).
+--   Timing cửa sổ Hitbox lấy từ AudioConfig.HitStartTime / HitEndTime (per skin).
 --
 -- Phase 3: phát hiện Block Model (VictimUserId attribute) → signal Thaw đồng đội
--- Phase 8.2: play swing audio (random 1/3) tại HitStart + swing animation phía client mỗi lần Activated
+-- Phase 8.2: play swing audio (random 1/3) tại HitStartTime + swing animation phía client mỗi lần Activated
 
 local Tool             = script.Parent
 local Player           = game.Players.LocalPlayer
@@ -71,19 +72,21 @@ end
 
 --- Play swing animation trên Humanoid của local player
 --- Override Looped = false tại client để chặn loop vô hạn dù Studio set Loop
---- Trả về Track để caller gắn Animation Marker signals (HitStart / HitEnd)
+--- Trả về Track để caller gắn Track.Stopped fallback (dừng poll nếu Unequip giữa chừng)
 --- CurrentSwingTrack được lưu ra ngoài scope để Unequipped handler có thể dừng
 local function PlaySwingAnimation(IcicleSkinId)
 	local Character = Player.Character
 	if not Character then return nil end
 	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
 	if not Humanoid then return nil end
+	local Animator = Humanoid:FindFirstChildOfClass("Animator")
+	if not Animator then return nil end
 
 	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
 	local Anim = Instance.new("Animation")
 	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
 
-	local Track = Humanoid:LoadAnimation(Anim)
+	local Track = Animator:LoadAnimation(Anim)
 	Track.Looped = false  -- Override: chắc chắn không loop dù Studio có set Loop
 	_CurrentSwingTrack = Track
 	Track:Play()
@@ -191,24 +194,27 @@ Tool.Activated:Connect(function()
 	local Track = PlaySwingAnimation(IcicleSkinId)
 
 	if Track then
-		-- Dedup table cho swing này — dùng chung giữa HitStart và HitEnd
+		-- Dedup table cho swing này
 		local HitPlayers = {}
 
-		-- HitStart: bắt đầu giai đoạn vung
-		-- → phát audio + bắt đầu Heartbeat poll
-		Track:GetMarkerReachedSignal("HitStart"):Connect(function()
-			print("HitStart fired")
+		-- Lấy timing cửa sổ Hitbox từ AudioConfig (per skin, không hardcode)
+		local HitStartTime = AudioConfig.GetHitStartTime(IcicleSkinId)
+		local HitEndTime   = AudioConfig.GetHitEndTime(IcicleSkinId)
+
+		-- Sau HitStartTime: bắt đầu giai đoạn vung → phát audio + bắt đầu poll
+		task.delay(HitStartTime, function()
+			if _CurrentSwingTrack ~= Track then return end  -- Guard: tool đã bị thu hồi
 			PlaySwingAudio(IcicleSkinId)
 			StopHitboxPoll()  -- Phòng trường hợp swing trước chưa kết thúc
 			StartHitboxPoll(HitPlayers)
 		end)
 
-		-- HitEnd: kết thúc giai đoạn vung → dừng poll
-		Track:GetMarkerReachedSignal("HitEnd"):Connect(function()
+		-- Sau HitEndTime: kết thúc giai đoạn vung → dừng poll
+		task.delay(HitEndTime, function()
 			StopHitboxPoll()
 		end)
 
-		-- Fallback: nếu animation kết thúc trước khi HitEnd fire (ví dụ Unequip)
+		-- Fallback: nếu Unequip giữa chừng (Track.Stopped fire sớm)
 		-- → đảm bảo poll không bị leak
 		Track.Stopped:Connect(function()
 			StopHitboxPoll()
