@@ -19,15 +19,14 @@ local AudioConfig = {
 	-- Dùng khi item trang bị không có override riêng
 	-- =========================================================
 	Default = {
-		-- Swing: random 1 trong 3 âm thanh mỗi lần vung
-		SwingAudios    = {136455914086398, 134318072265347, 136610895235499},
-		--SwingAnimation = 123684645672968,  -- Animation khi vung Icicle
+		-- Swing: âm thanh phát mỗi lần vung
+		SwingAudios    = {136455914086398},
 		SwingAnimation = 128425806238119,  -- Animation khi vung Icicle
 
 		-- Cửa sổ Hitbox active (giây) — phải khớp với giai đoạn 'vung' trong animation
 		-- HitStart: thời điểm bắt đầu đập xuống | HitEnd: thời điểm tay chạm đáy
-		HitStartTime   = 0.167,  -- Giây kể từ lúc Activated
-		HitEndTime     = 0.333,  -- Giây kể từ lúc Activated
+		HitStartTime   = 0.18,  -- Giây kể từ lúc Activated
+		HitEndTime     = 0.3,  -- Giây kể từ lúc Activated
 
 		FreezeAudio    = 92048469072346,   -- Âm thanh khi đóng băng ai đó
 		ThawAudio      = 138690892117059,  -- Âm thanh khi giải cứu ai đó
@@ -44,7 +43,7 @@ local AudioConfig = {
 	--
 	-- Í dụ:
 	-- ["GoldenIcicle"] = {
-	--     SwingAudios    = { 111111111, 222222222, 333333333 },
+	--     SwingAudios    = { 111111111 },
 	--     SwingAnimation = 444444444,
 	--     HitStartTime   = 0.2,   -- Nếu animation skin này có timing khác
 	--     HitEndTime     = 0.4,

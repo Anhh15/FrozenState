@@ -1,6 +1,6 @@
 # CoreGameplay
 > Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu) trong dự án.
-> Cập nhật lần cuối: 02-07-2026
+> Cập nhật lần cuối: 03-07-2026
 
 ---
 
@@ -27,8 +27,8 @@
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
 
 ### Thiết kế va chạm Icicle Tool bằng Spatial Query với task.delay Window
-- **Ngày:** 02-07-2026
-- **Chi tiết:** Hit detection dùng `workspace:GetPartsInPart(Hitbox, OverlapParams)` (Spatial Query) thay vì Raycast. Hitbox chỉ active trong cửa sổ giai đoạn “vung” — xác định bằng `task.delay(HitStartTime)` và `task.delay(HitEndTime)`, timing được lưu trong `AudioConfig.Default` (per-skin) thay vì hardcode. Trong cửa sổ đó, `RunService.Heartbeat` poll liên tục; mỗi mục tiêu chỉ bị hit 1 lần (dedup bằng HitPlayers table), `FireServer` ngay khi phát hiện hit lần đầu. Audio phát tại HitStartTime. Guard `_CurrentSwingTrack ~= Track` bảo vệ trường hợp tool bị thu hồi trước khi delay fire. `PlaySwingAnimation()` trả về `Track` để caller gắn `Track.Stopped` fallback dừng poll khi Unequip.
+- **Ngày:** 03-07-2026
+- **Chi tiết:** Hit detection dùng `workspace:GetPartsInPart(Hitbox, OverlapParams)` (Spatial Query) thay vì Raycast. Hitbox chỉ active trong cửa sổ giai đoạn “vung” — xác định bằng `task.delay(HitStartTime)` và `task.delay(HitEndTime)`, timing được lưu trong `AudioConfig.Default` (per-skin) thay vì hardcode. Trong cửa sổ đó, `RunService.Heartbeat` poll liên tục; mỗi mục tiêu chỉ bị hit 1 lần (dedup bằng HitPlayers table), `FireServer` ngay khi phát hiện hit lần đầu. Audio được phát ngẫu nhiên từ danh sách `SwingAudios` (hỗ trợ cả 1 hoặc nhiều ID) tại `HitStartTime`. Guard `_CurrentSwingTrack ~= Track` bảo vệ trường hợp tool bị thu hồi trước khi delay fire. `PlaySwingAnimation()` trả về `Track` để caller gắn `Track.Stopped` fallback dừng poll khi Unequip.
 - **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
 
 ### Hỗ trợ Va chạm Block Hitbox cho Thaw qua Spatial Query
