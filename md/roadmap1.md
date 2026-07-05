@@ -169,8 +169,8 @@ Nhạc InGame 1846271109
 Nhạc InGame FrozenState 1846271110
 
 id animation
-swing animation 139026922747808
-pose animation 139714014570733
+swing animation 123684645672968
+pose animation 127604545127643
 ### 8.1 Nhạc nền
 cả 3 id audio nhạc nhạc đã được đề cập phía trên
 Hệ thống cần đảm bảo khi người chơi không tham gia trận đấu sẽ có nhạc lobby, khi tham gia trận thì không có nhạc lobby mà thay vào đó là InGame hoạc FrozenState nếu đang trong giai đoạn đó.
@@ -183,6 +183,29 @@ Khi người chơi được thaw thì sẽ kích hoạt 'thaw audio'
 Hệ thống gameplay sfx cần có 2 tầng default và phần ghi đè. Mục đích là nếu người chơi sử dụng Icicle hay Block không có hiệu ứng riêng thì swing/freeze/thaw audio sẽ sử dụng mặc định (đã ghi phía trên), với các Icicle/Block đặc biệt thì sẽ có hiệu ứng âm thanh riêng biệt để tăng trải nghiệm
 Tương tự áp dụng 2 tầng với animation với người bị đóng băng, không thể thay đổi animation của icicle vì sẽ làm mất cân bằng, do đó chỉ có thể thay thế animation khi người chơi đang bị đóng băng vì animation không ảnh hưởng gì đến hitbox của blox.
 ### 8.3 gui sfx
+gui button click 7249903719
+gui mouse enter 137872392480008
+gui close button click 103307955424380
+QuestReward 116439187028468
+ChestBuy 113890702074571
+buy fail 128827503277042
+overall 119804136935260
+
+quy ước toàn bộ CloseButton (ImageButton) sẽ phát 'gui close button click' và không phát audio gì khi di chuột vào
+
+Mỗi mục nên tự quản lý âm thanh riêng thay vì gộp lại vào 1 file, vì có thể trong tương lai các mục riêng trong audio sẽ có âm thanh riêng.
+
+NavigationButton:
+- Không cần quan tâm đến Stats (Frame)
+- Với Button (Frame), khi di chuột qua lại các Button sẽ phát 'gui mouse enter' và khi nhấn sẽ phát 'gui button click'
+Menu: quy ước CloseButton như trên, không phát âm thanh khi di chuột vào các button, toàn bộ các button sẽ mặc định sử dụng 'gui button click' 
+- Inventory, Profile, Spectate như đã quy ước, không có gì đặc biệt
+- Shop/ChestPopup khi bấm mua 1/3 rương đều sẽ phát 'ChestBuy', nếu không khả thi thì sử dụng audio 'but fail'
+- Quest, với QuestTemplate/ClaimButton sẽ phát 'QuestReward'
+GameStatistic: quy ước CloseButton như trên, không phát âm thanh khi di chuột vào các button, toàn bộ các button sẽ mặc định sử dụng 'gui button click' 
+- TeamWonStats không có gì đặc biệt
+- Khi xuất hiện (tức khi bấm TeamWonStats/NextButton) PlayerStats sẽ phát 'overall'
+
 
 ---
 ## Phase 9: Mở rộng

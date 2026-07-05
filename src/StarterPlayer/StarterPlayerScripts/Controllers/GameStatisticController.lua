@@ -1,6 +1,6 @@
 -- GameStatisticController.lua (ModuleScript)
 -- Điều khiển GUI GameStatistic mới với ViewportFrame và UIListLayout
---
+-- Phase 8.3: GUI SFX — CloseButton, NextButton, PlayerStats overall
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -48,6 +48,23 @@ local LastStandingVal = TotalStats:WaitForChild("LastStanding"):WaitForChild("Va
 local TotalMoneyVal   = StatsPanel:WaitForChild("TotalMoney"):WaitForChild("ValueText")
 
 -- =========================================================
+-- SFX
+-- =========================================================
+
+local SFX_BUTTON_CLICK       = 7249903719
+local SFX_CLOSE_BUTTON_CLICK = 103307955424380
+local SFX_OVERALL            = 119804136935260
+
+local function PlayGuiSound(SoundId)
+	local S = Instance.new("Sound")
+	S.SoundId = "rbxassetid://" .. tostring(SoundId)
+	S.Volume = 1
+	S.Parent = PlayerGui
+	S:Play()
+	game:GetService("Debris"):AddItem(S, 3)
+end
+
+-- =========================================================
 -- PRIVATE
 -- =========================================================
 
@@ -67,6 +84,8 @@ local function ShowPlayerStats()
 	StatGui.Enabled      = true
 	TeamWonStats.Visible = false
 	PlayerStats.Visible  = true
+	-- Phase 8.3: Phát 'overall' khi PlayerStats hiện ra
+	PlayGuiSound(SFX_OVERALL)
 end
 
 --- Thiết lập và tạo mô hình nhân vật 3D trong ViewportFrame bằng UserId
@@ -265,9 +284,18 @@ function GameStatisticController:Init()
 	end)
 
 	-- Cài đặt sự kiện nút bấm chuyển tiếp và đóng
-	NextButton.MouseButton1Click:Connect(ShowPlayerStats)
-	CloseButton1.MouseButton1Click:Connect(HideAll)
-	CloseButton2.MouseButton1Click:Connect(HideAll)
+	NextButton.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_BUTTON_CLICK)
+		ShowPlayerStats()
+	end)
+	CloseButton1.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+		HideAll()
+	end)
+	CloseButton2.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+		HideAll()
+	end)
 
 	print("[GameStatisticController] Khởi tạo thành công với cấu trúc GUI mới.")
 end

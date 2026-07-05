@@ -58,6 +58,22 @@ local StatsFrame       = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("S
 local GameWinsFrame    = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("GameWins")
 
 -- Tham chiếu nhanh các ValueText trong Stats
+
+-- =========================================================
+-- SFX
+-- =========================================================
+
+local SFX_CLOSE_BUTTON_CLICK = 103307955424380
+
+local function PlayGuiSound(SoundId)
+	local S = Instance.new("Sound")
+	S.SoundId = "rbxassetid://" .. tostring(SoundId)
+	S.Volume = 1
+	S.Parent = PlayerGui
+	S:Play()
+	game:GetService("Debris"):AddItem(S, 3)
+end
+
 local function GetStatValue(StatName)
 	if not StatsFrame then return nil end
 	local Frame = StatsFrame:FindFirstChild(StatName)
@@ -373,7 +389,10 @@ function ProfileController:Init()
 
 	-- Nút đóng Profile
 	if CloseButton then
-		CloseButton.MouseButton1Click:Connect(CloseProfile)
+		CloseButton.MouseButton1Click:Connect(function()
+			PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+			CloseProfile()
+		end)
 	end
 
 	print("[ProfileController] Đã khởi tạo.")

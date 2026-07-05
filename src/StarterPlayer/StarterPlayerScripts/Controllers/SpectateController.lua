@@ -62,6 +62,22 @@ local STREAM_WAIT_TIMEOUT  = 5    -- giây
 local STREAM_POLL_INTERVAL = 0.1  -- giây
 
 -- =========================================================
+-- SFX
+-- =========================================================
+
+local SFX_BUTTON_CLICK       = 7249903719
+local SFX_CLOSE_BUTTON_CLICK = 103307955424380
+
+local function PlayGuiSound(SoundId)
+	local S = Instance.new("Sound")
+	S.SoundId = "rbxassetid://" .. tostring(SoundId)
+	S.Volume = 1
+	S.Parent = PlayerGui
+	S:Play()
+	game:GetService("Debris"):AddItem(S, 3)
+end
+
+-- =========================================================
 -- PRIVATE: Movement Lock
 -- =========================================================
 
@@ -378,14 +394,17 @@ function SpectateController:Init()
 
 	-- Kết nối các nút điều khiển
 	CloseButton.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
 		SpectateController.SetVisible(false)
 	end)
 
 	NextButton.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_BUTTON_CLICK)
 		CycleNext()
 	end)
 
 	BackButton.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_BUTTON_CLICK)
 		CycleBack()
 	end)
 

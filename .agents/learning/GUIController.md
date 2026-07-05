@@ -1,6 +1,6 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 27-06-2026
+> Cập nhật lần cuối: 06-07-2026
 
 ---
 
@@ -75,6 +75,11 @@
 - **Ngày:** 27-06-2026
 - **Chi tiết:** Dưới chế độ `StreamingEnabled`, khi dời camera sang target ở xa, ta phải thay đổi tâm stream để tải dữ liệu đấu trường. Giải pháp là dịch chuyển `Player.ReplicationFocus` từ character của chính spectator sang `HumanoidRootPart` của target thông qua yêu cầu từ client gửi lên server. Đồng thời, trong khi spectate, cần khóa di chuyển (`WalkSpeed = 0`, `JumpPower = 0`, `JumpHeight = 0`) phía client để nhân vật spectator không bị trôi dạt do mất physics mô phỏng vùng lobby bị stream out. Khi tắt spectate, server trả lại `ReplicationFocus` về spectator HRP và client phục hồi tốc độ di chuyển gốc từ cấu hình `GameConfig`.
 - **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua)
+
+### Hệ thống GUI SFX phân tán theo Controller (Phase 8.3)
+- **Ngày:** 06-07-2026
+- **Chi tiết:** Mỗi controller tự quản lý âm thanh GUI riêng thay vì gộp vào một module trung tâm. Dùng hàm helper cục bộ `PlayGuiSound(SoundId)` trong mỗi controller: tạo `Sound` object, gán `rbxassetid://`, parent vào `PlayerGui`, gọi `:Play()` rồi tự hủy qua `Debris:AddItem(S, 3)`. Quy tắc áp dụng: `CloseButton` → close sfx; tab/equip/nav buttons → button click sfx; `Buy1/Buy3` → ChestBuy (success) hoặc buy fail (fail) tùy `Result.Success`; `ClaimButton` (Quest) → QuestReward sfx; `ShowPlayerStats` → overall sfx. NavigationButton bind cả `MouseEnter` (hover) lẫn `MouseButton1Click`. Ưu điểm: độc lập, không tạo dependency mới, dễ mở rộng per-controller trong tương lai.
+- **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
 
 ---
 

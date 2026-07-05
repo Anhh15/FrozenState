@@ -85,6 +85,24 @@ local _popupConnections = {}        -- Connections của ChestPopUp buttons
 local _popupChestModel  = nil       -- Model chest đang hiển thị trong PopUp viewport
 
 -- =========================================================
+-- SFX
+-- =========================================================
+
+local SFX_BUTTON_CLICK       = 7249903719
+local SFX_CLOSE_BUTTON_CLICK = 103307955424380
+local SFX_CHEST_BUY          = 113890702074571
+local SFX_BUY_FAIL           = 128827503277042
+
+local function PlayGuiSound(SoundId)
+	local S = Instance.new("Sound")
+	S.SoundId = "rbxassetid://" .. tostring(SoundId)
+	S.Volume = 1
+	S.Parent = PlayerGui
+	S:Play()
+	game:GetService("Debris"):AddItem(S, 3)
+end
+
+-- =========================================================
 -- HELPERS
 -- =========================================================
 
@@ -262,9 +280,12 @@ local function OpenPopUp(ChestEntry)
 				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 1)
 				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
 				if Result and Result.Success then
+					PlayGuiSound(SFX_CHEST_BUY)
 					task.spawn(function()
 						PlayerDataController.RefreshData()
 					end)
+				else
+					PlayGuiSound(SFX_BUY_FAIL)
 				end
 			end
 		end)
@@ -279,9 +300,12 @@ local function OpenPopUp(ChestEntry)
 				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 3)
 				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
 				if Result and Result.Success then
+					PlayGuiSound(SFX_CHEST_BUY)
 					task.spawn(function()
 						PlayerDataController.RefreshData()
 					end)
+				else
+					PlayGuiSound(SFX_BUY_FAIL)
 				end
 			end
 		end)
@@ -291,6 +315,7 @@ local function OpenPopUp(ChestEntry)
 	-- Kết nối CloseButton của PopUp
 	if PopUpClose then
 		local Conn = PopUpClose.MouseButton1Click:Connect(function()
+			PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
 			CleanPopUp()
 		end)
 		table.insert(_popupConnections, Conn)
@@ -405,9 +430,10 @@ function ShopController:Init()
 	Shop.Visible = false
 	if ChestPopUp then ChestPopUp.Visible = false end
 
-	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ───────────────────
+	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ──────────────────────────
 	if ShopClose then
 		ShopClose.MouseButton1Click:Connect(function()
+			PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
 			ShopController.SetVisible(false)
 		end)
 	end
@@ -416,6 +442,7 @@ function ShopController:Init()
 	if IciclesTab then
 		IciclesTab.MouseButton1Click:Connect(function()
 			if _currentTab == "Icicle" then return end
+			PlayGuiSound(SFX_BUTTON_CLICK)
 			_currentTab = "Icicle"
 			CleanPopUp()
 			UpdateTabHighlight("Icicle")
@@ -426,6 +453,7 @@ function ShopController:Init()
 	if BlocksTab then
 		BlocksTab.MouseButton1Click:Connect(function()
 			if _currentTab == "Block" then return end
+			PlayGuiSound(SFX_BUTTON_CLICK)
 			_currentTab = "Block"
 			CleanPopUp()
 			UpdateTabHighlight("Block")

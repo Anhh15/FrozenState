@@ -113,6 +113,21 @@ local _lastIsFrozenState  = false
 -- HELPERS
 -- =========================================================
 
+-- SFX IDs
+local SFX_BUTTON_CLICK  = 7249903719
+local SFX_MOUSE_ENTER   = 137872392480008
+
+--- Phát âm thanh GUI bất đồng bộ (Sound object tự hủy sau khi phát xong)
+--- @param SoundId number
+local function PlayGuiSound(SoundId)
+	local S = Instance.new("Sound")
+	S.SoundId = "rbxassetid://" .. tostring(SoundId)
+	S.Volume = 1
+	S.Parent = PlayerGui
+	S:Play()
+	game:GetService("Debris"):AddItem(S, 3)
+end
+
 local function FormatTime(Seconds)
 	local M = math.floor(Seconds / 60)
 	local S = Seconds % 60
@@ -196,6 +211,24 @@ local GameStateController = {}
 function GameStateController:Init()
 	-- Ngăn GUI reset khi player chết (respawn)
 	GameStateGui.ResetOnSpawn = false
+
+	-- Bind SFX cho các Button con trong NavigationButton
+	-- Mỗi button con: MouseEnter → gui mouse enter | MouseButton1Click → gui button click
+	if NavGui then
+		local ButtonContainer = NavGui:FindFirstChild("Button")
+		if ButtonContainer then
+			for _, Child in ipairs(ButtonContainer:GetChildren()) do
+				if Child:IsA("GuiButton") then
+					Child.MouseEnter:Connect(function()
+						PlayGuiSound(SFX_MOUSE_ENTER)
+					end)
+					Child.MouseButton1Click:Connect(function()
+						PlayGuiSound(SFX_BUTTON_CLICK)
+					end)
+				end
+			end
+		end
+	end
 
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 

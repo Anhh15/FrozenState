@@ -43,6 +43,23 @@ local TWEEN_INFO_IN  = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDir
 local TWEEN_INFO_OUT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 -- =========================================================
+-- SFX
+-- =========================================================
+
+local SFX_BUTTON_CLICK       = 7249903719
+local SFX_CLOSE_BUTTON_CLICK = 103307955424380
+local SFX_QUEST_REWARD       = 116439187028468
+
+local function PlayGuiSound(SoundId)
+	local S = Instance.new("Sound")
+	S.SoundId = "rbxassetid://" .. tostring(SoundId)
+	S.Volume = 1
+	S.Parent = PlayerGui
+	S:Play()
+	game:GetService("Debris"):AddItem(S, 3)
+end
+
+-- =========================================================
 -- PRIVATE HELPERS
 -- =========================================================
 
@@ -222,6 +239,8 @@ local function RenderQuestList(QuestList)
 					)
 
 					if Result and Result.Success then
+						-- Phase 8.3: Phát QuestReward sfx khi claim thành công
+						PlayGuiSound(SFX_QUEST_REWARD)
 						-- Hiện thông báo phần thưởng
 						ShowRewardAnnouncement(Result.RewardType, Result.RewardAmount)
 
@@ -350,13 +369,18 @@ function QuestController:Init()
 	-- ── Kết nối sự kiện ──
 
 	-- CloseButton
-	_closeButton.MouseButton1Click:Connect(CloseQuest)
+	_closeButton.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+		CloseQuest()
+	end)
 
 	-- Tab buttons
 	_tabDaily.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_BUTTON_CLICK)
 		SwitchTab("Daily")
 	end)
 	_tabMilestone.MouseButton1Click:Connect(function()
+		PlayGuiSound(SFX_BUTTON_CLICK)
 		SwitchTab("Milestone")
 	end)
 
