@@ -25,8 +25,8 @@ local AudioConfig = {
 
 		-- Cửa sổ Hitbox active (giây) — phải khớp với giai đoạn 'vung' trong animation
 		-- HitStart: thời điểm bắt đầu đập xuống | HitEnd: thời điểm tay chạm đáy
-		HitStartTime   = 0.18,  -- Giây kể từ lúc Activated
-		HitEndTime     = 0.3,  -- Giây kể từ lúc Activated
+		HitStartTime   = 0.25,  -- Giây kể từ lúc Activated
+		HitEndTime     = 0.33,  -- Giây kể từ lúc Activated
 
 		FreezeAudio    = 92048469072346,   -- Âm thanh khi đóng băng ai đó
 		ThawAudio      = 138690892117059,  -- Âm thanh khi giải cứu ai đó

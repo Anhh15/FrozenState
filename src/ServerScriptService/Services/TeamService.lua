@@ -37,6 +37,22 @@ function TeamService.BroadcastTeamAssignment()
 	print("[TeamService] Đã broadcast team assignment.")
 end
 
+--- Fire SetTeamAssignment chỉ đến một client cụ thể (dùng khi player join muộn giữa trận)
+--- @param TargetPlayer Player
+function TeamService.BroadcastTeamAssignmentTo(TargetPlayer)
+	local Teams = {}
+
+	for _, Player in ipairs(Players:GetPlayers()) do
+		local Team = SessionService.GetTeam(Player)
+		if Team then
+			Teams[tostring(Player.UserId)] = Team
+		end
+	end
+
+	SetTeamAssignmentEvent:FireClient(TargetPlayer, Teams)
+	print(("[TeamService] Đã gửi team assignment riêng cho %s."):format(TargetPlayer.Name))
+end
+
 --- Kích hoạt hoặc hủy chế độ AlwaysOnTop cho highlight (FrozenState)
 --- @param IsActive boolean
 function TeamService.SetFrozenStateHighlights(IsActive)

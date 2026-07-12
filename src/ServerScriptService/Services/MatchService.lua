@@ -457,12 +457,16 @@ function MatchService:Init()
 	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
 
 	-- Khi player mới join giữa trận InGame:
-	-- Gửi ngay danh sách Spectate để client có targetList sẵn sàng
+	-- Gửi danh sách Spectate để client có targetList sẵn sàng
+	-- Gửi thêm SetTeamAssignment để PlayerStatusController hiển thị avatar người chơi trong trận
 	Players.PlayerAdded:Connect(function(NewPlayer)
 		task.wait(2)  -- Chờ client load xong RemoteDefinitions
 		if _currentPhase == "InGame" and SessionService.IsMatchActive() then
 			local NormalPlayers = SessionService.GetAllNormalPlayers()
 			UpdateSpectateListEvent:FireClient(NewPlayer, NormalPlayers)
+
+			-- Fire SetTeamAssignment riêng cho người mới join để PlayerStatus hiển thị đúng
+			TeamService.BroadcastTeamAssignmentTo(NewPlayer)
 		end
 	end)
 

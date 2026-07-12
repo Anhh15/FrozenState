@@ -37,6 +37,7 @@ local OnToolHitEvent
 local UpdateSpectateListEvent
 local PlayFreezeSFXEvent
 local PlayThawSFXEvent
+local NotifyAccoladeEvent
 
 -- =========================================================
 -- PRIVATE: IceBlock
@@ -178,10 +179,14 @@ local function RewardAndSync(Player, Amount)
 end
 
 --- Broadcast trạng thái player xuống tất cả client
+--- Payload mở rộng: kèm Freezes/Thaws để ScoreBoardController cập nhật thống kê thời gian thực
 local function BroadcastPlayerState(Player)
+	local Stats = SessionService.GetStats(Player) or {}
 	UpdatePlayerStateEvent:FireAllClients({
 		PlayerId = Player.UserId,
 		State    = SessionService.GetState(Player),
+		Freezes  = Stats.Freezes or 0,
+		Thaws    = Stats.Thaws   or 0,
 	})
 end
 
@@ -252,6 +257,8 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	SessionService.IncrementStat(Attacker, "Freezes")
 	DataService.IncrementStat(Attacker, "TotalFreezes")
 	SessionService.IncrementFreezeStreak(Attacker)
+	-- Broadcast state mới của Attacker để client cập nhật Freezes count trên ScoreBoard
+	BroadcastPlayerState(Attacker)
 
 	-- Thưởng cơ bản
 	RewardAndSync(Attacker, GameConfig.Economy.RewardPerFreeze)
@@ -264,6 +271,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		DataService.IncrementStat(Attacker, "TotalFreezingSpree")
 		RewardAndSync(Attacker, GameConfig.Economy.RewardPerFreezingSpree)
 		SessionService.ResetFreezeStreak(Attacker)
+		NotifyAccoladeEvent:FireClient(Attacker, { Type = "FreezingSpree" })
 		print(("[FreezeService] ❄ %s đạt Freezing Spree!"):format(Attacker.Name))
 	end
 
@@ -273,6 +281,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		SessionService.SetStat(Attacker, "FirstBlood", true)
 		DataService.IncrementStat(Attacker, "TotalFirstBlood")
 		RewardAndSync(Attacker, GameConfig.Economy.RewardFirstBlood)
+		NotifyAccoladeEvent:FireClient(Attacker, { Type = "FirstBlood" })
 		print(("[FreezeService] 🩸 %s đạt First Blood!"):format(Attacker.Name))
 	end
 
@@ -335,6 +344,8 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	SessionService.IncrementStat(Rescuer, "Thaws")
 	DataService.IncrementStat(Rescuer, "TotalThaws")
 	SessionService.IncrementThawStreak(Rescuer)
+	-- Broadcast state mới của Rescuer để client cập nhật Thaws count trên ScoreBoard
+	BroadcastPlayerState(Rescuer)
 
 	-- Thưởng
 	RewardAndSync(Rescuer, GameConfig.Economy.RewardPerThaw)
@@ -346,6 +357,7 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 		DataService.IncrementStat(Rescuer, "TotalThawingSpree")
 		RewardAndSync(Rescuer, GameConfig.Economy.RewardPerThawingSpree)
 		SessionService.ResetThawStreak(Rescuer)
+		NotifyAccoladeEvent:FireClient(Rescuer, { Type = "ThawingSpree" })
 		print(("[FreezeService] 💧 %s đạt Thawing Spree!"):format(Rescuer.Name))
 	end
 
@@ -439,6 +451,7 @@ function FreezeService:Init()
 	UpdateSpectateListEvent  = RemoteDefinitions.GetEvent("UpdateSpectateList")
 	PlayFreezeSFXEvent       = RemoteDefinitions.GetEvent("PlayFreezeSFX")
 	PlayThawSFXEvent         = RemoteDefinitions.GetEvent("PlayThawSFX")
+	NotifyAccoladeEvent      = RemoteDefinitions.GetEvent("NotifyAccolade")
 
 	OnToolHitEvent.OnServerEvent:Connect(HandleToolHit)
 

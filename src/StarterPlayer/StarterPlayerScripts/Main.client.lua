@@ -23,6 +23,9 @@ local SpectateController       = require(Controllers:WaitForChild("SpectateContr
 local QuestController          = require(Controllers:WaitForChild("QuestController"))
 local MusicController          = require(Controllers:WaitForChild("MusicController"))
 local SoundController          = require(Controllers:WaitForChild("SoundController"))
+local PlayerStatusController   = require(Controllers:WaitForChild("PlayerStatusController"))
+local ScoreBoardController     = require(Controllers:WaitForChild("ScoreBoardController"))
+local AccoladesController      = require(Controllers:WaitForChild("AccoladesController"))
 
 -- Bước 3: Init tất cả controller
 -- (Init theo thứ tự — GameState trước để UI sẵn sàng ngay khi data đến)
@@ -39,6 +42,9 @@ SpectateController:Init()
 QuestController:Init()
 MusicController:Init()
 SoundController:Init()
+PlayerStatusController:Init()
+ScoreBoardController:Init()
+AccoladesController:Init()
 
 print("[Client] FrozenState đã sẵn sàng.")
 

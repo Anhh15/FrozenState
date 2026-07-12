@@ -49,6 +49,10 @@ local REMOTE_EVENTS = {
 
 	-- Server → Victim Client: Báo được giải cứu → dừng pose animation (Phase 8.2)
 	"PlayThawSFX",
+
+	-- Server → Attacker/Rescuer Client: Thông báo đạt danh hiệu (FirstBlood, FreezingSpree, ThawingSpree)
+	-- Payload: { Type = "FirstBlood" | "FreezingSpree" | "ThawingSpree" }
+	"NotifyAccolade",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)
