@@ -77,21 +77,6 @@ local function CreatePlayerCard(UserId, DisplayName, IsAlly)
 		NameText.Text = DisplayName
 	end
 
-	-- Avatar thumbnail bất đồng bộ
-	-- GetUserThumbnailAsync trả về (url, isReady)
-	local AvatarImg = Clone:FindFirstChild("AvatarThumbnail")
-	if AvatarImg then
-		task.spawn(function()
-			local Url, IsReady
-			local Ok = pcall(function()
-				Url, IsReady = Players:GetUserThumbnailAsync(UserId, THUMBNAIL_TYPE, THUMBNAIL_SIZE)
-			end)
-			if Ok and Clone.Parent then
-				AvatarImg.Image = Url
-			end
-		end)
-	end
-
 	-- Khởi tạo stats về 0
 	local FreezesText = Clone:FindFirstChild("FreezesText")
 	local ThawsText   = Clone:FindFirstChild("ThawsText")
@@ -102,7 +87,7 @@ local function CreatePlayerCard(UserId, DisplayName, IsAlly)
 	local FrozenStatus = Clone:FindFirstChild("FrozenStatus")
 	if FrozenStatus then FrozenStatus.Visible = false end
 
-	-- Clone vào đúng frame
+	-- Clone vào đúng frame trước để tránh race condition
 	if IsAlly then
 		Clone.Parent = _AllyStatsFrame
 	else
@@ -110,6 +95,26 @@ local function CreatePlayerCard(UserId, DisplayName, IsAlly)
 	end
 
 	_PlayerCards[UserId] = Clone
+
+	-- Avatar thumbnail bất đồng bộ
+	-- GetUserThumbnailAsync trả về (url, isReady)
+	local AvatarImg = Clone:FindFirstChild("AvatarThumbnail")
+	if AvatarImg then
+		task.spawn(function()
+			local TargetUserId = UserId
+			if TargetUserId <= 0 then
+				TargetUserId = 1 -- Sử dụng ID mẫu để test được trong Studio
+			end
+
+			local Url, IsReady
+			local Ok = pcall(function()
+				Url, IsReady = Players:GetUserThumbnailAsync(TargetUserId, THUMBNAIL_TYPE, THUMBNAIL_SIZE)
+			end)
+			if Ok and Clone.Parent then
+				AvatarImg.Image = Url
+			end
+		end)
+	end
 end
 
 --- Xử lý khi nhận SetTeamAssignment: build board mới

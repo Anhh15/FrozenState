@@ -1,6 +1,6 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 06-07-2026
+> Cập nhật lần cuối: 19-07-2026
 
 ---
 
@@ -217,4 +217,12 @@
 - **Nguyên nhân:** Server chỉ broadcast danh sách người chơi thi đấu (`UpdateSpectateList`) tại thời điểm bắt đầu phase `InGame` hoặc khi có thay đổi trạng thái đóng băng/rã đông. Người chơi kết nối sau thời điểm đó sẽ không nhận được dữ liệu ban đầu.
 - **Fix:** Trong `MatchService:Init()`, bổ sung lắng nghe sự kiện `Players.PlayerAdded`. Khi có người chơi mới tham gia và game đang trong phase `InGame`, Server đợi 2 giây (để client load xong remote) rồi gửi riêng danh sách người chơi Normal hiện tại cho client đó qua `FireClient`.
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Không hiển thị AvatarThumbnail trên PlayerStatus và ScoreBoard khi clone
+- **Ngày:** 19-07-2026
+- **Vấn đề:** Ảnh đại diện người chơi (`AvatarThumbnail` 2D) không hiển thị (chỉ hiện nền background) sau khi clone các frame người chơi.
+- **Nguyên nhân:** (1) Khối xử lý `task.spawn` tải ảnh bất đồng bộ qua `GetUserThumbnailAsync` được gọi trước khi gán `Clone.Parent`. Khi API hoàn thành quá nhanh hoặc đồng bộ, `Clone.Parent` lúc check vẫn là `nil`, khiến logic gán `.Image` bị bỏ qua. (2) `UserId` âm trong Studio test gây lỗi API tải ảnh.
+- **Fix:** Di chuyển logic gán `Clone.Parent` lên trước khi gọi `task.spawn`. Đồng thời, nếu `UserId <= 0`, đổi thành `1` làm fallback để test được trong Studio.
+- **File liên quan:** [PlayerStatusController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [ScoreBoardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua)
+
 

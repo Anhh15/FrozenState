@@ -65,19 +65,7 @@ local function SpawnAvatarCard(UserId, IsAlly)
 	-- Đặt màu nền theo đội
 	Clone.BackgroundColor3 = IsAlly and ALLY_COLOR or ENEMY_COLOR
 
-	-- Load thumbnail bất đồng bộ để không block UI
-	-- GetUserThumbnailAsync trả về (url, isReady) — retry nếu isReady = false
-	task.spawn(function()
-		local Url, IsReady
-		local Ok = pcall(function()
-			Url, IsReady = Players:GetUserThumbnailAsync(UserId, THUMBNAIL_TYPE, THUMBNAIL_SIZE)
-		end)
-		if Ok and Clone.Parent then
-			Clone.Image = Url
-		end
-	end)
-
-	-- Clone vào đúng frame đội
+	-- Clone vào đúng frame đội trước để tránh race condition khi check Clone.Parent
 	if IsAlly then
 		Clone.Parent = _AllyTeamFrame
 		table.insert(_AllyClones, Clone)
@@ -85,6 +73,23 @@ local function SpawnAvatarCard(UserId, IsAlly)
 		Clone.Parent = _EnemyTeamFrame
 		table.insert(_EnemyClones, Clone)
 	end
+
+	-- Load thumbnail bất đồng bộ để không block UI
+	-- GetUserThumbnailAsync trả về (url, isReady) — retry nếu isReady = false
+	task.spawn(function()
+		local TargetUserId = UserId
+		if TargetUserId <= 0 then
+			TargetUserId = 1 -- Sử dụng ID mẫu để test được trong Studio
+		end
+
+		local Url, IsReady
+		local Ok = pcall(function()
+			Url, IsReady = Players:GetUserThumbnailAsync(TargetUserId, THUMBNAIL_TYPE, THUMBNAIL_SIZE)
+		end)
+		if Ok and Clone.Parent then
+			Clone.Image = Url
+		end
+	end)
 end
 
 --- Xử lý khi nhận được bảng phân đội từ server
