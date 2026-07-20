@@ -53,6 +53,13 @@ local GameConfig = {
 	GUI = {
 		ViewportCameraDistance = 5,  -- Khoảng cách camera đến đầu nhân vật trong ViewportFrame (studs)
 		                               -- Tăng để zoom ra, giảm để zoom vào
+
+		-- LoadingScreen transition timing (đơn vị: giây)
+		LoadingScreen = {
+			FadeInDuration  = 1,   -- Thời gian fade-in (transparent → opaque)
+			HoldDuration    = 1,   -- Thời gian giữ nguyên trước khi fade-out
+			FadeOutDuration = 1,   -- Thời gian fade-out (opaque → transparent)
+		},
 	},
 
 	-- =========================================================

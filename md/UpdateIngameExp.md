@@ -53,6 +53,19 @@ Khi xuất hiện sẽ hiển thị kèm audio `96102213526905` với hiệu ứ
 
 Announcement sẽ biến mất sau 3 giây tính cả animation
 
-
 ## Lưu ý:
 Các spectator sẽ không hiển thị các những gì bên trong InGameGui trừ những ngoại lệ tôi đề cập
+# Phase 2: Tinh chỉnh
+> Mục tiêu: tăng trải nghiệm khi vào vòng đấu
+## 2.1 LoadingScreen
+### Cấu trúc:
+Được đặt tại StarterGui/InGameGui/LoadingScreen (Frame), bên trong hoàn toàn không chứa gì
+### Chức năng:
+Khi chuyển sang ==Setup== state lập tức cho visible của = true LoadingScreen với background transparent = 1 và chuyển dần sang  0 trong 1 giây (gọi là fade-in) và giữ cho đến khi kết thúc state và vào ==Ready== state được 1 giây để làm điểm tĩnh rồi khi hết thời gian tĩnh thì tăng dần lại background transparent của LoadingScreen từ 0 lên 1 rồi visible = false (fade-out).
+Toàn bộ animation trên (trừ fade-in) sẽ diễn ra trong ==Ready== state. Tuy nhiên, để tránh trục trặc như khi ==Ready== state đã xong mà animation chưa xong thì cần thêm điều kiện như sau: nếu gamestate chuyển sang state tiếp theo (==InGame==) khi animation vẫn còn đang diễn ra mà chưa kết thúc thì lập tức cho ẩn LoadingScreen mặc kệ animation để player có thể chơi.
+## Chỉnh sửa
+Setup sẽ kết thúc khi và chỉ khi toàn bộ công việc của state đã hoàn thành như LoadRandomMap, AssignTeams,... và cả fade-in đã nói phía trên
+## 2.2 Chỉnh sửa
+không cấp icicle cho dến khi vào phase InGame thay vì Ready
+Khi Không thuộc nhóm phase InGame (Ready, InGame/FrozenState, GameOver) thi ẩn StarterGui/InGameGui
+Khi người chơi đang ở trạng thái frozen thì highlight nhân vật chuyển sang mode AlwaysOnTop, khi không còn ở trạng thái frozen thì quay trở lại bình thường tùy thuộc vào Phase (InGame/FrozenState)

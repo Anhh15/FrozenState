@@ -1,6 +1,6 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 19-07-2026
+> Cập nhật lần cuối: 20-07-2026
 
 ---
 
@@ -80,6 +80,10 @@
 - **Ngày:** 06-07-2026
 - **Chi tiết:** Mỗi controller tự quản lý âm thanh GUI riêng thay vì gộp vào một module trung tâm. Dùng hàm helper cục bộ `PlayGuiSound(SoundId)` trong mỗi controller: tạo `Sound` object, gán `rbxassetid://`, parent vào `PlayerGui`, gọi `:Play()` rồi tự hủy qua `Debris:AddItem(S, 3)`. Quy tắc áp dụng: `CloseButton` → close sfx; tab/equip/nav buttons → button click sfx; `Buy1/Buy3` → ChestBuy (success) hoặc buy fail (fail) tùy `Result.Success`; `ClaimButton` (Quest) → QuestReward sfx; `ShowPlayerStats` → overall sfx. NavigationButton bind cả `MouseEnter` (hover) lẫn `MouseButton1Click`. Ưu điểm: độc lập, không tạo dependency mới, dễ mở rộng per-controller trong tương lai.
 - **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
+### Đồng bộ Loading Screen bằng trì hoãn Server (Server Delay Sync)
+- **Ngày:** 20-07-2026
+- **Chi tiết:** Để che giấu quá trình Setup (tải map, chia đội) khỏi người chơi, client khởi chạy animation fade-in của Loading Screen. Thay vì tạo RemoteEvent để client phản hồi khi fade-in hoàn tất, server thực hiện `task.wait(FadeInDuration)` ngay sau khi broadcast phase "Setup". Điều này giúp tinh giản network traffic và giảm độ phức tạp của logic đồng bộ mà vẫn đảm bảo Setup chỉ kết thúc sau khi màn hình đen đã che phủ hoàn toàn.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
 
 ---
 
@@ -224,5 +228,13 @@
 - **Nguyên nhân:** (1) Khối xử lý `task.spawn` tải ảnh bất đồng bộ qua `GetUserThumbnailAsync` được gọi trước khi gán `Clone.Parent`. Khi API hoàn thành quá nhanh hoặc đồng bộ, `Clone.Parent` lúc check vẫn là `nil`, khiến logic gán `.Image` bị bỏ qua. (2) `UserId` âm trong Studio test gây lỗi API tải ảnh.
 - **Fix:** Di chuyển logic gán `Clone.Parent` lên trước khi gọi `task.spawn`. Đồng thời, nếu `UserId <= 0`, đổi thành `1` làm fallback để test được trong Studio.
 - **File liên quan:** [PlayerStatusController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [ScoreBoardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua)
+
+### Lỗi ký tự BOM (U+FEFF) khi ghi file bằng PowerShell khiến Luau crash
+- **Ngày:** 20-07-2026
+- **Vấn đề:** Trình biên dịch Luau của Roblox báo lỗi `Expected identifier when parsing expression, got Unicode character U+feff` ở dòng 1 và module không thể load.
+- **Nguyên nhân:** Lệnh PowerShell `Set-Content -Encoding UTF8` ghi tệp tin đính kèm mã Byte Order Mark (BOM - `U+FEFF`) ở đầu tệp tin, vốn không được Luau hỗ trợ.
+- **Fix:** Ghi đè tệp tin sử dụng các thư viện chuẩn của hệ thống hoặc trình soạn thảo hỗ trợ UTF-8 Standard (No BOM).
+- **File liên quan:** [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
+
 
 
