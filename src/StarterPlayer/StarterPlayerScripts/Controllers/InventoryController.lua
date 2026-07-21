@@ -62,6 +62,9 @@ local EquipButton      = ItemSelection and ItemSelection:FindFirstChild("EquipBu
 -- NavigationButton mở Inventory
 local InventoryNavButton = NavGui and NavGui:FindFirstChild("Inventory", true)
 
+-- Frame Button bên trong NavigationButton (ẩn khi Inventory mở, Stats vẫn hiện)
+local NavButton = NavGui and NavGui:FindFirstChild("Button")
+
 -- =========================================================
 -- STATE
 -- =========================================================
@@ -90,6 +93,28 @@ end
 -- =========================================================
 -- HELPERS
 -- =========================================================
+
+--- Lazy-require SpectateController để tránh circular dependency
+local _spectateController = nil
+local function GetSpectateController()
+	if not _spectateController then
+		local Module = script.Parent:FindFirstChild("SpectateController")
+		if Module then
+			_spectateController = require(Module)
+		end
+	end
+	return _spectateController
+end
+
+--- Ẩn tất cả Frame con trong Menu ngoại trừ Inventory
+local function HideAllMenuFrames()
+	if not MenuGui then return end
+	for _, Child in ipairs(MenuGui:GetChildren()) do
+		if Child:IsA("Frame") and Child ~= Inventory then
+			Child.Visible = false
+		end
+	end
+end
 
 --- Dọn dẹp toàn bộ nội dung ViewportFrame để tránh memory leak
 --- Ủy quyền cho ViewportManager để đảm bảo dọn đúng cả Camera lẫn Model
@@ -360,6 +385,11 @@ end
 
 local function OpenInventory()
 	if not Inventory then return end
+
+	-- Ẩn các Frame Menu anh em và NavButton trước khi mở Inventory
+	HideAllMenuFrames()
+	if NavButton then NavButton.Visible = false end
+
 	Inventory.Visible = true
 	SwitchTab(_currentTab)
 
@@ -377,6 +407,12 @@ local function CloseInventory()
 	Inventory.Visible = false
 	ClearItemList()
 	CleanViewport(SelectionViewport)
+	-- Khôi phục NavButton trừ khi đang spectate
+	if NavButton then
+		local SpecCtrl = GetSpectateController()
+		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
+		NavButton.Visible = not IsSpectating
+	end
 end
 
 -- =========================================================

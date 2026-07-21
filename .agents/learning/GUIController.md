@@ -11,6 +11,11 @@
 - **Chi tiết:** Các ScreenGui được chia thành 2 nhóm: "Lobby GUI" (Menu, NavigationButton) và "Gameplay GUI" (GameStatistic). Logic hiển thị Lobby GUI sử dụng 2 tầng kiểm tra: (1) **Tầng Team**: `LocalPlayer:GetAttribute("Team")` — nếu `nil` (Spectator/late-joiner) thì luôn hiện GUI bất kể phase; nếu có team mới vào tầng 2. (2) **Tầng Phase**: bảng `GAMEPLAY_PHASES = { Ready, InGame, GameOver }` tra cứu nhanh để ẩn GUI khi đang trong trận. Cache `_lastPhase / _lastTimeRemaining / _lastIsFrozenState` được lưu mỗi lần `UpdateDisplay` để `GetAttributeChangedSignal("Team")` có thể re-evaluate đúng lúc Attribute thay đổi. Server đồng bộ team qua `Player:SetAttribute("Team", ...)` thay vì Remote Event riêng.
 - **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/SessionService.lua)
 
+### Quản lý ẩn/hiện đồng thời các Frame Menu và NavigationButton
+- **Ngày:** 21-07-2026
+- **Chi tiết:** Khi mở bất kỳ Frame Menu nào (Shop, Inventory, Profile, Quest), tất cả các Frame Menu khác sẽ tự động bị ẩn để tránh chồng lấp UI. Đồng thời, Frame `Button` bên trong `NavigationButton` ScreenGui cũng sẽ bị ẩn (`Button.Visible = false`) để tránh việc người chơi bấm mở các menu khác cùng lúc. Frame `Stats` trong `NavigationButton` vẫn tiếp tục được hiển thị. Khi đóng các Frame Menu, Frame `Button` của NavigationButton sẽ tự động hiển thị trở lại (trừ khi người chơi đang ở chế độ Spectate).
+- **File liên quan:** [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
 ### Quản lý hiển thị InGameGui theo nhóm phase hỗ trợ Loading Screen
 - **Ngày:** 21-07-2026
 - **Chi tiết:** `InGameGui` chứa cả màn hình chờ chuyển cảnh `LoadingScreen` và các gameplay HUD chơi game (`PlayerStatus`, `ScoreBoardButton`). Để che mắt người chơi khi load map mới, `InGameGui.Enabled` được giữ ở trạng thái `true` trong phase `Setup`, `Ready`, `InGame` và `GameOver` (chỉ ẩn hoàn toàn khi ở `Intermission`). Tuy nhiên, để tránh hiển thị sớm HUD chơi game, các sub-HUD này được set `.Visible = false` thủ công khi ở phase `Setup` và `Intermission`, chỉ bật lên từ phase `Ready`.
@@ -85,6 +90,7 @@
 - **Ngày:** 06-07-2026
 - **Chi tiết:** Mỗi controller tự quản lý âm thanh GUI riêng thay vì gộp vào một module trung tâm. Dùng hàm helper cục bộ `PlayGuiSound(SoundId)` trong mỗi controller: tạo `Sound` object, gán `rbxassetid://`, parent vào `PlayerGui`, gọi `:Play()` rồi tự hủy qua `Debris:AddItem(S, 3)`. Quy tắc áp dụng: `CloseButton` → close sfx; tab/equip/nav buttons → button click sfx; `Buy1/Buy3` → ChestBuy (success) hoặc buy fail (fail) tùy `Result.Success`; `ClaimButton` (Quest) → QuestReward sfx; `ShowPlayerStats` → overall sfx. NavigationButton bind cả `MouseEnter` (hover) lẫn `MouseButton1Click`. Ưu điểm: độc lập, không tạo dependency mới, dễ mở rộng per-controller trong tương lai.
 - **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
+
 ### Đồng bộ Loading Screen bằng trì hoãn Server (Server Delay Sync)
 - **Ngày:** 20-07-2026
 - **Chi tiết:** Để che giấu quá trình Setup (tải map, chia đội) khỏi người chơi, client khởi chạy animation fade-in của Loading Screen. Thay vì tạo RemoteEvent để client phản hồi khi fade-in hoàn tất, server thực hiện `task.wait(FadeInDuration)` ngay sau khi broadcast phase "Setup". Điều này giúp tinh giản network traffic và giảm độ phức tạp của logic đồng bộ mà vẫn đảm bảo Setup chỉ kết thúc sau khi màn hình đen đã che phủ hoàn toàn.
@@ -230,7 +236,7 @@
 ### Không hiển thị AvatarThumbnail trên PlayerStatus và ScoreBoard khi clone
 - **Ngày:** 19-07-2026
 - **Vấn đề:** Ảnh đại diện người chơi (`AvatarThumbnail` 2D) không hiển thị (chỉ hiện nền background) sau khi clone các frame người chơi.
-- **Nguyên nhân:** (1) Khối xử lý `task.spawn` tải ảnh bất đồng bộ qua `GetUserThumbnailAsync` được gọi trước khi gán `Clone.Parent`. Khi API hoàn thành quá nhanh hoặc đồng bộ, `Clone.Parent` lúc check vẫn là `nil`, khiến logic gán `.Image` bị bỏ qua. (2) `UserId` âm trong Studio test gây lỗi API tải ảnh.
+- **Nguyên nhân:** (1) Khối xử lý `task.spawn` tải ảnh bất đồng bộ qua `GetUserThumbnailAsync` được gọi trước khi gán `Clone.Parent`. Khi API hoàn thành quá nhanh hoặc đồng bộ, `Clone.Parent` lúc check vẫn là `nil`, khiến logic gán `.Image` bị bỏ quan. (2) `UserId` âm trong Studio test gây lỗi API tải ảnh.
 - **Fix:** Di chuyển logic gán `Clone.Parent` lên trước khi gọi `task.spawn`. Đồng thời, nếu `UserId <= 0`, đổi thành `1` làm fallback để test được trong Studio.
 - **File liên quan:** [PlayerStatusController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [ScoreBoardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua)
 
@@ -241,5 +247,9 @@
 - **Fix:** Ghi đè tệp tin sử dụng các thư viện chuẩn của hệ thống hoặc trình soạn thảo hỗ trợ UTF-8 Standard (No BOM).
 - **File liên quan:** [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
 
-
-
+### Lỗi crash QuestController do thiếu hàm require SpectateController
+- **Ngày:** 21-07-2026
+- **Vấn đề:** Khi người chơi đóng Quest GUI, NavigationButton/Button không hiển thị lại và xuất hiện lỗi crash ở client: `QuestController:312: attempt to call a nil value`.
+- **Nguyên nhân:** Hàm `CloseQuest` thực hiện kiểm tra `IsSpectating` bằng cách gọi `GetSpectateController()`, tuy nhiên hàm lazy-require này chưa được định nghĩa trong script. Đồng thời việc gán `_navButton` sử dụng `FindFirstChild` có nguy cơ trả về `nil` do UI chưa tải kịp.
+- **Fix:** Định nghĩa hàm `GetSpectateController()` lazy-require trong QuestController, đồng thời đổi việc lấy `_navButton` thành `WaitForChild("Button")`.
+- **File liên quan:** [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)

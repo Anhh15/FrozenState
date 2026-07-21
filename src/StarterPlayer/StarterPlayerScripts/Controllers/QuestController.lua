@@ -27,6 +27,7 @@ local _rewardAmount      = nil  -- RewardAnnouncement/Amount (TextLabel)
 local _questTemplates    = nil  -- QuestTemplates (Folder)
 local _menuFrame         = nil  -- StarterGui/Menu (Frame — parent của Quest)
 local _navGui            = nil  -- NavigationButton ScreenGui
+local _navButton         = nil  -- NavigationButton/Button (Frame — ẩn khi Quest mở)
 
 -- Tab đang active: "Daily" hoặc "Milestone"
 local _currentTab = "Daily"
@@ -79,6 +80,18 @@ local function GetGameStateController()
 		_gameStateController = require(script.Parent.GameStateController)
 	end
 	return _gameStateController
+end
+
+--- Lazy-require SpectateController để tránh circular dependency
+local _spectateController = nil
+local function GetSpectateController()
+	if not _spectateController then
+		local Module = script.Parent:FindFirstChild("SpectateController")
+		if Module then
+			_spectateController = require(Module)
+		end
+	end
+	return _spectateController
 end
 
 --- Ẩn tất cả Frame con trong Menu (trừ frame đang mở)
@@ -306,17 +319,21 @@ local QuestController = {}
 local function CloseQuest()
 	if not _questGui then return end
 	_questGui.Visible = false
+	-- Khôi phục NavButton trừ khi đang spectate
+	if _navButton then
+		local SpecCtrl = GetSpectateController()
+		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
+		_navButton.Visible = not IsSpectating
+	end
 end
 
 local function OpenQuest()
 	if not _questGui then return end
 
-	-- Ẩn các frame khác trong Menu
+	-- Ẩn các frame khác trong Menu và NavButton
 	HideAllMenuFrames(_questGui)
+	if _navButton then _navButton.Visible = false end
 	_questGui.Visible = true
-
-	-- Ẩn NavigationButton khi quest mở (không cần ẩn, quest nằm trong Menu)
-	-- Note: Quest là frame trong Menu, không phải overlay full-screen
 
 	-- Reset tab về Daily khi mở mới
 	_currentTab = "Daily"
@@ -364,7 +381,8 @@ function QuestController:Init()
 	_rewardAnnouncement.Visible = false
 
 	-- NavigationButton
-	_navGui = PlayerGui:WaitForChild("NavigationButton")
+	_navGui    = PlayerGui:WaitForChild("NavigationButton")
+	_navButton = _navGui:WaitForChild("Button")
 
 	-- ── Kết nối sự kiện ──
 

@@ -74,6 +74,28 @@ local function PlayGuiSound(SoundId)
 	game:GetService("Debris"):AddItem(S, 3)
 end
 
+--- Lazy-require SpectateController để tránh circular dependency
+local _spectateController = nil
+local function GetSpectateController()
+	if not _spectateController then
+		local Module = script.Parent:FindFirstChild("SpectateController")
+		if Module then
+			_spectateController = require(Module)
+		end
+	end
+	return _spectateController
+end
+
+--- Ẩn tất cả Frame con trong Menu ngoại trừ Profile
+local function HideAllMenuFrames()
+	if not MenuGui then return end
+	for _, Child in ipairs(MenuGui:GetChildren()) do
+		if Child:IsA("Frame") and Child ~= Profile then
+			Child.Visible = false
+		end
+	end
+end
+
 local function GetStatValue(StatName)
 	if not StatsFrame then return nil end
 	local Frame = StatsFrame:FindFirstChild(StatName)
@@ -87,6 +109,9 @@ local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
 
 -- NavigationButton mở Profile
 local ProfileNavButton = NavGui and NavGui:FindFirstChild("Profile", true)
+
+-- Frame Button bên trong NavigationButton (ẩn khi Profile mở, Stats vẫn hiện)
+local NavButton = NavGui and NavGui:FindFirstChild("Button")
 
 -- =========================================================
 -- STATE
@@ -342,6 +367,11 @@ end
 
 local function OpenProfile()
 	if not Profile then return end
+
+	-- Ẩn các Frame Menu anh em và NavButton trước khi mở Profile
+	HideAllMenuFrames()
+	if NavButton then NavButton.Visible = false end
+
 	Profile.Visible = true
 
 	-- Hiển thị dữ liệu cũ trước từ cache để tránh giao diện trống/trễ
@@ -363,6 +393,12 @@ local function CloseProfile()
 	Profile.Visible = false
 	ClearItemList()
 	CleanViewport(PlayerViewportFrame)
+	-- Khôi phục NavButton trừ khi đang spectate
+	if NavButton then
+		local SpecCtrl = GetSpectateController()
+		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
+		NavButton.Visible = not IsSpectating
+	end
 end
 
 -- =========================================================

@@ -67,6 +67,9 @@ local ItemInfoScroll  = ItemInfoFrame and ItemInfoFrame:FindFirstChildOfClass("S
 -- Nút mở Shop trong NavigationButton
 local ShopNavButton = NavGui and NavGui:FindFirstChild("Shop", true)
 
+-- Frame Button bên trong NavigationButton (ẩn khi Shop mở, Stats vẫn hiện)
+local NavButton = NavGui and NavGui:FindFirstChild("Button")
+
 -- Assets dùng chung
 local Assets       = ReplicatedStorage:FindFirstChild("Assets")
 local GuiFolder    = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
@@ -105,6 +108,28 @@ end
 -- =========================================================
 -- HELPERS
 -- =========================================================
+
+--- Lazy-require SpectateController để tránh circular dependency
+local _spectateController = nil
+local function GetSpectateController()
+	if not _spectateController then
+		local Module = script.Parent:FindFirstChild("SpectateController")
+		if Module then
+			_spectateController = require(Module)
+		end
+	end
+	return _spectateController
+end
+
+--- Ẩn tất cả Frame con trong Menu ngoại trừ Shop
+local function HideAllMenuFrames()
+	if not MenuGui then return end
+	for _, Child in ipairs(MenuGui:GetChildren()) do
+		if Child:IsA("Frame") and Child ~= Shop then
+			Child.Visible = false
+		end
+	end
+end
 
 --- Dọn dẹp ViewportFrame tránh memory leak (cả Camera lẫn Model)
 --- Ủy quyền cho ViewportManager thay vì giữ lại Camera tĩnh cũ
@@ -409,10 +434,20 @@ local ShopController = {}
 --- @param Visible boolean
 function ShopController.SetVisible(Visible)
 	if not Shop then return end
-	Shop.Visible = Visible
-	if not Visible then
+	if Visible then
+		-- Ẩn các Frame Menu anh em và NavButton trước khi mở Shop
+		HideAllMenuFrames()
+		if NavButton then NavButton.Visible = false end
+	else
 		CleanPopUp()
+		-- Khôi phục NavButton trừ khi đang spectate
+		if NavButton then
+			local SpecCtrl = GetSpectateController()
+			local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
+			NavButton.Visible = not IsSpectating
+		end
 	end
+	Shop.Visible = Visible
 end
 
 function ShopController:Init()
