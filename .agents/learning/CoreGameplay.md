@@ -16,6 +16,11 @@
 - **Chi tiết:** Việc tạo Highlight instance trực tiếp từ Server gây tốn băng thông mạng và khó tùy chỉnh riêng biệt cho từng client (ví dụ: bản thân player không được thấy highlight của chính mình). Giải pháp là Server chỉ đồng bộ team và trạng thái qua RemoteEvent, Client tự nhận diện và quản lý vòng đời của Highlight instance cục bộ.
 - **File liên quan:** [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [TeamService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/TeamService.lua)
 
+### Highlight xuyên tường cho Player bị đóng băng (AlwaysOnTop)
+- **Ngày:** 21-07-2026
+- **Chi tiết:** Nhằm giúp định vị đồng minh để cứu và kẻ địch để canh gác, highlight nhân vật bị đóng băng được hiển thị xuyên vật thể. Client tự duy trì bảng cache trạng thái đóng băng (`_frozenPlayers`) thông qua RemoteEvent `UpdatePlayerState` có sẵn từ Server. Việc này giúp cô lập mã nguồn tại client và tối ưu cho trận đấu vòng khép kín. Trạng thái đóng băng cá nhân kết hợp logic với Game Phase (`_isFrozenState`) để cập nhật thuộc tính `DepthMode` (`AlwaysOnTop` khi bị đóng băng hoặc trong phase FrozenState, ngược lại quay về `Occluded`).
+- **File liên quan:** [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua)
+
 ### Cấp phát Tool động (Dynamic Tool Lifecycle)
 - **Ngày:** 21-07-2026
 - **Chi tiết:** Thay vì đặt Tool trong StarterPack, Tool được lưu ở ServerStorage và được IcicleService clone, hàn ghép skin động và đưa vào Backpack người chơi khi trận đấu chuyển sang phase **InGame** (thay vì Ready) để tránh việc người chơi trang bị và sử dụng công cụ trong thời gian chuẩn bị, sau đó thu hồi khi GameOver. Đồng thời, khi người chơi bị đóng băng (Freeze), tool sẽ bị tịch thu ngay lập tức và chỉ được trao trả lại sau khi được cứu (Thaw) nếu trận đấu vẫn đang diễn ra.
