@@ -244,23 +244,11 @@ end
 local function RunSetup()
 	_currentPhase = "Setup"
 
-	-- Báo client bắt đầu LoadingScreen fade-in
-	-- GameStateController vẫn hiện "INTERMISSION" vì PHASE_DISPLAY.Setup = "INTERMISSION"
-	-- LoadingScreenController sẽ nhận "Setup" và bắt đầu fade-in
-	BroadcastGameState("Setup", 0, false)
-
-	-- Đợi client fade-in xong rồi mới thực hiện các công việc setup
-	-- (Setup kết thúc khi và chỉ khi fade-in đã hoàn tất — theo spec Phase 2.1)
-	task.wait(GameConfig.GUI.LoadingScreen.FadeInDuration)
-
 	-- Reset session và flag
 	SessionService.ResetSession()
 	FreezeService.ResetRound()
 
 	-- Xóa bỏ dọn dẹp TempTopPlayers (chuyển sang AvatarCacheService)
-
-	-- Load map ngẫu nhiên
-	MapService.LoadRandomMap()
 
 	-- Phân đội và đặt state Normal
 	local ActivePlayers = Players:GetPlayers()
@@ -274,6 +262,18 @@ local function RunSetup()
 	TeamService.BroadcastTeamAssignment()
 
 	SessionService.SetMatchActive(true)
+
+	-- Báo client bắt đầu LoadingScreen fade-in
+	-- GameStateController vẫn hiện "INTERMISSION" vì PHASE_DISPLAY.Setup = "INTERMISSION"
+	-- LoadingScreenController sẽ nhận "Setup" và bắt đầu fade-in
+	BroadcastGameState("Setup", 0, false)
+
+	-- Load map ngẫu nhiên
+	MapService.LoadRandomMap()
+
+	-- Đợi client fade-in xong rồi mới thực hiện các công việc setup
+	-- (Setup kết thúc khi và chỉ khi fade-in đã hoàn tất — theo spec Phase 2.1)
+	task.wait(GameConfig.GUI.LoadingScreen.FadeInDuration)
 
 	task.wait(0.5)  -- buffer nhỏ để map load xong
 end

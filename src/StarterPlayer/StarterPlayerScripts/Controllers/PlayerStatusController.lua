@@ -97,7 +97,8 @@ end
 local function OnTeamAssigned(Teams)
 	ClearAvatars()
 
-	local MyTeam = LocalPlayer:GetAttribute("Team")
+	local MyUserIdStr = tostring(LocalPlayer.UserId)
+	local MyTeam = Teams[MyUserIdStr]
 	-- Spectator (MyTeam = nil): Team1 → AllyTeam (xanh), Team2 → EnemyTeam (đỏ)
 
 	for UserIdStr, TeamName in pairs(Teams) do

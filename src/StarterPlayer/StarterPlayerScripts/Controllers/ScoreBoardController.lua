@@ -122,7 +122,8 @@ end
 local function OnTeamAssigned(Teams)
 	ClearBoard()
 
-	local MyTeam = LocalPlayer:GetAttribute("Team")
+	local MyUserIdStr = tostring(LocalPlayer.UserId)
+	local MyTeam = Teams[MyUserIdStr]
 	-- Spectator không hiển thị ScoreBoard (chỉ build board nếu có team)
 	if not MyTeam then return end
 

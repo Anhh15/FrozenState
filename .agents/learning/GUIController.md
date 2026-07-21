@@ -96,6 +96,11 @@
 - **Chi tiết:** Để che giấu quá trình Setup (tải map, chia đội) khỏi người chơi, client khởi chạy animation fade-in của Loading Screen. Thay vì tạo RemoteEvent để client phản hồi khi fade-in hoàn tất, server thực hiện `task.wait(FadeInDuration)` ngay sau khi broadcast phase "Setup". Điều này giúp tinh giản network traffic và giảm độ phức tạp của logic đồng bộ mà vẫn đảm bảo Setup chỉ kết thúc sau khi màn hình đen đã che phủ hoàn toàn.
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
 
+### Điều phối luồng setup phase trên Server tránh race condition Loading Screen và hỗ trợ AFK
+- **Ngày:** 21-07-2026
+- **Chi tiết:** Để tránh màn hình đen vô ích cho những người chơi AFK hoặc Spectator thực sự, và đảm bảo thuộc tính `"Team"` đã được đồng bộ khi client bắt đầu fade-in, server tiến hành reset dữ liệu cũ, chia team mới (`SessionService.AssignTeams()`) và đồng bộ team (`TeamService.BroadcastTeamAssignment()`) **trước** khi phát tín hiệu `"Setup"` cho client. Sau đó, các thao tác tải tài nguyên nặng (như `MapService.LoadRandomMap()`) được thực hiện trong bóng tối (trong lúc client đang fade-in).
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
 ---
 
 ## Bug & biện pháp
@@ -253,3 +258,17 @@
 - **Nguyên nhân:** Hàm `CloseQuest` thực hiện kiểm tra `IsSpectating` bằng cách gọi `GetSpectateController()`, tuy nhiên hàm lazy-require này chưa được định nghĩa trong script. Đồng thời việc gán `_navButton` sử dụng `FindFirstChild` có nguy cơ trả về `nil` do UI chưa tải kịp.
 - **Fix:** Định nghĩa hàm `GetSpectateController()` lazy-require trong QuestController, đồng thời đổi việc lấy `_navButton` thành `WaitForChild("Button")`.
 - **File liên quan:** [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
+### Lỗi LoadingScreen không hoạt động ở trận đấu đầu tiên
+- **Ngày:** 21-07-2026
+- **Vấn đề:** LoadingScreen không hiển thị ở trận đấu đầu tiên nhưng hoạt động bình thường ở các trận sau.
+- **Nguyên nhân:** Client kiểm tra thuộc tính `"Team"` ngay khi nhận được phase `"Setup"`. Tại trận đấu đầu tiên, server chưa kịp chia team nên thuộc tính này bị `nil`. Ở các trận sau, thuộc tính `"Team"` cũ từ trận trước chưa kịp bị reset nên vượt qua kiểm tra.
+- **Fix:** Thay đổi trình tự xử lý trên server: chia team mới và broadcast team trước khi phát tín hiệu phase `"Setup"`.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
+
+### Lỗi ScoreBoard trống trơn và Player Status avatar hiển thị sai đội ở trận đầu tiên
+- **Ngày:** 21-07-2026
+- **Vấn đề:** ScoreBoard bị trống hoàn toàn và HUD hiển thị avatar xếp sai cột Ally/Enemy cho người chơi ở trận đầu tiên.
+- **Nguyên nhân:** Do race condition giữa sự kiện RemoteEvent `SetTeamAssignment` và việc đồng bộ thuộc tính `"Team"` (Property Replication), dẫn đến client kiểm tra `LocalPlayer:GetAttribute("Team")` bị `nil` ngay tại thời điểm nhận event.
+- **Fix:** Lấy thông tin team của LocalPlayer trực tiếp từ payload `Teams` gửi kèm sự kiện (`Teams[tostring(LocalPlayer.UserId)]`) thay vì đọc qua attribute.
+- **File liên quan:** [ScoreBoardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStatusController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua)
