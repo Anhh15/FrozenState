@@ -28,6 +28,12 @@ local StateShadowText = Frame:WaitForChild("StateShadowText")
 local MenuGui = PlayerGui:WaitForChild("Menu", 10)
 local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
 
+-- InGameGui và các thành phần gameplay HUD (quản lý ẩn/hiện theo phase)
+local InGameGui        = PlayerGui:WaitForChild("InGameGui", 10)
+local PlayerStatus     = InGameGui and InGameGui:WaitForChild("PlayerStatus", 10)
+local ScoreBoard       = InGameGui and InGameGui:WaitForChild("ScoreBoard", 10)
+local ScoreBoardButton = InGameGui and InGameGui:FindFirstChild("ScoreBoardButton")
+
 -- Inventory nằm bên trong Menu — lazy-require để tránh circular load
 -- InventoryController được load sau bởi Main.client.lua
 local _inventoryController = nil
@@ -199,6 +205,25 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	else
 		-- Spectator (chưa có team): luôn hiện GUI để đổi skin
 		SetLobbyGuisVisible(true)
+	end
+
+	-- Quản lý hiển thị InGameGui và các gameplay HUD con
+	local IsInGamePhase = (Phase == "Ready" or Phase == "InGame" or Phase == "GameOver" or Phase == "Setup")
+	if InGameGui then
+		InGameGui.Enabled = IsInGamePhase
+	end
+
+	local ShowGameplayHud = (Phase == "Ready" or Phase == "InGame" or Phase == "GameOver")
+	if PlayerStatus then
+		PlayerStatus.Visible = ShowGameplayHud
+	end
+	if ScoreBoard then
+		if not ShowGameplayHud then
+			ScoreBoard.Visible = false
+		end
+	end
+	if ScoreBoardButton then
+		ScoreBoardButton.Visible = ShowGameplayHud
 	end
 end
 

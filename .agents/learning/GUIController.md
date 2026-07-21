@@ -1,6 +1,6 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 20-07-2026
+> Cập nhật lần cuối: 21-07-2026
 
 ---
 
@@ -10,6 +10,11 @@
 - **Ngày:** 05-06-2026 (cập nhật 06-06-2026)
 - **Chi tiết:** Các ScreenGui được chia thành 2 nhóm: "Lobby GUI" (Menu, NavigationButton) và "Gameplay GUI" (GameStatistic). Logic hiển thị Lobby GUI sử dụng 2 tầng kiểm tra: (1) **Tầng Team**: `LocalPlayer:GetAttribute("Team")` — nếu `nil` (Spectator/late-joiner) thì luôn hiện GUI bất kể phase; nếu có team mới vào tầng 2. (2) **Tầng Phase**: bảng `GAMEPLAY_PHASES = { Ready, InGame, GameOver }` tra cứu nhanh để ẩn GUI khi đang trong trận. Cache `_lastPhase / _lastTimeRemaining / _lastIsFrozenState` được lưu mỗi lần `UpdateDisplay` để `GetAttributeChangedSignal("Team")` có thể re-evaluate đúng lúc Attribute thay đổi. Server đồng bộ team qua `Player:SetAttribute("Team", ...)` thay vì Remote Event riêng.
 - **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/SessionService.lua)
+
+### Quản lý hiển thị InGameGui theo nhóm phase hỗ trợ Loading Screen
+- **Ngày:** 21-07-2026
+- **Chi tiết:** `InGameGui` chứa cả màn hình chờ chuyển cảnh `LoadingScreen` và các gameplay HUD chơi game (`PlayerStatus`, `ScoreBoardButton`). Để che mắt người chơi khi load map mới, `InGameGui.Enabled` được giữ ở trạng thái `true` trong phase `Setup`, `Ready`, `InGame` và `GameOver` (chỉ ẩn hoàn toàn khi ở `Intermission`). Tuy nhiên, để tránh hiển thị sớm HUD chơi game, các sub-HUD này được set `.Visible = false` thủ công khi ở phase `Setup` và `Intermission`, chỉ bật lên từ phase `Ready`.
+- **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
 ### Render 3D Avatar lên GUI (ViewportFrame & WorldModel)
 - **Ngày:** 10-06-2026 (cập nhật 11-06-2026)

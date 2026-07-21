@@ -299,9 +299,6 @@ local function RunReady()
 		SetMovementLocked(Player, true)
 	end
 
-	-- Cấp tool
-	IcicleService.GiveToolToAll()
-
 	-- Đếm ngược Ready
 	for t = Duration, 0, -1 do
 		BroadcastGameState("Ready", t, false)
@@ -328,6 +325,9 @@ local function RunInGame()
 	-- Broadcast danh sách Spectate đầy đủ khi InGame bắt đầu
 	local NormalPlayers = SessionService.GetAllNormalPlayers()
 	UpdateSpectateListEvent:FireAllClients(NormalPlayers)
+
+	-- Cấp tool khi vào phase InGame thay vì Ready
+	IcicleService.GiveToolToAll()
 
 	-- Lắng nghe MatchEndSignal (fired bởi SessionService khi team bị wipe)
 	local EndConn = SessionService.MatchEndSignal.Event:Connect(function(WinTeam)
