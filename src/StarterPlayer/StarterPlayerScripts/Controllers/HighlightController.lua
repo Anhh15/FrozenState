@@ -1,10 +1,12 @@
 -- HighlightController.lua (ModuleScript)
 -- Quản lý Highlight instance trên character của các player khác
 -- Highlight màu đỏ = kẻ địch, xanh = đồng minh, không highlight bản thân
+-- Khi bị đóng băng (Frozen): Highlight Adornee chỉ hướng vào Part/Mesh HighlightHelper của IceBlock Model
 -- Khi FrozenState: chuyển sang DepthMode.AlwaysOnTop (xuyên vật thể)
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace         = game:GetService("Workspace")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
@@ -12,11 +14,12 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 -- CONFIG
 -- =========================================================
 
-local HIGHLIGHT_NAME       = "TeamHighlight"
-local ENEMY_COLOR          = Color3.fromRGB(220, 50,  50)   -- đỏ
-local ALLY_COLOR           = Color3.fromRGB(50,  120, 220)  -- xanh dương
-local FILL_TRANSPARENCY    = 0.65
-local OUTLINE_TRANSPARENCY = 0.0
+local HIGHLIGHT_NAME        = "TeamHighlight"
+local HIGHLIGHT_HELPER_NAME = "HighlightHelper"
+local ENEMY_COLOR           = Color3.fromRGB(220, 50,  50)   -- đỏ
+local ALLY_COLOR            = Color3.fromRGB(50,  120, 220)  -- xanh dương
+local FILL_TRANSPARENCY     = 0.65
+local OUTLINE_TRANSPARENCY  = 0.0
 
 -- =========================================================
 -- STATE
@@ -31,8 +34,32 @@ local _frozenPlayers = {}   -- { [tostring(userId)] = true | false }
 -- PRIVATE
 -- =========================================================
 
-local function ApplyHighlight(Character, IsEnemy, IsFrozen)
-	-- Tạo mới hoặc lấy Highlight đã có
+--- Tìm Model khối băng (IceBlock) trong Workspace thuộc về một Player
+--- @param Player Player
+--- @return Model?
+local function FindIceBlockForPlayer(Player)
+	if not Player then return nil end
+	local TargetUserId = Player.UserId
+
+	for _, Child in ipairs(Workspace:GetChildren()) do
+		if Child:IsA("Model") and Child:GetAttribute("VictimUserId") == TargetUserId then
+			return Child
+		end
+	end
+	return nil
+end
+
+--- Áp dụng Highlight cho nhân vật hoặc khối băng của Player theo góc nhìn của LocalPlayer
+--- @param Player Player
+--- @param IsEnemy boolean
+--- @param IsFrozen boolean
+local function ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen)
+	if not Player or Player == LocalPlayer then return end
+
+	local Character = Player.Character
+	if not Character then return end
+
+	-- Tạo mới hoặc lấy Highlight đã có trên Character
 	local Highlight = Character:FindFirstChild(HIGHLIGHT_NAME)
 	if not Highlight then
 		Highlight        = Instance.new("Highlight")
@@ -40,13 +67,29 @@ local function ApplyHighlight(Character, IsEnemy, IsFrozen)
 		Highlight.Parent = Character
 	end
 
-	Highlight.FillColor          = IsEnemy and ENEMY_COLOR or ALLY_COLOR
-	Highlight.OutlineColor       = IsEnemy and ENEMY_COLOR or ALLY_COLOR
-	Highlight.FillTransparency   = FILL_TRANSPARENCY
+	Highlight.FillColor           = IsEnemy and ENEMY_COLOR or ALLY_COLOR
+	Highlight.OutlineColor        = IsEnemy and ENEMY_COLOR or ALLY_COLOR
+	Highlight.FillTransparency    = FILL_TRANSPARENCY
 	Highlight.OutlineTransparency = OUTLINE_TRANSPARENCY
-	Highlight.DepthMode          = (IsFrozen or _isFrozenState)
+	Highlight.DepthMode           = (IsFrozen or _isFrozenState)
 		and Enum.HighlightDepthMode.AlwaysOnTop
 		or  Enum.HighlightDepthMode.Occluded
+
+	-- Nếu bị đóng băng, gán Adornee vào HighlightHelper của IceBlock Model (nếu có)
+	if IsFrozen then
+		local IceBlockModel = FindIceBlockForPlayer(Player)
+		local HighlightHelper = IceBlockModel and IceBlockModel:FindFirstChild(HIGHLIGHT_HELPER_NAME, true)
+
+		if HighlightHelper and HighlightHelper:IsA("BasePart") then
+			Highlight.Adornee = HighlightHelper
+		else
+			-- Fallback gán vào Character nếu chưa/không tìm thấy HighlightHelper
+			Highlight.Adornee = Character
+		end
+	else
+		-- Khi bình thường, trả Adornee về Character
+		Highlight.Adornee = Character
+	end
 end
 
 local function RemoveHighlight(Character)
@@ -75,7 +118,7 @@ local function RefreshAll()
 		else
 			local IsEnemy  = (PlayerTeam ~= MyTeam)
 			local IsFrozen = (_frozenPlayers[PlayerUserIdStr] == true)
-			ApplyHighlight(Character, IsEnemy, IsFrozen)
+			ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen)
 		end
 	end
 end
@@ -159,6 +202,19 @@ function HighlightController:Init()
 
 	-- Watch player mới join
 	Players.PlayerAdded:Connect(WatchPlayer)
+
+	-- Lắng nghe khi IceBlock Model thêm/xóa trong Workspace để cập nhật Highlight.Adornee
+	Workspace.ChildAdded:Connect(function(Child)
+		if Child:IsA("Model") and Child:GetAttribute("VictimUserId") ~= nil then
+			RefreshAll()
+		end
+	end)
+
+	Workspace.ChildRemoved:Connect(function(Child)
+		if Child:IsA("Model") and Child:GetAttribute("VictimUserId") ~= nil then
+			RefreshAll()
+		end
+	end)
 
 	print("[HighlightController] Đã khởi tạo.")
 end

@@ -1,10 +1,15 @@
 # CoreGameplay
 > Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu) trong dự án.
-> Cập nhật lần cuối: 21-07-2026
+> Cập nhật lần cuối: 23-07-2026
 
 ---
 
 ## Kiến trúc
+
+### Highlight khối băng bị đóng băng qua Adornee HighlightHelper
+- **Ngày:** 23-07-2026
+- **Chi tiết:** Khi một người chơi bị đóng băng, Server spawn Model khối băng vào Workspace (có chứa Part/Mesh `HighlightHelper`). Client (`HighlightController.lua`) quản lý Highlight cục bộ dựa trên phe đối với `LocalPlayer` (Đồng minh = Xanh, Kẻ địch = Đỏ). Khi mục tiêu bị đóng băng, Client gán `Highlight.Adornee = HighlightHelper` với `DepthMode = AlwaysOnTop` thay vì bọc toàn bộ Character. Khi giải cứu (Thaw), `Adornee` được trả lại `Character`. Lắng nghe `Workspace.ChildAdded`/`ChildRemoved` để cập nhật `Adornee` tức thì khi khối băng xuất hiện hoặc biến mất.
+- **File liên quan:** [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
 
 ### Tránh Circular Dependency bằng BindableEvent
 - **Ngày:** 05-06-2026
