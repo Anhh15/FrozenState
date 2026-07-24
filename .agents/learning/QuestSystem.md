@@ -1,6 +1,6 @@
 # QuestSystem
 > Tổng hợp kiến thức về hệ thống nhiệm vụ (Quest System) bao gồm Daily Quest và Milestone Quest trong dự án.
-> Cập nhật lần cuối: 24-07-2026
+> Cập nhật lần cuối: 25-07-2026
 
 ---
 
@@ -8,8 +8,13 @@
 
 ### Thiết kế Delta-progress cho Quests
 - **Ngày:** 28-06-2026
-- **Chi tiết:** Để theo dõi tiến trình nhiệm vụ dựa trên các chỉ số sẵn có (`TotalFreezes`, `TotalWins`, `PlayTime`) mà không cần tạo nhiều biến đếm độc lập hay reset stat gốc khi hoàn thành, hệ thống sử dụng cơ chế mốc bắt đầu (`BaseProgress`). Tiến trình thực tế = `CurrentStat - BaseProgress`. Khi người chơi claim Milestone Quest (lặp vô hạn), server chỉ cần tịnh tiến mốc này lên (`BaseProgress = BaseProgress + Requirement`). Đối với Daily Quest, `BaseProgress` được chụp lại (snapshot) tại thời điểm reset daily.
+- **Chi tiết:** Để theo dõi tiến trình nhiệm vụ dựa trên các chỉ số sẵn có (`TotalFreezes`, `TotalWins`, `PlayTime`) mà không cần tạo nhiều biến đếm độc lập hay reset stat gốc khi hoàn thành, hệ thống sử dụng cơ chế mốc bắt đầu (`BaseProgress`). Tiến trình thực tế = `CurrentStat - BaseProgress`. Đối với Daily Quest, `BaseProgress` được chụp lại (snapshot) tại thời điểm reset daily.
 - **File liên quan:** [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua), [DataService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/DataService.lua)
+
+### Cấu hình tùy chọn Reset tiến trình Milestone Quest (StackExcessProgress)
+- **Ngày:** 25-07-2026
+- **Chi tiết:** Mở rộng cơ chế mốc `BaseProgress` cho Milestone Quest với tùy chọn `StackExcessProgress` trong `QuestConfig.lua`. Khi `StackExcessProgress = false`, tại thời điểm claim, server gán `BaseProgress = CurrentStat` để reset tiến trình dôi dư về 0 (ví dụ: đạt 21/10 freezes, bấm Claim sẽ nhận thưởng mốc 10 và reset tiến trình mới về 0/10). Nếu `true`, server tịnh tiến `BaseProgress = BaseProgress + Requirement` để cộng dồn tiến trình dư vào chu kỳ tiếp theo.
+- **File liên quan:** [QuestConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua)
 
 ### Theo dõi PlayTime tối giản hiệu năng & Tính toán thời gian thực
 - **Ngày:** 24-07-2026

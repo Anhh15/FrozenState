@@ -103,6 +103,8 @@ local QuestConfig = {
 	-- MILESTONE QUEST
 	-- =========================================================
 	Milestone = {
+		StackExcessProgress = false, -- false: reset tiến trình dôi dư về 0 khi claim; true: cộng dồn tiến trình dư vào mốc tiếp theo
+
 		-- Quest lặp vô hạn: sau khi claim sẽ tự reset về mốc tiếp theo
 		-- Tiến trình dùng stat tổng (TotalFreezes, TotalWins,...) trừ đi BaseProgress đã claim
 		List = {
@@ -166,7 +168,7 @@ local QuestConfig = {
 				Id            = "M_PlayTime2h",
 				Description   = "Play for 2 hours",
 				StatKey       = "PlayTime",
-				Requirement   = 7200,  -- 2 giờ = 7200 giây
+				Requirement   = 7200,
 				RewardType    = "Money",
 				RewardAmount  = 600,
 			},

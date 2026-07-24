@@ -260,8 +260,13 @@ local function ClaimMilestoneQuest(Player, QuestId)
 		return false, "", 0
 	end
 
-	-- Reset BaseProgress về mốc tiếp theo
-	local NewBase = BaseProgress + ConfigEntry.Requirement
+	-- Reset BaseProgress về mốc tiếp theo (tùy thuộc cấu hình StackExcessProgress)
+	local NewBase
+	if QuestConfig.Milestone.StackExcessProgress then
+		NewBase = BaseProgress + ConfigEntry.Requirement
+	else
+		NewBase = CurrentStat
+	end
 	DataService.SetMilestoneBase(Player, QuestId, NewBase)
 
 	-- Cấp thưởng
