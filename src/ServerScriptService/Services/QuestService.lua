@@ -158,8 +158,9 @@ local function BuildQuestData(Player)
 	end
 
 	return {
-		Daily     = DailyQuests,
-		Milestone = MilestoneQuests,
+		Daily              = DailyQuests,
+		Milestone          = MilestoneQuests,
+		NextResetTimestamp = RawData.DailyQuestData.ResetTimestamp + QuestConfig.Daily.ResetSeconds,
 	}
 end
 

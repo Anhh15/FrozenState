@@ -26,6 +26,11 @@
 - **Chi tiết:** Khi tái cấu trúc cây thư mục GUI (`StarterGui/Menu/Quest`), như đổi tên thư mục chứa template thành `Templates`, di chuyển `QuestList` vào trong `MainFrame`, và đổi tên các TextLabel (`QuestText` -> `DescriptionText`, `Amount` -> `AmountText`), `QuestController` cần đồng bộ lại toàn bộ các phương thức `WaitForChild` và `FindFirstChild` tương ứng để tránh bị trỏ sai hoặc đứt gãy tham chiếu trong quá trình render/clone item.
 - **File liên quan:** [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
 
+### Tích hợp đếm ngược thời gian Daily Quest và thông báo tĩnh Milestone Quest trên UI (NotificationText)
+- **Ngày:** 24-07-2026
+- **Chi tiết:** Đơn giản hóa việc hiển thị thời gian reset Daily Quest bằng cách truyền `NextResetTimestamp` (`ResetTimestamp + ResetSeconds`) từ `QuestService` xuống Client trong payload `GetQuestData`. Phía `QuestController` sử dụng luồng `task.spawn` đếm ngược hiển thị `Time remain: [hh:mm:ss]` khi ở tab Daily, và dừng loop hiển thị text tĩnh `Repeatable quest` khi sang tab Milestone. Khi đếm ngược về `00:00:00`, Client tự động kích hoạt `RefreshQuestUI()` lấy dữ liệu chu kỳ 24h mới từ Server mà không cần người chơi đóng/mở lại GUI.
+- **File liên quan:** [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [QuestConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/QuestConfig.lua)
+
 ---
 
 ## Bug & biện pháp

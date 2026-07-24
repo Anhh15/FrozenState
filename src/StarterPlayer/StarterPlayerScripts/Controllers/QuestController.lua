@@ -15,9 +15,14 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 -- PRIVATE STATE
 -- =========================================================
 
+-- Configuration text formats
+local TEXT_MILESTONE     = "Repeatable quest"
+local FORMAT_DAILY_TIME  = "Time remain: %02d:%02d:%02d"
+
 -- GUI references — được gán trong Init()
 local _questGui          = nil  -- StarterGui/Menu/Quest (Frame)
 local _questList         = nil  -- MainFrame/QuestList (ScrollingFrame)
+local _notificationText  = nil  -- MainFrame/NotificationText (TextLabel)
 local _tabDaily          = nil  -- TabContainer/DailyTab (ImageButton)
 local _tabMilestone      = nil  -- TabContainer/MilestoneTab (ImageButton)
 local _closeButton       = nil  -- CloseButton (ImageButton)
@@ -33,7 +38,10 @@ local _navButton         = nil  -- NavigationButton/Button (Frame — ẩn khi Q
 local _currentTab = "Daily"
 
 -- Cache dữ liệu quest nhận từ server
-local _questData = nil  -- { Daily = {...}, Milestone = {...} }
+local _questData = nil  -- { Daily = {...}, Milestone = {...}, NextResetTimestamp = number }
+
+-- Task quản lý vòng lặp đếm ngược
+local _countdownTask = nil
 
 -- Tab active color và inactive color (dùng BackgroundColor3 giống pattern InventoryController)
 local COLOR_ACTIVE   = Color3.fromRGB(255, 255, 255)
@@ -189,6 +197,72 @@ local function ShowRewardAnnouncement(RewardType, RewardAmount)
 end
 
 -- =========================================================
+-- NOTIFICATION & COUNTDOWN LOGIC
+-- =========================================================
+
+--- Format thời gian còn lại thành chuỗi "Time remain: hh:mm:ss"
+--- @param TotalSeconds number
+--- @return string
+local function FormatTimeRemaining(TotalSeconds)
+	local Seconds = math.max(0, math.floor(TotalSeconds))
+	local Hours   = math.floor(Seconds / 3600)
+	local Mins    = math.floor((Seconds % 3600) / 60)
+	local Secs    = math.floor(Seconds % 60)
+	return string.format(FORMAT_DAILY_TIME, Hours, Mins, Secs)
+end
+
+--- Hủy thread đếm ngược nếu đang chạy
+local function StopCountdownLoop()
+	if _countdownTask then
+		task.cancel(_countdownTask)
+		_countdownTask = nil
+	end
+end
+
+-- Khai báo trước hàm RefreshQuestUI để vòng lặp countdown sử dụng khi reset hết giờ
+local RefreshQuestUI
+
+--- Chạy thread đếm ngược cập nhật NotificationText khi ở tab Daily
+local function StartCountdownLoop()
+	StopCountdownLoop()
+
+	_countdownTask = task.spawn(function()
+		while _questGui and _questGui.Visible and _currentTab == "Daily" do
+			if _questData and _questData.NextResetTimestamp then
+				local Remaining = _questData.NextResetTimestamp - os.time()
+				if Remaining <= 0 then
+					if _notificationText then
+						_notificationText.Text = string.format(FORMAT_DAILY_TIME, 0, 0, 0)
+					end
+					-- Tự động làm mới dữ liệu Quest từ server khi hết giờ
+					if RefreshQuestUI then
+						RefreshQuestUI()
+					end
+				else
+					if _notificationText then
+						_notificationText.Text = FormatTimeRemaining(Remaining)
+					end
+				end
+			end
+			task.wait(1)
+		end
+		_countdownTask = nil
+	end)
+end
+
+--- Cập nhật hiển thị NotificationText theo Tab hiện tại
+local function UpdateNotificationDisplay()
+	if _currentTab == "Milestone" then
+		StopCountdownLoop()
+		if _notificationText then
+			_notificationText.Text = TEXT_MILESTONE
+		end
+	elseif _currentTab == "Daily" then
+		StartCountdownLoop()
+	end
+end
+
+-- =========================================================
 -- RENDER LOGIC
 -- =========================================================
 
@@ -260,12 +334,7 @@ local function RenderQuestList(QuestList)
 						-- Refresh UI để phản ánh trạng thái mới
 						task.spawn(function()
 							task.wait(0.3) -- Delay nhỏ để server lưu xong
-							local GetQuestDataFn = RemoteDefinitions.GetFunction("GetQuestData")
-							_questData = GetQuestDataFn:InvokeServer()
-							if _questData then
-								local List = (_currentTab == "Daily") and _questData.Daily or _questData.Milestone
-								RenderQuestList(List)
-							end
+							RefreshQuestUI()
 						end)
 					else
 						-- Nếu thất bại, re-enable button
@@ -278,7 +347,7 @@ local function RenderQuestList(QuestList)
 end
 
 --- Refresh toàn bộ dữ liệu từ server rồi render tab hiện tại
-local function RefreshQuestUI()
+RefreshQuestUI = function()
 	local GetQuestDataFn = RemoteDefinitions.GetFunction("GetQuestData")
 	_questData = GetQuestDataFn:InvokeServer()
 
@@ -289,6 +358,7 @@ local function RefreshQuestUI()
 
 	local QuestList = (_currentTab == "Daily") and _questData.Daily or _questData.Milestone
 	RenderQuestList(QuestList)
+	UpdateNotificationDisplay()
 end
 
 -- =========================================================
@@ -307,6 +377,7 @@ local function SwitchTab(TabName)
 	if _questData then
 		local QuestList = (TabName == "Daily") and _questData.Daily or _questData.Milestone
 		RenderQuestList(QuestList)
+		UpdateNotificationDisplay()
 	end
 end
 
@@ -318,6 +389,7 @@ local QuestController = {}
 
 local function CloseQuest()
 	if not _questGui then return end
+	StopCountdownLoop()
 	_questGui.Visible = false
 	-- Khôi phục NavButton trừ khi đang spectate
 	if _navButton then
@@ -339,7 +411,7 @@ local function OpenQuest()
 	_currentTab = "Daily"
 	UpdateTabHighlight("Daily")
 
-	-- Refresh dữ liệu từ server
+	-- Refresh dữ liệu từ server (sẽ tự động gọi UpdateNotificationDisplay -> StartCountdownLoop)
 	task.spawn(RefreshQuestUI)
 end
 
@@ -363,9 +435,10 @@ function QuestController:Init()
 	-- Templates folder
 	_templates = _questGui:WaitForChild("Templates")
 
-	-- MainFrame & QuestList ScrollingFrame
-	local MainFrame = _questGui:WaitForChild("MainFrame")
-	_questList      = MainFrame:WaitForChild("QuestList")
+	-- MainFrame, QuestList ScrollingFrame & NotificationText
+	local MainFrame    = _questGui:WaitForChild("MainFrame")
+	_questList         = MainFrame:WaitForChild("QuestList")
+	_notificationText  = MainFrame:WaitForChild("NotificationText")
 
 	-- TabContainer
 	local TabContainer = _questGui:WaitForChild("TabContainer")
