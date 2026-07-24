@@ -40,8 +40,9 @@ local _currentTab = "Daily"
 -- Cache dữ liệu quest nhận từ server
 local _questData = nil  -- { Daily = {...}, Milestone = {...}, NextResetTimestamp = number }
 
--- Task quản lý vòng lặp đếm ngược
+-- Task quản lý vòng lặp đếm ngược và auto refresh UI
 local _countdownTask = nil
+local _autoRefreshTask = nil
 
 -- Tab active color và inactive color (dùng BackgroundColor3 giống pattern InventoryController)
 local COLOR_ACTIVE   = Color3.fromRGB(255, 255, 255)
@@ -211,6 +212,32 @@ local function FormatTimeRemaining(TotalSeconds)
 	return string.format(FORMAT_DAILY_TIME, Hours, Mins, Secs)
 end
 
+--- Hủy thread auto refresh nếu đang chạy
+local function StopAutoRefreshLoop()
+	if _autoRefreshTask then
+		task.cancel(_autoRefreshTask)
+		_autoRefreshTask = nil
+	end
+end
+
+-- Khai báo trước hàm RefreshQuestUI để vòng lặp countdown và auto-refresh sử dụng
+local RefreshQuestUI
+
+--- Chạy thread auto refresh dữ liệu từ server khi GUI đang mở (mỗi 1 giây)
+local function StartAutoRefreshLoop()
+	StopAutoRefreshLoop()
+
+	_autoRefreshTask = task.spawn(function()
+		while _questGui and _questGui.Visible do
+			task.wait(1)
+			if _questGui and _questGui.Visible and RefreshQuestUI then
+				RefreshQuestUI()
+			end
+		end
+		_autoRefreshTask = nil
+	end)
+end
+
 --- Hủy thread đếm ngược nếu đang chạy
 local function StopCountdownLoop()
 	if _countdownTask then
@@ -218,9 +245,6 @@ local function StopCountdownLoop()
 		_countdownTask = nil
 	end
 end
-
--- Khai báo trước hàm RefreshQuestUI để vòng lặp countdown sử dụng khi reset hết giờ
-local RefreshQuestUI
 
 --- Chạy thread đếm ngược cập nhật NotificationText khi ở tab Daily
 local function StartCountdownLoop()
@@ -266,11 +290,10 @@ end
 -- RENDER LOGIC
 -- =========================================================
 
---- Render danh sách quest vào QuestList
+--- Render danh sách quest vào QuestList (cập nhật mượt không làm mất vị trí cuộn UI)
 --- @param QuestList table  -- mảng quest data từ server
 local function RenderQuestList(QuestList)
-	ClearQuestList()
-	if not _templates then return end
+	if not _templates or not _questList then return end
 
 	local Template = _templates:FindFirstChild("QuestTemplate")
 	if not Template then
@@ -278,11 +301,18 @@ local function RenderQuestList(QuestList)
 		return
 	end
 
+	local ValidQuestIds = {}
+
 	for _, QuestEntry in ipairs(QuestList) do
-		local Frame = Template:Clone()
-		Frame.Name    = QuestEntry.QuestId
-		Frame.Visible = true
-		Frame.Parent  = _questList
+		ValidQuestIds[QuestEntry.QuestId] = true
+
+		local Frame = _questList:FindFirstChild(QuestEntry.QuestId)
+		if not Frame then
+			Frame = Template:Clone()
+			Frame.Name    = QuestEntry.QuestId
+			Frame.Visible = true
+			Frame.Parent  = _questList
+		end
 
 		-- DescriptionText
 		local DescriptionText = Frame:FindFirstChild("DescriptionText")
@@ -310,37 +340,51 @@ local function RenderQuestList(QuestList)
 		if ClaimButton then
 			local CanClaim = (not QuestEntry.Claimed) and (QuestEntry.Progress >= QuestEntry.Requirement)
 
-			-- Hiện/ẩn ClaimButton tùy trạng thái
 			ClaimButton.Visible = CanClaim
 
-			if CanClaim then
-				ClaimButton.MouseButton1Click:Connect(function()
-					-- Disable ngay để tránh double-click
-					ClaimButton.Active = false
+			if not Frame:GetAttribute("HasClaimHandler") then
+				Frame:SetAttribute("HasClaimHandler", true)
 
-					-- Gọi server
+				ClaimButton.MouseButton1Click:Connect(function()
+					local IsClaimable = Frame:GetAttribute("CanClaim")
+					if not IsClaimable then return end
+
+					ClaimButton.Active = false
+					Frame:SetAttribute("CanClaim", false)
+
 					local ClaimQuestFn = RemoteDefinitions.GetFunction("ClaimQuest")
 					local Result = ClaimQuestFn:InvokeServer(
 						_currentTab == "Daily" and "Daily" or "Milestone",
-						QuestEntry.QuestId
+						Frame.Name
 					)
 
 					if Result and Result.Success then
-						-- Phase 8.3: Phát QuestReward sfx khi claim thành công
 						PlayGuiSound(SFX_QUEST_REWARD)
-						-- Hiện thông báo phần thưởng
 						ShowRewardAnnouncement(Result.RewardType, Result.RewardAmount)
 
-						-- Refresh UI để phản ánh trạng thái mới
 						task.spawn(function()
-							task.wait(0.3) -- Delay nhỏ để server lưu xong
+							task.wait(0.3)
 							RefreshQuestUI()
 						end)
 					else
-						-- Nếu thất bại, re-enable button
 						ClaimButton.Active = true
+						Frame:SetAttribute("CanClaim", true)
 					end
 				end)
+			end
+
+			Frame:SetAttribute("CanClaim", CanClaim)
+			if CanClaim then
+				ClaimButton.Active = true
+			end
+		end
+	end
+
+	-- Xóa các Frame không thuộc tab hiện tại
+	for _, Child in ipairs(_questList:GetChildren()) do
+		if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") then
+			if not ValidQuestIds[Child.Name] then
+				Child:Destroy()
 			end
 		end
 	end
@@ -374,6 +418,8 @@ local function SwitchTab(TabName)
 	_currentTab = TabName
 	UpdateTabHighlight(TabName)
 
+	ClearQuestList()
+
 	if _questData then
 		local QuestList = (TabName == "Daily") and _questData.Daily or _questData.Milestone
 		RenderQuestList(QuestList)
@@ -390,6 +436,7 @@ local QuestController = {}
 local function CloseQuest()
 	if not _questGui then return end
 	StopCountdownLoop()
+	StopAutoRefreshLoop()
 	_questGui.Visible = false
 	-- Khôi phục NavButton trừ khi đang spectate
 	if _navButton then
@@ -411,8 +458,11 @@ local function OpenQuest()
 	_currentTab = "Daily"
 	UpdateTabHighlight("Daily")
 
-	-- Refresh dữ liệu từ server (sẽ tự động gọi UpdateNotificationDisplay -> StartCountdownLoop)
-	task.spawn(RefreshQuestUI)
+	-- Refresh dữ liệu từ server và kích hoạt tự động làm mới
+	task.spawn(function()
+		RefreshQuestUI()
+		StartAutoRefreshLoop()
+	end)
 end
 
 -- =========================================================

@@ -21,12 +21,17 @@ local _sessionStart = {} -- { [Player] = os.time() }
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Lấy giá trị stat hiện tại của player theo tên field
+--- Lấy giá trị stat hiện tại của player theo tên field (tự động cộng dồn PlayTime của session hiện tại)
+--- @param Player Player
 --- @param RawData table  -- kết quả từ DataService.GetQuestRawData
 --- @param StatKey string
 --- @return number
-local function GetStatValue(RawData, StatKey)
-	return RawData[StatKey] or 0
+local function GetStatValue(Player, RawData, StatKey)
+	local Value = RawData[StatKey] or 0
+	if StatKey == "PlayTime" and Player and _sessionStart[Player] then
+		Value = Value + (os.time() - _sessionStart[Player])
+	end
+	return Value
 end
 
 --- Random PoolCount quest từ Daily Pool, không trùng nhau
@@ -67,7 +72,7 @@ local function CheckAndResetDaily(Player, RawData)
 
 		for _, QuestEntry in ipairs(PickedQuests) do
 			-- Snapshot BaseProgress = stat hiện tại tại thời điểm reset
-			local BaseProgress = GetStatValue(RawData, QuestEntry.StatKey)
+			local BaseProgress = GetStatValue(Player, RawData, QuestEntry.StatKey)
 			table.insert(NewActiveQuests, {
 				QuestId      = QuestEntry.Id,
 				BaseProgress = BaseProgress,
@@ -124,7 +129,7 @@ local function BuildQuestData(Player)
 	for _, ActiveEntry in ipairs(RawData.DailyQuestData.ActiveQuests) do
 		local ConfigEntry = FindQuestConfig("Daily", ActiveEntry.QuestId)
 		if ConfigEntry then
-			local CurrentStat  = GetStatValue(RawData, ConfigEntry.StatKey)
+			local CurrentStat  = GetStatValue(Player, RawData, ConfigEntry.StatKey)
 			local Progress     = CurrentStat - ActiveEntry.BaseProgress
 			local Requirement  = ConfigEntry.Requirement
 			DailyQuests[#DailyQuests + 1] = {
@@ -143,7 +148,7 @@ local function BuildQuestData(Player)
 	local MilestoneQuests = {}
 	for _, ConfigEntry in ipairs(QuestConfig.Milestone.List) do
 		local BaseProgress = RawData.MilestoneQuestData[ConfigEntry.Id] or 0
-		local CurrentStat  = GetStatValue(RawData, ConfigEntry.StatKey)
+		local CurrentStat  = GetStatValue(Player, RawData, ConfigEntry.StatKey)
 		local Progress     = CurrentStat - BaseProgress
 		local Requirement  = ConfigEntry.Requirement
 		MilestoneQuests[#MilestoneQuests + 1] = {
@@ -205,7 +210,7 @@ local function ClaimDailyQuest(Player, QuestId)
 	end
 
 	-- Kiểm tra tiến trình đủ chưa
-	local CurrentStat = GetStatValue(RawData, ConfigEntry.StatKey)
+	local CurrentStat = GetStatValue(Player, RawData, ConfigEntry.StatKey)
 	local Progress    = CurrentStat - FoundEntry.BaseProgress
 	if Progress < ConfigEntry.Requirement then
 		warn(("[QuestService] ClaimDaily: %s chưa đủ tiến trình (%.0f/%.0f)."):format(
@@ -246,7 +251,7 @@ local function ClaimMilestoneQuest(Player, QuestId)
 	end
 
 	local BaseProgress = RawData.MilestoneQuestData[QuestId] or 0
-	local CurrentStat  = GetStatValue(RawData, ConfigEntry.StatKey)
+	local CurrentStat  = GetStatValue(Player, RawData, ConfigEntry.StatKey)
 	local Progress     = CurrentStat - BaseProgress
 
 	if Progress < ConfigEntry.Requirement then

@@ -11,9 +11,9 @@
 - **Chi tiết:** Để theo dõi tiến trình nhiệm vụ dựa trên các chỉ số sẵn có (`TotalFreezes`, `TotalWins`, `PlayTime`) mà không cần tạo nhiều biến đếm độc lập hay reset stat gốc khi hoàn thành, hệ thống sử dụng cơ chế mốc bắt đầu (`BaseProgress`). Tiến trình thực tế = `CurrentStat - BaseProgress`. Khi người chơi claim Milestone Quest (lặp vô hạn), server chỉ cần tịnh tiến mốc này lên (`BaseProgress = BaseProgress + Requirement`). Đối với Daily Quest, `BaseProgress` được chụp lại (snapshot) tại thời điểm reset daily.
 - **File liên quan:** [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua), [DataService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/DataService.lua)
 
-### Theo dõi PlayTime tối giản hiệu năng
-- **Ngày:** 28-06-2026
-- **Chi tiết:** Để đo đạc thời gian chơi của player phục vụ cho các quest thời gian mà không gây tải cho server bởi các vòng lặp định kỳ (Heartbeat loop), hệ thống lưu thời điểm join vào bộ nhớ tạm của server (`_sessionStart`). Khi player rời game (`PlayerRemoving`), server tính toán hiệu số thời gian thực tế đã chơi trong session đó và cộng dồn trực tiếp vào thuộc tính `PlayTime` trong DataStore của người chơi.
+### Theo dõi PlayTime tối giản hiệu năng & Tính toán thời gian thực
+- **Ngày:** 24-07-2026
+- **Chi tiết:** Để đo đạc thời gian chơi của player phục vụ cho các quest thời gian mà không cần chạy loop cộng dồn liên tục vào DataStore, server lưu thời điểm join (`_sessionStart`). Khi tính toán `GetStatValue` cho `PlayTime`, server tự động cộng thêm thời gian session hiện tại `(os.time() - _sessionStart[Player])`. Đồng thời khi player rời game (`PlayerRemoving`), server mới cộng dồn hiệu số này vào DataStore để lưu trữ bền vững.
 - **File liên quan:** [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua), [DataService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/DataService.lua)
 
 ### Reset Daily 24h theo chu kỳ của từng Player
@@ -41,3 +41,10 @@
 - **Nguyên nhân:** Thuộc tính `ResetOnSpawn` của ScreenGui chứa Menu mặc định là `true`, khiến GUI bị nhân bản lại từ StarterGui mỗi khi spawn.
 - **Fix:** Tại hàm khởi tạo của Client Controller (`QuestController:Init()`), đặt thuộc tính `ResetOnSpawn` của ScreenGui (Parent của Menu) thành `false`.
 - **File liên quan:** [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
+### Tiến trình Quest không cập nhật thời gian thực khi chơi và cuộn UI bị reset
+- **Ngày:** 24-07-2026
+- **Vấn đề:** Nhiệm vụ thời gian chơi (`PlayTime`) không nhảy số trên GUI khi mở lên, chỉ khi thoát game rồi vào lại mới thấy tiến trình. Ngoài ra việc xóa và render lại toàn bộ list khiến vị trí cuộn của ScrollingFrame bị nhảy về đầu.
+- **Nguyên nhân:** `PlayTime` chỉ được ghi vào DataStore khi người chơi thoát server (`PlayerRemoving`). Đồng thời GUI client chỉ lấy dữ liệu `GetQuestData` 1 lần lúc mở và xóa sạch GUI rồi clone lại mỗi lần render.
+- **Fix:** Server tính dồn thời gian session trực tiếp trong `GetStatValue` (`PlayTime + os.time() - _sessionStart`). Client bật `StartAutoRefreshLoop()` poll Server 1s/lần khi GUI đang mở và áp dụng in-place update UI (chỉ sửa thuộc tính Frame cũ nếu đã có) để giữ nguyên `CanvasPosition`.
+- **File liên quan:** [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
