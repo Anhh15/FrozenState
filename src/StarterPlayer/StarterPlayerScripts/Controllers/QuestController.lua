@@ -17,14 +17,14 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 -- GUI references — được gán trong Init()
 local _questGui          = nil  -- StarterGui/Menu/Quest (Frame)
-local _questList         = nil  -- QuestList (ScrollingFrame)
+local _questList         = nil  -- MainFrame/QuestList (ScrollingFrame)
 local _tabDaily          = nil  -- TabContainer/DailyTab (ImageButton)
 local _tabMilestone      = nil  -- TabContainer/MilestoneTab (ImageButton)
 local _closeButton       = nil  -- CloseButton (ImageButton)
 local _rewardAnnouncement = nil -- RewardAnnouncement (Frame)
 local _rewardIcon        = nil  -- RewardAnnouncement/Icon (ImageLabel)
-local _rewardAmount      = nil  -- RewardAnnouncement/Amount (TextLabel)
-local _questTemplates    = nil  -- QuestTemplates (Folder)
+local _rewardAmount      = nil  -- RewardAnnouncement/AmountText (TextLabel)
+local _templates         = nil  -- Templates (Folder)
 local _menuFrame         = nil  -- StarterGui/Menu (Frame — parent của Quest)
 local _navGui            = nil  -- NavigationButton ScreenGui
 local _navButton         = nil  -- NavigationButton/Button (Frame — ẩn khi Quest mở)
@@ -196,11 +196,11 @@ end
 --- @param QuestList table  -- mảng quest data từ server
 local function RenderQuestList(QuestList)
 	ClearQuestList()
-	if not _questTemplates then return end
+	if not _templates then return end
 
-	local Template = _questTemplates:FindFirstChild("QuestTemplate")
+	local Template = _templates:FindFirstChild("QuestTemplate")
 	if not Template then
-		warn("[QuestController] Không tìm thấy QuestTemplates/QuestTemplate.")
+		warn("[QuestController] Không tìm thấy Templates/QuestTemplate.")
 		return
 	end
 
@@ -210,10 +210,10 @@ local function RenderQuestList(QuestList)
 		Frame.Visible = true
 		Frame.Parent  = _questList
 
-		-- QuestText
-		local QuestText = Frame:FindFirstChild("QuestText")
-		if QuestText then
-			QuestText.Text = QuestEntry.Description
+		-- DescriptionText
+		local DescriptionText = Frame:FindFirstChild("DescriptionText")
+		if DescriptionText then
+			DescriptionText.Text = QuestEntry.Description
 		end
 
 		-- Reward
@@ -360,11 +360,12 @@ function QuestController:Init()
 		MenuGui.ResetOnSpawn = false
 	end
 
-	-- QuestTemplates folder
-	_questTemplates = _questGui:WaitForChild("QuestTemplates")
+	-- Templates folder
+	_templates = _questGui:WaitForChild("Templates")
 
-	-- QuestList ScrollingFrame
-	_questList = _questGui:WaitForChild("QuestList")
+	-- MainFrame & QuestList ScrollingFrame
+	local MainFrame = _questGui:WaitForChild("MainFrame")
+	_questList      = MainFrame:WaitForChild("QuestList")
 
 	-- TabContainer
 	local TabContainer = _questGui:WaitForChild("TabContainer")
@@ -377,7 +378,7 @@ function QuestController:Init()
 	-- RewardAnnouncement
 	_rewardAnnouncement = _questGui:WaitForChild("RewardAnnouncement")
 	_rewardIcon         = _rewardAnnouncement:FindFirstChild("Icon")
-	_rewardAmount       = _rewardAnnouncement:FindFirstChild("Amount")
+	_rewardAmount       = _rewardAnnouncement:FindFirstChild("AmountText")
 	_rewardAnnouncement.Visible = false
 
 	-- NavigationButton

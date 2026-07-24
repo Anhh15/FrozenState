@@ -1,6 +1,6 @@
 # QuestSystem
 > Tổng hợp kiến thức về hệ thống nhiệm vụ (Quest System) bao gồm Daily Quest và Milestone Quest trong dự án.
-> Cập nhật lần cuối: 28-06-2026
+> Cập nhật lần cuối: 24-07-2026
 
 ---
 
@@ -20,6 +20,11 @@
 - **Ngày:** 28-06-2026
 - **Chi tiết:** Chu kỳ 24h reset daily quest được tính toán độc lập cho mỗi người chơi dựa trên thời điểm join đầu tiên của họ. Mỗi khi dữ liệu quest được yêu cầu tải, server kiểm tra điều kiện `Now - ResetTimestamp >= 86400`. Nếu thỏa mãn, server thực hiện random 5 quest từ cấu hình bể nhiệm vụ, gán snapshot stat hiện tại làm `BaseProgress` cho từng quest và lưu timestamp mới.
 - **File liên quan:** [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua), [QuestConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/QuestConfig.lua)
+
+### Đồng bộ hóa cấu trúc phân cấp và tên gọi UI Quest
+- **Ngày:** 24-07-2026
+- **Chi tiết:** Khi tái cấu trúc cây thư mục GUI (`StarterGui/Menu/Quest`), như đổi tên thư mục chứa template thành `Templates`, di chuyển `QuestList` vào trong `MainFrame`, và đổi tên các TextLabel (`QuestText` -> `DescriptionText`, `Amount` -> `AmountText`), `QuestController` cần đồng bộ lại toàn bộ các phương thức `WaitForChild` và `FindFirstChild` tương ứng để tránh bị trỏ sai hoặc đứt gãy tham chiếu trong quá trình render/clone item.
+- **File liên quan:** [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
 
 ---
 

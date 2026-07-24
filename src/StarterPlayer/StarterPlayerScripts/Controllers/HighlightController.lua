@@ -18,7 +18,7 @@ local HIGHLIGHT_NAME        = "TeamHighlight"
 local HIGHLIGHT_HELPER_NAME = "HighlightHelper"
 local ENEMY_COLOR           = Color3.fromRGB(220, 50,  50)   -- đỏ
 local ALLY_COLOR            = Color3.fromRGB(50,  120, 220)  -- xanh dương
-local FILL_TRANSPARENCY     = 0.65
+local FILL_TRANSPARENCY     = 1
 local OUTLINE_TRANSPARENCY  = 0.0
 
 -- =========================================================

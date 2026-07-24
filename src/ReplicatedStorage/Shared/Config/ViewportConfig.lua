@@ -26,14 +26,14 @@ local Default = {
 
 local TypeOverrides = {
 	Icicle = {
-		PitchAngle    = 0,  -- Nhìn xuống thêm để thấy hình dạng nhọn của Icicle
-		YawAngle      = 0,
-		PaddingFactor = 1,  -- Icicle thường dài và mảnh → cần khoảng đệm rộng hơn
+		PitchAngle    = 0,
+		YawAngle      = 180,
+		PaddingFactor = 1,
 	},
 	Block = {
-		PitchAngle    = -15,
-		YawAngle      = 45,
-		PaddingFactor = 1.2,
+		PitchAngle    = 10,
+		YawAngle      = 135,
+		PaddingFactor = 1,
 	},
 	Chest = {
 		FieldOfView   = 70,
