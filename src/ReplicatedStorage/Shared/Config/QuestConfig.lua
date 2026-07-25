@@ -174,6 +174,14 @@ local QuestConfig = {
 			},
 		},
 	},
+
+	-- =========================================================
+	-- UI ASSETS
+	-- =========================================================
+	ClaimButtonImages = {
+		Uncompleted = "rbxassetid://132149908740563",
+		Completed   = "rbxassetid://99096499302637",
+	},
 }
 
 return QuestConfig

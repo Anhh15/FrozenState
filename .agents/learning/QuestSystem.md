@@ -16,6 +16,11 @@
 - **Chi tiết:** Mở rộng cơ chế mốc `BaseProgress` cho Milestone Quest với tùy chọn `StackExcessProgress` trong `QuestConfig.lua`. Khi `StackExcessProgress = false`, tại thời điểm claim, server gán `BaseProgress = CurrentStat` để reset tiến trình dôi dư về 0 (ví dụ: đạt 21/10 freezes, bấm Claim sẽ nhận thưởng mốc 10 và reset tiến trình mới về 0/10). Nếu `true`, server tịnh tiến `BaseProgress = BaseProgress + Requirement` để cộng dồn tiến trình dư vào chu kỳ tiếp theo.
 - **File liên quan:** [QuestConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/QuestService.lua)
 
+### Quản lý trạng thái và hình nền động cho ClaimButton theo Config (ClaimButtonImages)
+- **Ngày:** 25-07-2026
+- **Chi tiết:** Đã chuyển đổi `ClaimButton` từ cơ chế ẩn/hiện (`Visible = CanClaim`) sang luôn hiển thị (`Visible = true`). Quản lý hình nền background động dựa theo trạng thái nhiệm vụ thông qua bảng cấu hình `QuestConfig.ClaimButtonImages` (`Uncompleted` và `Completed`). Khi chưa đạt chỉ tiêu, nút chuyển nền `Uncompleted` và khóa click (`Active = false`); khi đạt chỉ tiêu, nút chuyển nền `Completed` và mở click (`Active = true`); khi đã claim, nút giữ nền `Completed`, khóa click và chuyển chữ hiển thị thành `"Claimed"`.
+- **File liên quan:** [QuestConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
 ### Theo dõi PlayTime tối giản hiệu năng & Tính toán thời gian thực
 - **Ngày:** 24-07-2026
 - **Chi tiết:** Để đo đạc thời gian chơi của player phục vụ cho các quest thời gian mà không cần chạy loop cộng dồn liên tục vào DataStore, server lưu thời điểm join (`_sessionStart`). Khi tính toán `GetStatValue` cho `PlayTime`, server tự động cộng thêm thời gian session hiện tại `(os.time() - _sessionStart[Player])`. Đồng thời khi player rời game (`PlayerRemoving`), server mới cộng dồn hiệu số này vào DataStore để lưu trữ bền vững.
@@ -39,6 +44,13 @@
 ---
 
 ## Bug & biện pháp
+
+### Lỗi cú pháp thiếu đóng ngoặc ngoặc nhọn table trong QuestConfig do chèn entry mới
+- **Ngày:** 25-07-2026
+- **Vấn đề:** Trình biên dịch Luau báo lỗi `Expected '}' (to close '{' at line 6), got 'return'` tại dòng 185 làm dừng quá trình require `QuestConfig` ở cả Client lẫn Server.
+- **Nguyên nhân:** Khi thêm bảng `ClaimButtonImages` vào cuối `QuestConfig.lua`, phần ngoặc đóng `},` của bảng `Milestone` ở phía trước bị thiếu/ghi đè nhầm, khiến bảng chính `QuestConfig` chưa được đóng trước câu lệnh `return`.
+- **Fix:** Bổ sung ngoặc đóng `},` cho bảng `Milestone` trước khi định nghĩa `ClaimButtonImages` để bảo toàn cấu trúc phân cấp table Luau.
+- **File liên quan:** [QuestConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/QuestConfig.lua)
 
 ### Reset trạng thái UI khi Player Respawn
 - **Ngày:** 28-06-2026

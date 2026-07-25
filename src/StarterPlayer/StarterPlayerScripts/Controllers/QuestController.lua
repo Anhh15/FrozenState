@@ -7,6 +7,7 @@ local TweenService      = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local QuestConfig       = require(ReplicatedStorage.Shared.Config.QuestConfig)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
@@ -338,9 +339,43 @@ local function RenderQuestList(QuestList)
 		-- ClaimButton
 		local ClaimButton = Frame:FindFirstChild("ClaimButton")
 		if ClaimButton then
-			local CanClaim = (not QuestEntry.Claimed) and (QuestEntry.Progress >= QuestEntry.Requirement)
+			ClaimButton.Visible = true
 
-			ClaimButton.Visible = CanClaim
+			local IsClaimed = QuestEntry.Claimed == true
+			local CanClaim  = (not IsClaimed) and (QuestEntry.Progress >= QuestEntry.Requirement)
+
+			-- Cập nhật hình nền background và thuộc tính tương tác dựa trên trạng thái
+			local TargetImage = nil
+			local ButtonText  = "Claim"
+
+			if IsClaimed then
+				TargetImage = QuestConfig.ClaimButtonImages.Completed
+				ButtonText  = "Claimed"
+				ClaimButton.Active = false
+			elseif CanClaim then
+				TargetImage = QuestConfig.ClaimButtonImages.Completed
+				ButtonText  = "Claim"
+				ClaimButton.Active = true
+			else
+				TargetImage = QuestConfig.ClaimButtonImages.Uncompleted
+				ButtonText  = "Claim"
+				ClaimButton.Active = false
+			end
+
+			if TargetImage then
+				if ClaimButton:IsA("ImageButton") or ClaimButton:IsA("ImageLabel") then
+					ClaimButton.Image = TargetImage
+				end
+			end
+
+			local ButtonTextLabel = ClaimButton:FindFirstChildOfClass("TextLabel")
+				or ClaimButton:FindFirstChild("Text")
+				or ClaimButton:FindFirstChild("ClaimText")
+			if ButtonTextLabel then
+				ButtonTextLabel.Text = ButtonText
+			elseif ClaimButton:IsA("TextButton") then
+				ClaimButton.Text = ButtonText
+			end
 
 			if not Frame:GetAttribute("HasClaimHandler") then
 				Frame:SetAttribute("HasClaimHandler", true)
@@ -374,9 +409,6 @@ local function RenderQuestList(QuestList)
 			end
 
 			Frame:SetAttribute("CanClaim", CanClaim)
-			if CanClaim then
-				ClaimButton.Active = true
-			end
 		end
 	end
 

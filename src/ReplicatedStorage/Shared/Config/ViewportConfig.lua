@@ -37,9 +37,9 @@ local TypeOverrides = {
 	},
 	Chest = {
 		FieldOfView   = 70,
-		PitchAngle    = -0,
-		YawAngle      = -90,
-		PaddingFactor = 0.80,
+		PitchAngle    = 0,
+		YawAngle      = 180,
+		PaddingFactor = .85,
 	},
 }
 
