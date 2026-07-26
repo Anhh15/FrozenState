@@ -2,7 +2,7 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="ScreenGui" referent="RBX1DB8274358C04FD0BE6A884C9C679D0C">
+	<Item class="ScreenGui" referent="RBXC52CAA63FA084CDCA53EE10086D9265D">
 		<Properties>
 			<bool name="ClipToDeviceSafeArea">true</bool>
 			<int name="DisplayOrder">10</int>
@@ -23,9 +23,9 @@
 			<bool name="DefinesCapabilities">false</bool>
 			<string name="Name">GameState</string>
 			<int64 name="SourceAssetId">-1</int64>
-			<BinaryString name="Tags"></BinaryString>
+			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 		</Properties>
-		<Item class="Frame" referent="RBX8674C1510C744893B7C91188011F2C19">
+		<Item class="Frame" referent="RBXB66207E7E9F44553B73A3A67EAE20A47">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -87,9 +87,9 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Frame</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="UIAspectRatioConstraint" referent="RBX935388C47BF8474F902D9E3314186C32">
+			<Item class="UIAspectRatioConstraint" referent="RBX3FA6A352CF124CFFB2EDAC600F06E605">
 				<Properties>
 					<float name="AspectRatio">2.4664402</float>
 					<token name="AspectType">0</token>
@@ -99,10 +99,10 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">UIAspectRatioConstraint</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX5298663F20E843529F13BD8B2E9CE1E3">
+			<Item class="TextLabel" referent="RBX9116F9E1DF6E4B7FA3DBDAA684D56BF5">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -194,10 +194,10 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">TimeText</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBXA42409853E6E463BA45F5020D8AE5B76">
+			<Item class="TextLabel" referent="RBXCE05EC064A4E467A9813DBAA60B36C0A">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -289,10 +289,10 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">StateText</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="ImageLabel" referent="RBXC1267B39834E45F18189C8A4CA1AAA91">
+			<Item class="ImageLabel" referent="RBXCFC33EAE437D432281283E5C8D84C8E8">
 				<Properties>
 					<Content name="Image"><url>rbxassetid://90106398486911</url></Content>
 					<Color3 name="ImageColor3">
@@ -387,10 +387,10 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">ImageFrame</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX22CC6E051A604F78A37D3B7A41F85A1F">
+			<Item class="TextLabel" referent="RBXF6795B51885043BC92C09EE5CEEA4EA6">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -482,10 +482,10 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">TimeShadowText</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX3D7D717B8268498E90083C16602A2055">
+			<Item class="TextLabel" referent="RBXE5A1DEF1903141CF86D25E8C753F50AD">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -577,9 +577,12 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">StateShadowText</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
 		</Item>
 	</Item>
+	<SharedStrings>
+		<SharedString md5="yuZpQdnvvUBOTYh1jqZ2cA=="></SharedString>
+	</SharedStrings>
 </roblox>

@@ -2,12 +2,12 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="ScreenGui" referent="RBX8BCA93F34B2C456AA555B0CBE021CDE8">
+	<Item class="ScreenGui" referent="RBXD138A0F2F73B47C1A2C011AFBBB7FC0F">
 		<Properties>
 			<bool name="ClipToDeviceSafeArea">true</bool>
 			<int name="DisplayOrder">0</int>
 			<token name="SafeAreaCompatibility">1</token>
-			<token name="ScreenInsets">2</token>
+			<token name="ScreenInsets">1</token>
 			<bool name="Enabled">true</bool>
 			<bool name="ResetOnSpawn">false</bool>
 			<token name="ZIndexBehavior">1</token>
@@ -23,9 +23,9 @@
 			<bool name="DefinesCapabilities">false</bool>
 			<string name="Name">GameStatistic</string>
 			<int64 name="SourceAssetId">-1</int64>
-			<BinaryString name="Tags"></BinaryString>
+			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 		</Properties>
-		<Item class="Frame" referent="RBXC9B5230F54AE403286A618A07AB52825">
+		<Item class="Frame" referent="RBXE7F2CEBFBBB14B819780A9F9F1AF52D9">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -87,9 +87,9 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">TeamWonStats</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="ImageLabel" referent="RBX5DFFD8EC03974F2DAD6A5D529DACFFEF">
+			<Item class="ImageLabel" referent="RBXEFE93A169C4143CBA6F3F3CAD3739612">
 				<Properties>
 					<Content name="Image"><null></null></Content>
 					<Color3 name="ImageColor3">
@@ -184,9 +184,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">Background</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="UICorner" referent="RBXC9125FC87A0B43E58F3E1F449C97CF2C">
+				<Item class="UICorner" referent="RBX7F01A8D6625040BEAB858B7648BABE95">
 					<Properties>
 						<UDim name="BottomLeftRadius">
 							<S>0.0500000007</S>
@@ -209,10 +209,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">UICorner</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="UIStroke" referent="RBXBA6EA2D9E0E64C019BEB063484F58084">
+				<Item class="UIStroke" referent="RBXF63C2B61CC954F64BA9BC57D96DE4A38">
 					<Properties>
 						<token name="ApplyStrokeMode">0</token>
 						<UDim name="BorderOffset">
@@ -236,9 +236,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">UIStroke</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX62BE7B2825E849AF8996298959A64D34">
+					<Item class="UIGradient" referent="RBX7E9EFE6000B94D2AA169346A1CA0117A">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 1 0 0.615686 1 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -247,18 +247,21 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 0 1 0 0.817 0.7 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIGradient</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX3330261951A544A68CBE6C852D472EEF">
+			<Item class="Frame" referent="RBX41255023DC31498FBA3DF4E6DCBEBEE6">
 				<Properties>
 					<token name="Style">0</token>
 					<bool name="Active">false</bool>
@@ -320,9 +323,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">TeamWon</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBX513332A1201E40948A39B085B6EA6FCF">
+				<Item class="ImageLabel" referent="RBX90AEB535869C4CDAB9F6ACD89715342F">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://102537074554311</url></Content>
 						<Color3 name="ImageColor3">
@@ -417,10 +420,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">Background</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX5231BF38801043D78B7B19A2E18A4F5E">
+				<Item class="TextLabel" referent="RBX4413674D4F174EAFA6D08E6588BA92DE">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -512,9 +515,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">TeamWonText</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIStroke" referent="RBX07C11EBF6EF7459786716CA35AA7DB93">
+					<Item class="UIStroke" referent="RBXF256543E80DE438093DD74EE2BE4DD27">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -538,10 +541,10 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIStroke</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
-					<Item class="UIGradient" referent="RBX8AE3EE57F315456F87EC873AACA0EF3D">
+					<Item class="UIGradient" referent="RBX86D63B0F4ABF41E691687BB5C569A7EE">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -550,18 +553,21 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIGradient</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX8CAFAE9F9C334C1C8D4F1EFF7BAFD23C">
+			<Item class="Frame" referent="RBXBF5FF3A0048D4DF79B4E3DE82ECAB83E">
 				<Properties>
 					<token name="Style">0</token>
 					<bool name="Active">false</bool>
@@ -623,9 +629,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">PlayerTop2</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBXBFAB807FD17A435489A4EE12DB7B3A5B">
+				<Item class="ImageLabel" referent="RBX19D82F12F15E4E40B280D90FA88F50DC">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://136129408095262</url></Content>
 						<Color3 name="ImageColor3">
@@ -720,10 +726,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">StatsBackground</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="ViewportFrame" referent="RBX94F41331DFDA44149B6DEA407BCD96CC">
+				<Item class="ViewportFrame" referent="RBX65891986971D48648331AC2FEF35EE38">
 					<Properties>
 						<Color3 name="Ambient">
 							<R>0.784313738</R>
@@ -820,10 +826,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">PlayerViewport</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX09E35263070647FC86DEC20BF87B98BC">
+				<Item class="Frame" referent="RBX62E26DB3C0BF4CC3A68416E91A4A89FA">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -885,9 +891,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">FreezesStats</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="TextLabel" referent="RBXF7E11A73E8714EF7874E58F1B7036F49">
+					<Item class="TextLabel" referent="RBXE473E40DCAA94E079E4D9B8157A4755F">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -979,9 +985,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">NameText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX15E896D44F5C4C18A9FC53C2171C156D">
+						<Item class="UIGradient" referent="RBX94E0AB0716F84B0E81DBAE7CA9215559">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -990,16 +996,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBXCF92AADBE7F648A5B5B3A298AD48274B">
+						<Item class="UIStroke" referent="RBX55E2A599B35840BA8A6C7C8368E78114">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -1023,11 +1032,11 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextLabel" referent="RBXAFBCC943C185404C95FA35BAA394F435">
+					<Item class="TextLabel" referent="RBXBF02C11A513E41E1B585E5951647DE74">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -1119,9 +1128,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ValueText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBXFC0F45B5C7A348A3A35C7711C70D345B">
+						<Item class="UIGradient" referent="RBX150EAB8335794C86ADED2E2DCF39B2F1">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -1130,16 +1139,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBX08B467E9F62E41A790615027923D13E2">
+						<Item class="UIStroke" referent="RBX5E195FCC1B264FBF8AC6A16493F7ADE1">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -1163,12 +1175,12 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBXB218FF38452D4925B5FC825142E20406">
+				<Item class="Frame" referent="RBX4DAED2E578134A10941BF196F09AC6EA">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -1230,9 +1242,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">ThawsStats</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="TextLabel" referent="RBXC61B1CE27BB441BB8CB4271C3E34A070">
+					<Item class="TextLabel" referent="RBXBBEC8F8672B54001BF9E915854550156">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -1324,9 +1336,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">NameText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX7A963882090149E9856DFB111966F5AD">
+						<Item class="UIGradient" referent="RBX698EBC362D094D6C8C246946D9B630F8">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -1335,16 +1347,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBX84D0BFEBC9474FB99C4324ED4A2FECAE">
+						<Item class="UIStroke" referent="RBXA410EF27E5564CC783BC6061BC169B8E">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -1368,11 +1383,11 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextLabel" referent="RBXF2914E6676A949768C4DAAC37F1356DD">
+					<Item class="TextLabel" referent="RBXC1C30FD4EA2141B9863D22158E482AD3">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -1464,9 +1479,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ValueText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX176E54BB5059404BAE08BF9DBF1A556A">
+						<Item class="UIGradient" referent="RBX087BAFF4B8254A7FB6300635A0776113">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -1475,16 +1490,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBX5E1C482C453549B59230D9103626AFB4">
+						<Item class="UIStroke" referent="RBX9D751D7C97854C219A31282598351E73">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -1508,12 +1526,12 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="TextLabel" referent="RBX551B514987414403ADD2557D13031857">
+				<Item class="TextLabel" referent="RBX17C215A4DD5741FA8628A6E61F39AEDD">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -1605,9 +1623,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">PlayerNameText</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX09E7A2CD8D6D415AA8A2794F252324BC">
+					<Item class="UIGradient" referent="RBXF3F56ABB7BA4434281E1FD6BF4031477">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -1616,16 +1634,19 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIGradient</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX308806EA7ACF46D69725ACA6C255BFB7">
+					<Item class="UIStroke" referent="RBXF38F428F52C140449ACB7A0B8AFCDFFE">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -1649,12 +1670,12 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIStroke</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX3FB6007E0E1C4ACDB0E6C241C0D16176">
+			<Item class="Frame" referent="RBXF3C6E9E4E8D34175A39B276387832B94">
 				<Properties>
 					<token name="Style">0</token>
 					<bool name="Active">false</bool>
@@ -1716,9 +1737,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">PlayerTop1</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBX2022B111FF334CB7B0F4F1FA21FE121F">
+				<Item class="ImageLabel" referent="RBXB10D007A2F18435E8E469CD4BB961A9C">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://136129408095262</url></Content>
 						<Color3 name="ImageColor3">
@@ -1813,10 +1834,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">StatsBackground</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="ViewportFrame" referent="RBX91EFE6E25AB64844916CE9BD411C52BF">
+				<Item class="ViewportFrame" referent="RBX60A4039910744EF2933FEA4B6E1A5E60">
 					<Properties>
 						<Color3 name="Ambient">
 							<R>0.784313738</R>
@@ -1913,10 +1934,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">PlayerViewport</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBXDA8347B80C8946E78126754AD40FB7E4">
+				<Item class="Frame" referent="RBXF87FE1694A664EE894FE6E13536DAC5B">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -1978,9 +1999,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">FreezesStats</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="TextLabel" referent="RBX613D0BB9CDDF4E38BE375CC4BD13E6C2">
+					<Item class="TextLabel" referent="RBXDAF1BA3F81C1483E81BA5C159D54C895">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -2072,9 +2093,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">NameText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX1EFC8DB103424435AE4CE780BE7C1C00">
+						<Item class="UIGradient" referent="RBXF75983DFA4E9436888DE7DB05BF704C1">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -2083,16 +2104,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBXB90E28320B174C64AF091F7CB8995050">
+						<Item class="UIStroke" referent="RBX488B886F85C74F318FA167E5000F0D84">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -2116,11 +2140,11 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextLabel" referent="RBX93D1DCCBFAAF4876960E8A8410A054D4">
+					<Item class="TextLabel" referent="RBX2C8D3241A57E4850BF9C5E3461AFE3C6">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -2212,9 +2236,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ValueText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX59BFA20B443A40E6AC9D70177714D2A3">
+						<Item class="UIGradient" referent="RBXD7753559B90E46AF9AAF068642FF7685">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -2223,16 +2247,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBXF95B8826AC984F2BAEE1283DAA65B553">
+						<Item class="UIStroke" referent="RBX469C9D55664E46FE899A6039AF75673A">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -2256,12 +2283,12 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX54B77C3923224D049542FE3E77868185">
+				<Item class="Frame" referent="RBXBDC460D8F5C440F184C8105E523DA353">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -2323,9 +2350,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">ThawsStats</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="TextLabel" referent="RBX5511D0D34E3B4837B9E2103AE8E8EB76">
+					<Item class="TextLabel" referent="RBX9AF981FBD6F2402EA51A4EA46E5F3E29">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -2417,9 +2444,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">NameText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX9C3B9FB30AEF49DCA570F36F22CEA3D4">
+						<Item class="UIGradient" referent="RBXAFEC096E62F346D39DE0B524C4B27EC5">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -2428,16 +2455,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBX1CE4427807374848A020CA1F0A24426E">
+						<Item class="UIStroke" referent="RBXF8AB95852DEA4D54912809A8CC2E0441">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -2461,11 +2491,11 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextLabel" referent="RBX35045D12533445EDA97CD6AE7CF6539E">
+					<Item class="TextLabel" referent="RBX47F66505714A48D692B2A0A32E4926EE">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -2557,9 +2587,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ValueText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBXEA206CA248074E2A8BC8FE097B41BD39">
+						<Item class="UIGradient" referent="RBX2F366D9EFFA240578182AFF1A12CADEF">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -2568,16 +2598,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBXC053CCAEFD9A4730B5FA61517DCF66B9">
+						<Item class="UIStroke" referent="RBXAA28FC5BA8C1428C85818A8FF9EE1C28">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -2601,12 +2634,12 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="TextLabel" referent="RBX5527E6252EE343979AD7EF7506BA6B19">
+				<Item class="TextLabel" referent="RBX55D68EAD395A4C62829ADC06CC05B82A">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -2698,9 +2731,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">PlayerNameText</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX43AA9A00218140FAA2B812A9F3E21B15">
+					<Item class="UIGradient" referent="RBX709DB7651C1B46F78E674B40A90BB458">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -2709,16 +2742,19 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIGradient</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX8CEFC8FEE94F4C7B8C4ADC321F6D381A">
+					<Item class="UIStroke" referent="RBX916CCBF6D6074D69845060BE1CE00F3E">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -2742,12 +2778,12 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIStroke</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBXC5AD623728F6431AAE03BED288F5D609">
+			<Item class="Frame" referent="RBX45A35B192514410B8326C95BCCD91A22">
 				<Properties>
 					<token name="Style">0</token>
 					<bool name="Active">false</bool>
@@ -2809,9 +2845,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">PlayerTop3</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBXF7F7D16B46A147DB9E846A65B09153BF">
+				<Item class="ImageLabel" referent="RBX3B97843DCF7641F38555E4F9A3D27F7C">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://136129408095262</url></Content>
 						<Color3 name="ImageColor3">
@@ -2906,10 +2942,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">StatsBackground</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="ViewportFrame" referent="RBXC8C13F759F574CB992B8BBA711338BF0">
+				<Item class="ViewportFrame" referent="RBX2C47585BDA55412F81DE010F7CFA014F">
 					<Properties>
 						<Color3 name="Ambient">
 							<R>0.784313738</R>
@@ -3006,10 +3042,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">PlayerViewport</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX38A445402D144C1D93E44A45EFB90DCE">
+				<Item class="Frame" referent="RBX12EE6F960B45477A91C892AE0B840869">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -3071,9 +3107,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">FreezesStats</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="TextLabel" referent="RBXA40129E70AE84B52968FDAFBA34B6A47">
+					<Item class="TextLabel" referent="RBX537D6D506B5947D8B8F3285ADF1767A6">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -3165,9 +3201,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">NameText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBXF9DF4D6788AE403ABA8043C64377EE2F">
+						<Item class="UIGradient" referent="RBX934EC813B8D644CEB9DFCCDCCAA082C2">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -3176,16 +3212,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBXE958E7E48FBF4168BE256A32973AD52D">
+						<Item class="UIStroke" referent="RBX722A8E60AF1E4B858E044F399291793B">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -3209,11 +3248,11 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextLabel" referent="RBX9D36700A76E3489398425A5E39147AD2">
+					<Item class="TextLabel" referent="RBX70A701B29EE64D208CDE429DD6C090B5">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -3305,9 +3344,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ValueText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBXF02A211FF5E0443CAD4CDD2C680241E4">
+						<Item class="UIGradient" referent="RBX420CAA57E33040C6B4A8BB80750D24CD">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -3316,16 +3355,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBX004976F8369C4AF980877DBC0C7253E3">
+						<Item class="UIStroke" referent="RBXA99DA88ED9DD42DD812C2DE270794971">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -3349,12 +3391,12 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX648313B987C440888857C32ADC6FF568">
+				<Item class="Frame" referent="RBXA6F50049A90E4F8FB7FA51D2E57B0DBA">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -3416,9 +3458,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">ThawsStats</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="TextLabel" referent="RBXD20AB09CA6D746FF9EDF0313FA1D084E">
+					<Item class="TextLabel" referent="RBX0B418E61561C43EB8F15F5F0F0A78E59">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -3510,9 +3552,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">NameText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX29086135DDE54C10A6BD2650D2A95BAB">
+						<Item class="UIGradient" referent="RBX18EDCBF44BAF4C699AF9B6EA249A44BD">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -3521,16 +3563,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBX6034BD45E8D84E0BB16BD41F6297B9D4">
+						<Item class="UIStroke" referent="RBX73440D5BA4AC47BC92FCCAE10F5A9DAE">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -3554,11 +3599,11 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextLabel" referent="RBXBF6FA9CBBF9D49A2BB179BEB2D6B3C4C">
+					<Item class="TextLabel" referent="RBX187FD7F6252B47BEA2DA0F6C570F3A85">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -3650,9 +3695,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ValueText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIGradient" referent="RBX961CB1EFE9784654A81E7FE6A577CC98">
+						<Item class="UIGradient" referent="RBX1D3A48CA568B455EB05CC1E802BEEFE4">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -3661,16 +3706,19 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIStroke" referent="RBXBA6087415373490BBE1BE4B14FD8F41A">
+						<Item class="UIStroke" referent="RBXDBDF6525D32240AD89363D55BB46BA7C">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -3694,12 +3742,12 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="TextLabel" referent="RBX262FB67C64A64E6FBA24A03816DA3E82">
+				<Item class="TextLabel" referent="RBX6018B9458B7F4BBD9D052075E5D95F3A">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -3791,9 +3839,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">PlayerNameText</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX54396E1042EF4D43B2C1F795A38AD54C">
+					<Item class="UIGradient" referent="RBX6D534B2530C5463F9DC74308FE29E355">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.613126 0.84525 0.84525 0.84525 0 1 0.533333 0.533333 0.533333 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -3802,16 +3850,19 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIGradient</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
-					<Item class="UIStroke" referent="RBX4DD41D1733BF4C56A798216712834B08">
+					<Item class="UIStroke" referent="RBX8082293585A14011895D31923FF9C72D">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -3835,12 +3886,12 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIStroke</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBXD87B2F5CA72D41DDBAC21019FEA6CFF6">
+			<Item class="ImageButton" referent="RBXF709C4BD6C204CBAB1072736630DB783">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://77843812403584</url></Content>
@@ -3943,9 +3994,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">CloseButton</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="TextLabel" referent="RBX8FA57CB3D47244A4B8B2189D7618FAB9">
+				<Item class="TextLabel" referent="RBXB894FEFDF4834C36B338D0DB54E1D547">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -4037,11 +4088,11 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">TextLabel</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBXBF1F8918C85A4A6BA8CD3CFE954404A5">
+			<Item class="ImageButton" referent="RBXAA53D2E8ECEA4F7188099D0C2C2066D3">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://83045138104671</url></Content>
@@ -4144,9 +4195,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">NextButton</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="TextLabel" referent="RBX4CB2B72C67824205A49661BDC0AFD8EC">
+				<Item class="TextLabel" referent="RBXB86C37C465E0435E8810FE7084BF1CD4">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -4238,9 +4289,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">Text</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIStroke" referent="RBX189F956558C94BDF86C686633409A740">
+					<Item class="UIStroke" referent="RBX632F2BCEF77242EBB32F2AD556CA5439">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -4264,12 +4315,12 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIStroke</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="UIAspectRatioConstraint" referent="RBX66802799CA204268B95E8D0BD812689D">
+			<Item class="UIAspectRatioConstraint" referent="RBX1DE055D90A224167B03734D5258A4C23">
 				<Properties>
 					<float name="AspectRatio">1.59471583</float>
 					<token name="AspectType">0</token>
@@ -4279,11 +4330,11 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">UIAspectRatioConstraint</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="Frame" referent="RBXE740D3E5DEDA4C5B90CE09E0772D6A0A">
+		<Item class="Frame" referent="RBXE114A7B30EE34725B528D258814AB888">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -4345,9 +4396,9 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">PlayerStats</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="ImageLabel" referent="RBX97C93F3FC1F545D99B927CE5A8342ACB">
+			<Item class="ImageLabel" referent="RBX7B9BA2A5DDB94DA6B528D0888E55FCE2">
 				<Properties>
 					<Content name="Image"><null></null></Content>
 					<Color3 name="ImageColor3">
@@ -4442,9 +4493,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">Background</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="UICorner" referent="RBX0CD90EF11ABB43DE8C0328CECC56A093">
+				<Item class="UICorner" referent="RBX85F992B5D0A6488FAD207CDB01570646">
 					<Properties>
 						<UDim name="BottomLeftRadius">
 							<S>0.0500000007</S>
@@ -4467,10 +4518,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">UICorner</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="UIStroke" referent="RBXB058088F24734958A1DA68A052846792">
+				<Item class="UIStroke" referent="RBX81F7D64F06524EE1B49B1A404EC7FA4D">
 					<Properties>
 						<token name="ApplyStrokeMode">0</token>
 						<UDim name="BorderOffset">
@@ -4494,9 +4545,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">UIStroke</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIGradient" referent="RBX35FE728C188D4E04956684C0A8611D42">
+					<Item class="UIGradient" referent="RBXD128C61FE8F74C5FBAD76378FE17C44A">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 1 0 0.615686 1 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -4505,18 +4556,21 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 0 1 0 0.817 0.7 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIGradient</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBXDC50ADFBB52D4C149E58F549DD317A1C">
+			<Item class="Frame" referent="RBX883933D55C6D479A85567DD11D209585">
 				<Properties>
 					<token name="Style">0</token>
 					<bool name="Active">false</bool>
@@ -4578,9 +4632,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">GameResult</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="ImageLabel" referent="RBXE88F4A4A2C69455EB2C09D9EDCAF613C">
+				<Item class="ImageLabel" referent="RBXD7135A629E834AAE8939628A03152E55">
 					<Properties>
 						<Content name="Image"><url>rbxassetid://102537074554311</url></Content>
 						<Color3 name="ImageColor3">
@@ -4675,10 +4729,10 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">Background</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBXD7C0BB6476694D0EB26605F433656FF5">
+				<Item class="TextLabel" referent="RBX99FC9F2C26B749948CEDA50936BC919E">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -4770,9 +4824,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">GameResultText</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIStroke" referent="RBXEF9D5B2C29B241E9A13C191A263FF70D">
+					<Item class="UIStroke" referent="RBX9750C07D0AF747619EAC59B4700F739F">
 						<Properties>
 							<token name="ApplyStrokeMode">0</token>
 							<UDim name="BorderOffset">
@@ -4796,10 +4850,10 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIStroke</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
-					<Item class="UIGradient" referent="RBX895AEAB7B24C4B198C4DB862065E0E47">
+					<Item class="UIGradient" referent="RBX5C0020E4DA884502B4045F6C88E91963">
 						<Properties>
 							<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 							<bool name="Enabled">true</bool>
@@ -4808,18 +4862,21 @@
 								<Y>0</Y>
 							</Vector2>
 							<float name="Rotation">90</float>
+							<float name="Scale">1</float>
+							<token name="TileMode">0</token>
 							<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+							<token name="Type">0</token>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIGradient</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="ImageButton" referent="RBX7F8E590E34A54185B7FD32212F19918C">
+			<Item class="ImageButton" referent="RBXEAC6DD500D4D493B9DFC16475FDD82B7">
 				<Properties>
 					<Content name="HoverImage"><null></null></Content>
 					<Content name="Image"><url>rbxassetid://77843812403584</url></Content>
@@ -4922,9 +4979,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">CloseButton</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="TextLabel" referent="RBXD205FEAF550E419EB314F82C34A2D3CB">
+				<Item class="TextLabel" referent="RBX38974AED62714B9B92EDC999B5E4A4F0">
 					<Properties>
 						<Font name="FontFace">
 							<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -5016,11 +5073,11 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">TextLabel</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX22080C5963CC4ABB8020416C4C80B60E">
+			<Item class="Frame" referent="RBX0F916C07413B46A19C824D40B478D0F7">
 				<Properties>
 					<token name="Style">0</token>
 					<bool name="Active">false</bool>
@@ -5082,9 +5139,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">Stats</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="Frame" referent="RBX7FAA1A865E7144C8BAAAD7BFBF58319A">
+				<Item class="Frame" referent="RBXFEC55F3A7C9E4A1FAD2513325D3FDDD4">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -5146,9 +5203,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">TotalStats</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="UIListLayout" referent="RBXECA45904065543AA89E585D75D9BEFB0">
+					<Item class="UIListLayout" referent="RBXDF9FCDF7E4E04A818FFBC1220FA18C81">
 						<Properties>
 							<token name="HorizontalFlex">0</token>
 							<token name="ItemLineAlignment">0</token>
@@ -5167,10 +5224,10 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">UIListLayout</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX1300AF6B887E4C3685EAE0A978F78BA4">
+					<Item class="Frame" referent="RBX6130AC34956947B6B91C570C7F4FDF32">
 						<Properties>
 							<token name="Style">0</token>
 							<bool name="Active">false</bool>
@@ -5232,9 +5289,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">Freeze</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="ImageLabel" referent="RBX9A94557FD65D4BE29A0C8CF1A5D33F2B">
+						<Item class="ImageLabel" referent="RBX4B6CA365AE164EAD9907B72744A7F35C">
 							<Properties>
 								<Content name="Image"><url>rbxassetid://99886348010398</url></Content>
 								<Color3 name="ImageColor3">
@@ -5329,10 +5386,10 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">Background</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX0F47BDA61E884B15978FA87581793B47">
+						<Item class="TextLabel" referent="RBX1555D8DC3EC446B2AC9E16BAE1A00A74">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -5424,9 +5481,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">ValueText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBXC03067C784E042489F7E7975DC62F1EC">
+							<Item class="UIStroke" referent="RBX4554A3C0CD744C7BA9071ABE356D9A44">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -5450,10 +5507,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBXD0E75960C37346F397BAA4FB314E648E">
+							<Item class="UIGradient" referent="RBX631FA3B791E9477E8BE6CB81E07AE33E">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -5462,17 +5519,20 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="TextLabel" referent="RBXD3805DB85D2F463FBE3BFE403214E983">
+						<Item class="TextLabel" referent="RBX07A1F159A637469086D63D04657A2730">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -5564,9 +5624,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">NameText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIGradient" referent="RBX3EA8C497E9DB42F18CF6C3E65B27E3B3">
+							<Item class="UIGradient" referent="RBX008EF2492DDE4091BC237A1550EBFED1">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -5575,16 +5635,19 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIStroke" referent="RBX4A6B83D755AF4CD5A6D14CC59A3E0BFC">
+							<Item class="UIStroke" referent="RBX9B9E876A50894B0CBE151CB031FB9C7C">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -5608,12 +5671,12 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBXCD2ACD9C219A4AE39045EC7A9846AB30">
+					<Item class="Frame" referent="RBX817197E813AD4FE4B40BBCD7DE973D8A">
 						<Properties>
 							<token name="Style">0</token>
 							<bool name="Active">false</bool>
@@ -5675,9 +5738,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">Thaw</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="ImageLabel" referent="RBXA835EBC5611847B6B71898B4E08525F0">
+						<Item class="ImageLabel" referent="RBX86CDF50670244E4E95166676309736BE">
 							<Properties>
 								<Content name="Image"><url>rbxassetid://99886348010398</url></Content>
 								<Color3 name="ImageColor3">
@@ -5772,10 +5835,10 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">Background</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX873A63BCAE22455CBDB465A169ABBC2A">
+						<Item class="TextLabel" referent="RBXCED57FF74DE54C8B8A1A9D541CD37DDE">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -5867,9 +5930,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">ValueText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX9BC5A15F4B0042698122EFA47687ABD3">
+							<Item class="UIStroke" referent="RBX74563403A4D74768864F899738EF0EBB">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -5893,10 +5956,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBXDEC76B830E4A428086B930DEFE894548">
+							<Item class="UIGradient" referent="RBXBE1277140B97448D90E6566D99826ACD">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -5905,17 +5968,20 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="TextLabel" referent="RBXAAFE1C8D024940BD8791BF16B5CC91C5">
+						<Item class="TextLabel" referent="RBX9828FF6A5F5B45618E193C407EDBACFE">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -6007,9 +6073,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">NameText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBXF88E6474FC7A436FAE93CF50FFEB01DE">
+							<Item class="UIStroke" referent="RBXAD9138A8FCFF4FE98DBBC6A74AD22744">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -6033,10 +6099,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBX98087E578B5846BB9EF4A18DB5D40F04">
+							<Item class="UIGradient" referent="RBXF79779E6F7414B82B9807A32C80FFAAA">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -6045,18 +6111,21 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX6F7A2AAACCDF41B9807FF518AC1CD082">
+					<Item class="Frame" referent="RBX98A4A6B13CEA433B803AA82BF44881F6">
 						<Properties>
 							<token name="Style">0</token>
 							<bool name="Active">false</bool>
@@ -6118,9 +6187,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">FreezingSpree</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="ImageLabel" referent="RBX4B84C8E43AE74612AB06D64307FD6184">
+						<Item class="ImageLabel" referent="RBX170D9FE5020D490AA25DD19691141C20">
 							<Properties>
 								<Content name="Image"><url>rbxassetid://99886348010398</url></Content>
 								<Color3 name="ImageColor3">
@@ -6215,10 +6284,10 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">Background</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBXAC2BDF6269C84145BBE8A345EA2B5E0A">
+						<Item class="TextLabel" referent="RBX6838C8D2269643DB95892EBAA188898C">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -6310,9 +6379,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">ValueText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX9D607A5A38B7441F9389DB8D95DB7506">
+							<Item class="UIStroke" referent="RBX157EBE48DF644897864AE59B06CC19B0">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -6336,10 +6405,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBXA3F994534B97420B87743BDBB27D18DA">
+							<Item class="UIGradient" referent="RBXD36EB735D3ED46A7B77B5CB7CA07EEB3">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -6348,17 +6417,20 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="TextLabel" referent="RBXF4528D6311524A23B05619927F488F5A">
+						<Item class="TextLabel" referent="RBX7F99F54B217C4CF1865F6451EE2D56D2">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -6450,9 +6522,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">NameText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX93C27868C2AB46D9A27B66270FD49CE2">
+							<Item class="UIStroke" referent="RBX9B3B9555DAF14CC4B3025022B0C210B5">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -6476,10 +6548,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBXFFBB0D7FF87A47BEB7635F561B134B8B">
+							<Item class="UIGradient" referent="RBX1C4F080925864C01826FD607116D08C9">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -6488,18 +6560,21 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX7B1DAD80014648B28A8CD16B362761AB">
+					<Item class="Frame" referent="RBX13D15FE69EC94E6B85853B8F4612052D">
 						<Properties>
 							<token name="Style">0</token>
 							<bool name="Active">false</bool>
@@ -6561,9 +6636,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ThawingSpree</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="ImageLabel" referent="RBX34F39411E5BF4EDF8E3032AEFE59B486">
+						<Item class="ImageLabel" referent="RBXC110298F20044706A09E1A374F32E003">
 							<Properties>
 								<Content name="Image"><url>rbxassetid://99886348010398</url></Content>
 								<Color3 name="ImageColor3">
@@ -6658,10 +6733,10 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">Background</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX13EE7E5CE7B74242AC37DBDA756D7950">
+						<Item class="TextLabel" referent="RBX3EFECEB3440740C4A5959F4D1C598DC3">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -6753,9 +6828,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">ValueText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX9CC375B4B0DD4F9F94DD80823A6148CE">
+							<Item class="UIStroke" referent="RBXF634FBE4F0A84C66A2A63DFE062BEE81">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -6779,10 +6854,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBX5F7BE7993DA240D2A7E6D297CD2A0718">
+							<Item class="UIGradient" referent="RBXE6E75F98D4F0407AB3409D60878C0C69">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -6791,17 +6866,20 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="TextLabel" referent="RBX35BD743811494250A9945B762302D458">
+						<Item class="TextLabel" referent="RBXD7EF49E1C2794EC9ABB2CF12A5F0CED0">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -6893,9 +6971,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">NameText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX23ED0D4588B843AE9492D5FB5916008C">
+							<Item class="UIStroke" referent="RBX5DF0522D63D84B97A9571C8E29311BCF">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -6919,10 +6997,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBXEF467EB81EC04A3AA1CE52B3A04099EC">
+							<Item class="UIGradient" referent="RBX96EBAD5FE4134BA58911148C87CEE099">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -6931,18 +7009,21 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBXC8C06C4690304017824BC52F989180DC">
+					<Item class="Frame" referent="RBXFC11F9DF2B0F4E81A6B8B5E6722D5ED3">
 						<Properties>
 							<token name="Style">0</token>
 							<bool name="Active">false</bool>
@@ -7004,9 +7085,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">FirstBlood</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="ImageLabel" referent="RBXDB7A6EC6891E4B458DCA11CA7117E4F9">
+						<Item class="ImageLabel" referent="RBXB3EC8C6FFDD84C11B1045F6E61632802">
 							<Properties>
 								<Content name="Image"><url>rbxassetid://99886348010398</url></Content>
 								<Color3 name="ImageColor3">
@@ -7101,10 +7182,10 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">Background</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX1BDE2B045AEB4CC2B945036B0ECA712A">
+						<Item class="TextLabel" referent="RBX7717BF8B6FF0414A87FC7E0C5F817B9E">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -7196,9 +7277,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">ValueText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX26DE2E4C424F40AB9B6CFDC83D434FD8">
+							<Item class="UIStroke" referent="RBXF23A1DF9A981409BAD4891C314A82B02">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -7222,10 +7303,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBX9A6C397E7A6E4BA1B2E2A042F29AAFBE">
+							<Item class="UIGradient" referent="RBX227AD9D5ECA541EB8E877E80D4171B4C">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -7234,17 +7315,20 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="TextLabel" referent="RBXC2ED1C50E6E04972B28D1A482F85B2F5">
+						<Item class="TextLabel" referent="RBX8F01A63F5B3F49ACB4403DC7E3F40685">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -7336,9 +7420,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">NameText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX0F9B8ADDBE084F81AB23F273467FD92F">
+							<Item class="UIStroke" referent="RBXD91BF2E442EB46FAA0436419766F5BEB">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -7362,10 +7446,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBX1856352EDDB04BFE849B183D08DBE941">
+							<Item class="UIGradient" referent="RBX52F83363E93A4E848B8E898953FB77CD">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -7374,18 +7458,21 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBXD30E575702D3420AA625D189A89F6D93">
+					<Item class="Frame" referent="RBX3B01701542EC4CD3B02B51AB0DC21D4F">
 						<Properties>
 							<token name="Style">0</token>
 							<bool name="Active">false</bool>
@@ -7447,9 +7534,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">LastStanding</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="ImageLabel" referent="RBXD1C01AC7ACEA4FF0BA1CE22903CCCCDB">
+						<Item class="ImageLabel" referent="RBX987A6205AC1441119431609BB98AA447">
 							<Properties>
 								<Content name="Image"><url>rbxassetid://99886348010398</url></Content>
 								<Color3 name="ImageColor3">
@@ -7544,10 +7631,10 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">Background</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX07990D1DBB254D5C8BC8DA71C4A2FA1A">
+						<Item class="TextLabel" referent="RBX7149B9BC125040B390326F3AE307DCFD">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -7639,9 +7726,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">ValueText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX72B5F0CDA72F489788125EBF2A08FBA4">
+							<Item class="UIStroke" referent="RBXDA3FDB8587B84E7693CF8BC05D72E5D9">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -7665,10 +7752,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBXC9463FF735CA4FF1A5DBC7868A7271E5">
+							<Item class="UIGradient" referent="RBX8CF4E429803F495AA9B3E52CC7F06347">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -7677,17 +7764,20 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="TextLabel" referent="RBX90BE7A59E2C0400D8E11D523983ED54C">
+						<Item class="TextLabel" referent="RBXB41261102ACB4AC3A78A2B3925F06146">
 							<Properties>
 								<Font name="FontFace">
 									<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -7779,9 +7869,9 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">NameText</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
-							<Item class="UIStroke" referent="RBX41A0D9176EFE4FAFB3E83F608964B70F">
+							<Item class="UIStroke" referent="RBXAD0EEEB2E2E44244A322B81610CF4D4D">
 								<Properties>
 									<token name="ApplyStrokeMode">0</token>
 									<UDim name="BorderOffset">
@@ -7805,10 +7895,10 @@
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIStroke</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
-							<Item class="UIGradient" referent="RBXE2B3A135B81F4EF4924DD274756FBDC9">
+							<Item class="UIGradient" referent="RBX3EC2E4BB198B4EE98689C742895D25D9">
 								<Properties>
 									<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 									<bool name="Enabled">true</bool>
@@ -7817,19 +7907,22 @@
 										<Y>0</Y>
 									</Vector2>
 									<float name="Rotation">90</float>
+									<float name="Scale">1</float>
+									<token name="TileMode">0</token>
 									<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+									<token name="Type">0</token>
 									<BinaryString name="AttributesSerialize"></BinaryString>
 									<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 									<bool name="DefinesCapabilities">false</bool>
 									<string name="Name">UIGradient</string>
 									<int64 name="SourceAssetId">-1</int64>
-									<BinaryString name="Tags"></BinaryString>
+									<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								</Properties>
 							</Item>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX41EBBF0EFBC64EA88E410EE57A8FD4E7">
+				<Item class="Frame" referent="RBX97F0799849114490809B2D4F5D008220">
 					<Properties>
 						<token name="Style">0</token>
 						<bool name="Active">false</bool>
@@ -7891,9 +7984,9 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">TotalMoney</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
-					<Item class="TextLabel" referent="RBX920AC61AB50F429BAD68A803E7DE1E7D">
+					<Item class="TextLabel" referent="RBXC21ADEB72C984755B9CCA892C6560C26">
 						<Properties>
 							<Font name="FontFace">
 								<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -7985,9 +8078,9 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">ValueText</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
-						<Item class="UIStroke" referent="RBXF3F2FBD2DBE64D6CB8F6FD900D182B22">
+						<Item class="UIStroke" referent="RBX9BA46D1887D840408D9EB3E5EA6F1541">
 							<Properties>
 								<token name="ApplyStrokeMode">0</token>
 								<UDim name="BorderOffset">
@@ -8011,10 +8104,10 @@
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIStroke</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
-						<Item class="UIGradient" referent="RBXB0CC841AAA834FEA8AEC587B331522BE">
+						<Item class="UIGradient" referent="RBX0191DDE2143B42EAB5AE4DA083AFF7AF">
 							<Properties>
 								<ColorSequence name="Color">0 1 1 1 0 0.585492 0.84525 0.84525 0.84525 0 1 0.313726 0.313726 0.313726 0 </ColorSequence>
 								<bool name="Enabled">true</bool>
@@ -8023,17 +8116,20 @@
 									<Y>0</Y>
 								</Vector2>
 								<float name="Rotation">90</float>
+								<float name="Scale">1</float>
+								<token name="TileMode">0</token>
 								<NumberSequence name="Transparency">0 0 0 1 0 0 </NumberSequence>
+								<token name="Type">0</token>
 								<BinaryString name="AttributesSerialize"></BinaryString>
 								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 								<bool name="DefinesCapabilities">false</bool>
 								<string name="Name">UIGradient</string>
 								<int64 name="SourceAssetId">-1</int64>
-								<BinaryString name="Tags"></BinaryString>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="ImageLabel" referent="RBX927EB61587EB434ABC817F59AF146D69">
+					<Item class="ImageLabel" referent="RBX41CA4E29231D402A8B189824175F1F68">
 						<Properties>
 							<Content name="Image"><url>rbxassetid://96012355867963</url></Content>
 							<Color3 name="ImageColor3">
@@ -8128,12 +8224,12 @@
 							<bool name="DefinesCapabilities">false</bool>
 							<string name="Name">Icon</string>
 							<int64 name="SourceAssetId">-1</int64>
-							<BinaryString name="Tags"></BinaryString>
+							<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 						</Properties>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="ViewportFrame" referent="RBXDE51C9DFCCCB4BB1B2DA2A12B3C9F50A">
+			<Item class="ViewportFrame" referent="RBX09039B4771EF4BB9BD14900124847051">
 				<Properties>
 					<Color3 name="Ambient">
 						<R>0.784313738</R>
@@ -8230,9 +8326,9 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">PlayerViewport</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
-				<Item class="UICorner" referent="RBXBB0D402857CF407C847B34D1FCDE6117">
+				<Item class="UICorner" referent="RBX4EDFA3C7D6384F94AD0F073D7894CEA6">
 					<Properties>
 						<UDim name="BottomLeftRadius">
 							<S>0.100000001</S>
@@ -8255,11 +8351,11 @@
 						<bool name="DefinesCapabilities">false</bool>
 						<string name="Name">UICorner</string>
 						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
+						<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="UIAspectRatioConstraint" referent="RBX2648B98B74A3454DB1F84826FCBC34C7">
+			<Item class="UIAspectRatioConstraint" referent="RBX384A6BBEB04C4E8F990DDB4E97EB2119">
 				<Properties>
 					<float name="AspectRatio">1.59471583</float>
 					<token name="AspectType">0</token>
@@ -8269,9 +8365,12 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">UIAspectRatioConstraint</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
 		</Item>
 	</Item>
+	<SharedStrings>
+		<SharedString md5="yuZpQdnvvUBOTYh1jqZ2cA=="></SharedString>
+	</SharedStrings>
 </roblox>

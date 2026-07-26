@@ -109,6 +109,18 @@ end
 -- HELPERS
 -- =========================================================
 
+--- Lazy-require ItemRewardController để tránh circular dependency
+local _itemRewardController = nil
+local function GetItemRewardController()
+	if not _itemRewardController then
+		local Module = script.Parent:FindFirstChild("ItemRewardController")
+		if Module then
+			_itemRewardController = require(Module)
+		end
+	end
+	return _itemRewardController
+end
+
 --- Lazy-require SpectateController để tránh circular dependency
 local _spectateController = nil
 local function GetSpectateController()
@@ -306,6 +318,11 @@ local function OpenPopUp(ChestEntry)
 				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
 				if Result and Result.Success then
 					PlayGuiSound(SFX_CHEST_BUY)
+					-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
+					local RewardCtrl = GetItemRewardController()
+					if RewardCtrl and Result.ReceivedItems then
+						RewardCtrl.ShowChestReward(Result.ReceivedItems, _selectedChest.Id)
+					end
 					task.spawn(function()
 						PlayerDataController.RefreshData()
 					end)
@@ -326,6 +343,11 @@ local function OpenPopUp(ChestEntry)
 				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
 				if Result and Result.Success then
 					PlayGuiSound(SFX_CHEST_BUY)
+					-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
+					local RewardCtrl = GetItemRewardController()
+					if RewardCtrl and Result.ReceivedItems then
+						RewardCtrl.ShowChestReward(Result.ReceivedItems, _selectedChest.Id)
+					end
 					task.spawn(function()
 						PlayerDataController.RefreshData()
 					end)

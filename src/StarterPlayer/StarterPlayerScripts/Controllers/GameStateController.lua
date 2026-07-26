@@ -76,6 +76,19 @@ local function GetShopController()
 	return _shopController
 end
 
+-- ItemRewardController — lazy-require để tránh circular load
+local _itemRewardController = nil
+local function GetItemRewardController()
+	if not _itemRewardController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("ItemRewardController")
+		if Module then
+			_itemRewardController = require(Module)
+		end
+	end
+	return _itemRewardController
+end
+
 -- Spectate nằm bên trong Menu — lazy-require để tránh circular load
 -- SpectateController được load sau bởi Main.client.lua
 local _spectateController = nil
@@ -156,7 +169,7 @@ local function SetLobbyGuisVisible(Visible)
 		NavGui.Enabled = Visible and not IsSpectating
 	end
 
-	-- Kếi vào trận: buộc đóng Inventory, Profile, Shop và Spectate nếu đang mở
+	-- Kếi vào trận: buộc đóng Inventory, Profile, Shop, Spectate và hiệu ứng ItemReward nếu đang mở
 	if not Visible then
 		local InvCtrl = GetInventoryController()
 		if InvCtrl then
@@ -173,6 +186,11 @@ local function SetLobbyGuisVisible(Visible)
 		local SpecCtrl = GetSpectateController()
 		if SpecCtrl then
 			SpecCtrl.SetVisible(false)
+		end
+		-- Reset hiệu ứng mở rương nếu đang chạy (phần thưởng vẫn an toàn vì đã được trao trước đó)
+		local RewardCtrl = GetItemRewardController()
+		if RewardCtrl then
+			RewardCtrl.Reset()
 		end
 	end
 end
