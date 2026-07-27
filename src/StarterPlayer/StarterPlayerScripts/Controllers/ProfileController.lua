@@ -8,7 +8,7 @@
 --     MenuLabel     (TextLabel)  — bỏ qua
 --     CloseButton   (TextButton / ImageButton)
 --     PlayerInfo    (Frame)
---       PlayerViewport  (ViewportFrame)  — avatar 3D
+--       AvatarThumbnail (ImageLabel)     — avatar 2D (HeadShot)
 --       PlayerNameText  (TextLabel)      — tên + id
 --     ItemList      (Frame)
 --       UIGridLayout
@@ -46,9 +46,9 @@ local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
 local Profile      = MenuGui and MenuGui:FindFirstChild("Profile", true)
 
 -- Các phần tử bên trong Profile
-local CloseButton  = Profile and Profile:FindFirstChild("CloseButton", true)
-local PlayerInfo   = Profile and Profile:FindFirstChild("PlayerInfo", true)
-local PlayerViewportFrame = PlayerInfo and PlayerInfo:FindFirstChild("PlayerViewport")
+local CloseButton          = Profile and Profile:FindFirstChild("CloseButton", true)
+local PlayerInfo           = Profile and Profile:FindFirstChild("PlayerInfo", true)
+local AvatarThumbnailFrame = PlayerInfo and (PlayerInfo:FindFirstChild("AvatarThumbnail") or PlayerInfo:FindFirstChild("PlayerViewport"))
 local PlayerNameText      = PlayerInfo and PlayerInfo:FindFirstChild("PlayerNameText")
 
 local ItemList     = Profile and Profile:FindFirstChild("ItemList", true)
@@ -120,90 +120,13 @@ local NavButton = NavGui and NavGui:FindFirstChild("Button")
 local _renderedItems = {}  -- Lưu các Frame đã clone để dọn dẹp khi đóng
 
 -- =========================================================
--- PRIVATE: Avatar 3D
+-- PRIVATE: Avatar 2D Thumbnail
 -- =========================================================
 
---- Dọn dẹp ViewportFrame cũ
-local function CleanViewport(Viewport)
-	if not Viewport then return end
-	for _, Child in ipairs(Viewport:GetChildren()) do
-		Child:Destroy()
-	end
-end
-
---- Load avatar của LocalPlayer vào ViewportFrame
---- Ưu tiên: ReplicatedStorage.PlayerAvatars → Character hiện tại
-local function LoadPlayerAvatar(Viewport)
-	if not Viewport then return end
-	CleanViewport(Viewport)
-
-	-- Tạo Camera
-	local Camera = Instance.new("Camera")
-	Camera.FieldOfView = 40
-	Camera.Parent = Viewport
-	Viewport.CurrentCamera = Camera
-
-	-- Tạo WorldModel
-	local WorldModel = Instance.new("WorldModel")
-	WorldModel.Parent = Viewport
-
-	local UserId = LocalPlayer.UserId
-
-	task.spawn(function()
-		local ClonedModel = nil
-
-		-- Ưu tiên 1: Model tĩnh đã cache từ AvatarCacheService
-		local PlayerAvatars = ReplicatedStorage:FindFirstChild("PlayerAvatars")
-		local Cached = PlayerAvatars and PlayerAvatars:FindFirstChild(tostring(UserId))
-		if Cached then
-			ClonedModel = Cached:Clone()
-		else
-			-- Ưu tiên 2: Clone Character hiện tại của LocalPlayer
-			local Character = LocalPlayer.Character
-			if Character then
-				Character.Archivable = true
-				ClonedModel = Character:Clone()
-				Character.Archivable = false
-			end
-		end
-
-		if not ClonedModel then return end
-
-		ClonedModel.Parent = WorldModel
-
-		-- Anchor toàn bộ parts, xóa component động
-		for _, Descendant in ipairs(ClonedModel:GetDescendants()) do
-			if Descendant:IsA("BasePart") then
-				Descendant.Anchored = true
-			elseif Descendant:IsA("Script") or Descendant:IsA("LocalScript")
-				or Descendant:IsA("Animator") or Descendant:IsA("Sound") then
-				Descendant:Destroy()
-			end
-		end
-
-		local Humanoid = ClonedModel:FindFirstChildOfClass("Humanoid")
-		if Humanoid then
-			Humanoid.PlatformStand = true
-		end
-
-		-- Đưa model về gốc
-		ClonedModel:PivotTo(CFrame.new(0, 0, 0))
-
-		-- Căn camera vào mặt
-		local Head = ClonedModel:FindFirstChild("Head")
-		if Head then
-			local Distance = GameConfig.GUI.ViewportCameraDistance
-			local HeadCFrame = Head.CFrame
-			local CameraPos = HeadCFrame.Position + (HeadCFrame.LookVector * Distance)
-			Camera.CFrame = CFrame.new(CameraPos, HeadCFrame.Position)
-		else
-			-- Fallback: nhìn toàn thân
-			local PivotCF, Size = ClonedModel:GetBoundingBox()
-			local H = Size.Y
-			local Center = PivotCF.Position
-			Camera.CFrame = CFrame.new(Center + Vector3.new(0, H * 1, -(H * 0.9)), Center)
-		end
-	end)
+--- Hiển thị ảnh đại diện chân dung (HeadShot) 2D cho LocalPlayer trong Profile
+local function LoadPlayerAvatar(ImageLabel)
+	if not ImageLabel then return end
+	ImageLabel.Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150", LocalPlayer.UserId)
 end
 
 -- =========================================================
@@ -357,8 +280,8 @@ local function PopulatePlayerInfo()
 		)
 	end
 
-	-- Avatar 3D
-	LoadPlayerAvatar(PlayerViewportFrame)
+	-- Avatar 2D Thumbnail (HeadShot)
+	LoadPlayerAvatar(AvatarThumbnailFrame)
 end
 
 -- =========================================================
@@ -392,7 +315,7 @@ local function CloseProfile()
 	if not Profile then return end
 	Profile.Visible = false
 	ClearItemList()
-	CleanViewport(PlayerViewportFrame)
+	-- Khôi phục NavButton trừ khi đang spectate
 	-- Khôi phục NavButton trừ khi đang spectate
 	if NavButton then
 		local SpecCtrl = GetSpectateController()

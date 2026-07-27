@@ -14,8 +14,6 @@ local SERVICES = {
 	-- DataService phải lên đầu tiên vì các service khác cần dữ liệu người chơi
 	require(script.Parent.DataService),
 
-	require(script.Parent.AvatarCacheService),
-
 	-- SessionService: quản lý state trận đấu (dependency của hầu hết service sau)
 	require(script.Parent.SessionService),
 

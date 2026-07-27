@@ -29,10 +29,10 @@ local PlayerSlots = {
 }
 
 -- ── PlayerStats (Bảng Thống Kê Cá Nhân) ───────────────────
-local PlayerStats    = StatGui:WaitForChild("PlayerStats")
-local GameResultText = PlayerStats:WaitForChild("GameResult"):WaitForChild("GameResultText")
-local CloseButton2   = PlayerStats:WaitForChild("CloseButton")
-local MainViewport   = PlayerStats:WaitForChild("PlayerViewport")
+local PlayerStats          = StatGui:WaitForChild("PlayerStats")
+local GameResultText       = PlayerStats:WaitForChild("GameResult"):WaitForChild("GameResultText")
+local CloseButton2         = PlayerStats:WaitForChild("CloseButton")
+local MainAvatarThumbnail = PlayerStats:WaitForChild("AvatarThumbnail")
 
 local StatsPanel     = PlayerStats:WaitForChild("Stats")
 local TotalStats     = StatsPanel:WaitForChild("TotalStats")
@@ -88,100 +88,18 @@ local function ShowPlayerStats()
 	PlayGuiSound(SFX_OVERALL)
 end
 
---- Thiết lập và tạo mô hình nhân vật 3D trong ViewportFrame bằng UserId
-local function SetupPlayerViewport(viewportFrame, userId)
-	-- Dọn dẹp tất cả Model, Camera và WorldModel cũ để tránh rò rỉ bộ nhớ
-	for _, child in ipairs(viewportFrame:GetChildren()) do
-		if child:IsA("Model") or child:IsA("Camera") or child:IsA("WorldModel") then
-			child:Destroy()
-		end
+--- Hiển thị ảnh đại diện 2D của người chơi qua rbxthumb CDN
+--- @param imageLabel ImageLabel
+--- @param userId number
+--- @param thumbnailType string|nil — "Avatar" (Toàn thân) hoặc "AvatarBust" (Từ eo trở lên)
+local function SetPlayerThumbnail(imageLabel, userId, thumbnailType)
+	if not imageLabel then return end
+	if not userId or userId == 0 then
+		imageLabel.Image = ""
+		return
 	end
-
-	-- Tạo Camera với góc nhìn hẹp để avatar ít bị méo
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = 40
-	camera.Parent = viewportFrame
-	viewportFrame.CurrentCamera = camera
-
-	-- Tạo WorldModel làm lớp trung gian bắt buộc để Humanoid/Joints/Accessories hoạt động đúng
-	local worldModel = Instance.new("WorldModel")
-	worldModel.Parent = viewportFrame
-
-	--- Căn chỉnh camera tự động dựa trên kích thước thực tế của avatar
-	local function AlignCameraToModel(model)
-		model.Parent = worldModel
-
-		-- Khóa cứng mô hình tĩnh (Anchor) và xóa bỏ các script/animator thừa để tránh chuyển động
-		for _, descendant in ipairs(model:GetDescendants()) do
-			if descendant:IsA("BasePart") then
-				descendant.Anchored = true
-			elseif descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Sound") or descendant:IsA("Animator") then
-				descendant:Destroy()
-			end
-		end
-
-		local humanoid = model:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.PlatformStand = true
-		end
-
-		-- Đưa toàn bộ avatar về gốc tọa độ cố định để camera không bị lệch
-		model:PivotTo(CFrame.new(0, 0, 0))
-
-		-- Tìm bộ phận Head để chỉnh camera trực diện vào khuôn mặt (Portrait Face View)
-		local head = model:FindFirstChild("Head")
-		if head then
-			local distance = GameConfig.GUI.ViewportCameraDistance -- Chỉnh tại GameConfig.GUI.ViewportCameraDistance
-			local headCFrame = head.CFrame
-			-- Trong Roblox, mặt của nhân vật hướng theo LookVector của Head
-			local cameraPos = headCFrame.Position + (headCFrame.LookVector * distance)
-			camera.CFrame = CFrame.new(cameraPos, headCFrame.Position)
-		else
-			-- Fallback: Căn chỉnh camera tự động theo bounding box nếu không tìm thấy Head
-			local pivotCFrame, size = model:GetBoundingBox()
-			local avatarHeight  = size.Y
-			local avatarCenter  = pivotCFrame.Position
-
-			local distance = avatarHeight * 0.9
-			local lookAtTarget = avatarCenter + Vector3.new(0, avatarHeight * 0.1, 0)
-			local cameraPos    = avatarCenter + Vector3.new(0, avatarHeight * 1, -distance)
-
-			camera.CFrame = CFrame.new(cameraPos, lookAtTarget)
-		end
-	end
-
-	-- Chạy tiến trình tải model bất đồng bộ để không làm đơ client
-	task.spawn(function()
-		local clonedModel = nil
-
-		-- Ưu tiên 1: Lấy model tĩnh đã được Server chuẩn bị sẵn trong ReplicatedStorage (cho Top 1, 2, 3)
-		local PlayerAvatars = ReplicatedStorage:WaitForChild("PlayerAvatars", 5)
-		local pregeneratedModel = PlayerAvatars and PlayerAvatars:WaitForChild(tostring(userId), 5)
-
-		if pregeneratedModel then
-			clonedModel = pregeneratedModel:Clone()
-		else
-			-- Ưu tiên 2: Clone Character hiện tại của người chơi (dành cho PlayerStats/LocalPlayer)
-			local targetPlayer = nil
-			for _, player in ipairs(Players:GetPlayers()) do
-				if player.UserId == userId then
-					targetPlayer = player
-					break
-				end
-			end
-
-			if targetPlayer and targetPlayer.Character then
-				local character = targetPlayer.Character
-				character.Archivable = true
-				clonedModel = character:Clone()
-				character.Archivable = false
-			end
-		end
-
-		if clonedModel then
-			AlignCameraToModel(clonedModel)
-		end
-	end)
+	thumbnailType = thumbnailType or "Avatar"
+	imageLabel.Image = string.format("rbxthumb://type=%s&id=%d&w=352&h=352", thumbnailType, userId)
 end
 
 --- Lấy UserId an toàn từ Tên hiển thị (DisplayName hoặc Name) ngay cả khi người chơi đã thoát game
@@ -206,10 +124,11 @@ local function FillTopPlayers(topPlayers)
 			slot.FreezesStats.ValueText.Text = tostring(data.Freezes)
 			slot.ThawsStats.ValueText.Text = tostring(data.Thaws)
 
-			-- Render mô hình 3D cho Top player — dùng UserId trực tiếp từ server
+			-- Render ảnh 2D toàn thân (Avatar) cho Top player
 			local userId = data.UserId or 0
-			if userId ~= 0 then
-				SetupPlayerViewport(slot.PlayerViewport, userId)
+			local avatarThumbnail = slot:FindFirstChild("AvatarThumbnail")
+			if avatarThumbnail then
+				SetPlayerThumbnail(avatarThumbnail, userId, "Avatar")
 			end
 
 			slot.Visible = true
@@ -225,8 +144,8 @@ local function FillPersonalStats(won, stats)
 
 	GameResultText.Text  = won and "VICTORY" or "DEFEAT"
 	
-	-- Render mô hình 3D của chính người chơi hiện tại
-	SetupPlayerViewport(MainViewport, LocalPlayer.UserId)
+	-- Render ảnh 2D từ eo trở lên (AvatarBust) cho cá nhân người chơi
+	SetPlayerThumbnail(MainAvatarThumbnail, LocalPlayer.UserId, "AvatarBust")
 
 	-- Format hiển thị chi tiết: "Số lượng (x Giá trị) = Tổng nhận được"
 	FreezeVal.Text = ("%d (×%d) = %d"):format(

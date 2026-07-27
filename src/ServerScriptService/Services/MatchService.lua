@@ -248,7 +248,7 @@ local function RunSetup()
 	SessionService.ResetSession()
 	FreezeService.ResetRound()
 
-	-- Xóa bỏ dọn dẹp TempTopPlayers (chuyển sang AvatarCacheService)
+	-- Quản lý top player avatar đã chuyển sang dùng 2D rbxthumb trên client
 
 	-- Phân đội và đặt state Normal
 	local ActivePlayers = Players:GetPlayers()
