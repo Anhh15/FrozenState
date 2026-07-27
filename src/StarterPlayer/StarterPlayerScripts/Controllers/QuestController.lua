@@ -30,6 +30,7 @@ local _closeButton       = nil  -- CloseButton (ImageButton)
 local _rewardAnnouncement = nil -- RewardAnnouncement (Frame)
 local _rewardIcon        = nil  -- RewardAnnouncement/Icon (ImageLabel)
 local _rewardAmount      = nil  -- RewardAnnouncement/AmountText (TextLabel)
+local _rewardOriginalSize = nil -- Kích thước ban đầu từ GUI (UDim2)
 local _templates         = nil  -- Templates (Folder)
 local _menuFrame         = nil  -- StarterGui/Menu (Frame — parent của Quest)
 local _navGui            = nil  -- NavigationButton ScreenGui
@@ -171,13 +172,13 @@ local function ShowRewardAnnouncement(RewardType, RewardAmount)
 		_rewardAmount.Text = "+" .. tostring(RewardAmount) .. " " .. RewardType
 	end
 
+	-- Lấy kích thước gốc được lưu từ UI trong Studio
+	local TargetSize = _rewardOriginalSize or _rewardAnnouncement.Size
+
 	-- Reset về scale 0 rồi hiện
 	_rewardAnnouncement.Size         = UDim2.fromScale(0, 0)
 	_rewardAnnouncement.AnchorPoint  = Vector2.new(0.5, 0.5)
 	_rewardAnnouncement.Visible      = true
-
-	-- Lấy kích thước gốc từ UI (giả định thiết kế sẵn trong Studio)
-	local TargetSize = UDim2.fromScale(0.4, 0.15)
 
 	-- Zoom in
 	local TweenIn = TweenService:Create(_rewardAnnouncement, TWEEN_INFO_IN, { Size = TargetSize })
@@ -193,6 +194,7 @@ local function ShowRewardAnnouncement(RewardType, RewardAmount)
 		TweenOut.Completed:Once(function()
 			if _rewardAnnouncement then
 				_rewardAnnouncement.Visible = false
+				_rewardAnnouncement.Size = TargetSize
 			end
 		end)
 	end)
@@ -534,6 +536,7 @@ function QuestController:Init()
 	_rewardAnnouncement = _questGui:WaitForChild("RewardAnnouncement")
 	_rewardIcon         = _rewardAnnouncement:FindFirstChild("Icon")
 	_rewardAmount       = _rewardAnnouncement:FindFirstChild("AmountText")
+	_rewardOriginalSize = _rewardAnnouncement.Size
 	_rewardAnnouncement.Visible = false
 
 	-- NavigationButton

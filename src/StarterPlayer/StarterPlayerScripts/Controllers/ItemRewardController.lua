@@ -15,10 +15,12 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
 local RunService        = game:GetService("RunService")
+local SoundService      = game:GetService("SoundService")
 
 local ItemRegistry    = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig    = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ChestConfig     = require(ReplicatedStorage.Shared.Config.ChestConfig)
+local AudioConfig     = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local ViewportManager = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 
 -- =========================================================
@@ -69,6 +71,21 @@ local _rotConn     = nil     -- RunService.Heartbeat connection xoay EffectImage
 -- =========================================================
 -- PRIVATE HELPERS
 -- =========================================================
+
+--- Phát hiệu ứng âm thanh 2D qua SoundService
+--- @param SoundId number | string  -- ID âm thanh
+--- @param Volume number?           -- Âm lượng (mặc định 1 nếu nil)
+local function PlaySound(SoundId, Volume)
+	if not SoundId then return end
+	local Sound   = Instance.new("Sound")
+	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
+	Sound.Volume  = Volume or 1
+	Sound.Parent  = SoundService
+	Sound:Play()
+	Sound.Ended:Connect(function()
+		Sound:Destroy()
+	end)
+end
 
 --- Hủy Tween đang chạy (nếu có), không ảnh hưởng state
 local function CancelActiveTween()
@@ -200,6 +217,9 @@ end
 --- Chuyển sang Pha 2: flash trắng → hiện ItemFrame → fade về mặc định
 local function TransitionToPhase2()
 	_state = "phase2"
+
+	-- Phát âm thanh chuyển pha 2
+	PlaySound(AudioConfig.ItemReward.Phase2Transition)
 
 	-- Dừng xoay, ẩn Effect (rương)
 	StopRotation()
@@ -439,6 +459,12 @@ function ItemRewardController:Init()
 			-- Chặn click thứ 4+ trong Pha 1
 			if _clickCount >= 3 then return end
 			_clickCount = _clickCount + 1
+
+			-- Phát âm thanh click rương với âm lượng tăng dần theo từng lần click
+			local Volumes = AudioConfig.ItemReward.ChestClickVolumes
+			local SoundVolume = (Volumes and Volumes[_clickCount]) or 1
+			PlaySound(AudioConfig.ItemReward.ChestClick, SoundVolume)
+
 			-- Nếu đang animation thì reset animation (bắt đầu lại từ đầu shrink)
 			PlayClickAnimation()
 

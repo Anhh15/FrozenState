@@ -15,6 +15,15 @@ local AudioConfig = {
 	},
 
 	-- =========================================================
+	-- ÂM THANH ITEM REWARD (HIỆU ỨNG MỞ RƯƠNG VÀ PHẦN THƯỞNG)
+	-- =========================================================
+	ItemReward = {
+		ChestClick        = 74139702398034,      -- Âm thanh phát mỗi lần nhấn rương ở Pha 1
+		Phase2Transition  = 4612378086,          -- Âm thanh chuyển sang Pha 2 (hiển thị item)
+		ChestClickVolumes = {1, 3, 5},   -- Mức âm lượng tăng dần qua 3 lần nhấn
+	},
+
+	-- =========================================================
 	-- ÂM THANH VÀ ANIMATION MẶC ĐỊNH
 	-- Dùng khi item trang bị không có override riêng
 	-- =========================================================

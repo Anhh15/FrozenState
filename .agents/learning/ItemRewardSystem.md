@@ -1,6 +1,6 @@
 # ItemRewardSystem
 > Tổng hợp kiến thức về hệ thống hiệu ứng mở rương và hiển thị phần thưởng item trong dự án.
-> Cập nhật lần cuối: 27-07-2026
+> Cập nhật lần cuối: 28-07-2026
 
 ---
 
@@ -40,6 +40,11 @@
 - **Ngày:** 27-07-2026
 - **Chi tiết:** Mảng `ReceivedItems` từ `ShopService` không chứa `Type` của item (chỉ có `ItemId`, `WasDuplicate`, `Refund`). `ShowChestReward` tra cứu `ChestConfig.GetChest(ChestId)` để lấy `ChestEntry.Type` và gắn vào từng item trước khi render. Với `ShowItemReward`, caller phải cung cấp `Type` trong mỗi item entry vì không có ChestId tham chiếu. Format tối thiểu: `{ ItemId: string, Type: string }`.
 - **File liên quan:** [ItemRewardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [ChestConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/ChestConfig.lua)
+
+### Cấu hình âm thanh qua AudioConfig và helper PlaySound 2D
+- **Ngày:** 28-07-2026
+- **Chi tiết:** Các Sound ID (`ChestClick`, `Phase2Transition`) và âm lượng tăng dần qua 3 lần click (`ChestClickVolumes = {0.4, 0.7, 1.0}`) được lưu trong `AudioConfig.ItemReward` để tuân thủ quy tắc không hardcode. `ItemRewardController` dùng hàm helper `PlaySound(SoundId, Volume)` phát sound 2D qua `SoundService`, tự động fallback `Volume = Volume or 1` khi bỏ trống và dọn dẹp Sound instance qua sự kiện `Sound.Ended`.
+- **File liên quan:** [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [ItemRewardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 
 ---
 

@@ -96,10 +96,10 @@ local SFX_CLOSE_BUTTON_CLICK = 103307955424380
 local SFX_CHEST_BUY          = 113890702074571
 local SFX_BUY_FAIL           = 128827503277042
 
-local function PlayGuiSound(SoundId)
+local function PlayGuiSound(SoundId, Volume)
 	local S = Instance.new("Sound")
 	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = 1
+	S.Volume = Volume or 1
 	S.Parent = PlayerGui
 	S:Play()
 	game:GetService("Debris"):AddItem(S, 3)
@@ -317,7 +317,7 @@ local function OpenPopUp(ChestEntry)
 				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 1)
 				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
 				if Result and Result.Success then
-					PlayGuiSound(SFX_CHEST_BUY)
+					PlayGuiSound(SFX_CHEST_BUY, 10)
 					-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
 					local RewardCtrl = GetItemRewardController()
 					if RewardCtrl and Result.ReceivedItems then
@@ -342,7 +342,7 @@ local function OpenPopUp(ChestEntry)
 				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 3)
 				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
 				if Result and Result.Success then
-					PlayGuiSound(SFX_CHEST_BUY)
+					PlayGuiSound(SFX_CHEST_BUY, 10)
 					-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
 					local RewardCtrl = GetItemRewardController()
 					if RewardCtrl and Result.ReceivedItems then
