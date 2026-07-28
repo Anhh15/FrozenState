@@ -1,26 +1,23 @@
 -- ShopController.lua (ModuleScript)
--- Điều khiển toàn bộ Shop GUI: hiển thị rương theo tab, popup chi tiết rương, mua rương
+-- Điều khiển toàn bộ Shop GUI: hiển thị rương theo tab, preview vật phẩm, mua rương
 -- Chỉ hiển thị trong Lobby phase (GameStateController sẽ ẩn khi vào trận)
 
 -- Cấu trúc GUI mong đợi (StarterGui/Menu/Shop):
 --   Shop (Frame)
---     CloseButton     (ImageButton) — đóng toàn bộ Shop
---     TabContainer    (Frame)
---       IciclesTab    (ImageButton)
---       BlocksTab     (ImageButton)
---     ChestList       (Frame)
---       ScrollingFrame (ScrollingFrame) — UIGridLayout đã có sẵn trong Studio
---     ChestPopUp      (Frame) — Visible = false mặc định
---       CloseButton   (ImageButton) — đóng ChestPopUp
---       Buy1Button    (ImageButton)
---         BuyText     (TextLabel)
---       Buy3Button    (ImageButton)
---         BuyText     (TextLabel)
---       ChestTemplate (Frame/ViewportFrame) — điều chỉnh theo chest được chọn
---         ChestViewport (ViewportFrame) — đã có CurrentCamera trong Studio
---         NameText    (TextLabel)
---       ItemInfo      (Frame)
---         ScrollingFrame (ScrollingFrame)
+--     CloseButton       (ImageButton) — đóng toàn bộ Shop
+--     TabContainer      (Frame)
+--       IciclesTab      (ImageButton)
+--       BlocksTab       (ImageButton)
+--     ChestList         (Frame)
+--       ScrollingFrame  (ScrollingFrame) — UIGridLayout đã có sẵn trong Studio
+--     Templates         (Folder)
+--       ChestPreview    (Frame) — template card, Visible = false
+--         ChestViewport (ViewportFrame) — hiển thị model 3D rương
+--         ItemPreview   (Frame)
+--           ScrollingFrame (ScrollingFrame) — UIGridLayout — hiển thị danh sách item
+--           BuyButton      (ImageButton) — nút mua, text = giá tổng
+--           AmountAlterButton (ImageButton) — nút tùy chỉnh số lượng, text = "x[N]"
+--           ChestNameText  (TextLabel) — tên rương
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,6 +26,7 @@ local RemoteDefinitions    = require(ReplicatedStorage.Shared.Remotes.RemoteDefi
 local ChestConfig          = require(ReplicatedStorage.Shared.Config.ChestConfig)
 local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local ShopConfig           = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local PlayerDataController = require(script.Parent.PlayerDataController)
 local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 
@@ -39,11 +37,11 @@ local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportMana
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui  = PlayerGui:WaitForChild("Menu", 10)
-local NavGui   = PlayerGui:WaitForChild("NavigationButton", 10)
+local MenuGui = PlayerGui:WaitForChild("Menu", 10)
+local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
 
 -- Shop frame nằm bên trong Menu
-local Shop         = MenuGui and MenuGui:FindFirstChild("Shop", true)
+local Shop = MenuGui and MenuGui:FindFirstChild("Shop", true)	
 
 -- Các phần tử bên trong Shop
 local ShopClose    = Shop and Shop:FindFirstChild("CloseButton", true)
@@ -53,16 +51,17 @@ local BlocksTab    = TabContainer and TabContainer:FindFirstChild("BlocksTab")
 local ChestList    = Shop and Shop:FindFirstChild("ChestList", true)
 local ChestScroll  = ChestList and ChestList:FindFirstChildOfClass("ScrollingFrame")
 
--- ChestPopUp
-local ChestPopUp      = Shop and Shop:FindFirstChild("ChestPopUp", true)
-local PopUpClose      = ChestPopUp and ChestPopUp:FindFirstChild("CloseButton", true)
-local Buy1Button      = ChestPopUp and ChestPopUp:FindFirstChild("Buy1Button", true)
-local Buy3Button      = ChestPopUp and ChestPopUp:FindFirstChild("Buy3Button", true)
-local PopUpChest      = ChestPopUp and ChestPopUp:FindFirstChild("ChestTemplate", true)
-local PopUpChestView  = PopUpChest and PopUpChest:FindFirstChild("ChestViewport")
-local PopUpChestName  = PopUpChest and PopUpChest:FindFirstChild("NameText")
-local ItemInfoFrame   = ChestPopUp and ChestPopUp:FindFirstChild("ItemInfo", true)
-local ItemInfoScroll  = ItemInfoFrame and ItemInfoFrame:FindFirstChildOfClass("ScrollingFrame")
+-- Template nằm trong Menu/Shop/Templates (không phải ReplicatedStorage)
+local TemplatesFolder       = Shop and Shop:FindFirstChild("Templates")
+local ChestPreviewTemplate  = TemplatesFolder and TemplatesFolder:FindFirstChild("ChestPreview")
+
+-- ItemTemplate dùng chung từ ReplicatedStorage/Assets/Gui
+local Assets       = ReplicatedStorage:FindFirstChild("Assets")
+local GuiFolder    = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
+local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
+
+-- Folder chứa model 3D rương
+local ChestsFolder = Assets and Assets:FindFirstChild("Chests")
 
 -- Nút mở Shop trong NavigationButton
 local ShopNavButton = NavGui and NavGui:FindFirstChild("Shop", true)
@@ -70,22 +69,15 @@ local ShopNavButton = NavGui and NavGui:FindFirstChild("Shop", true)
 -- Frame Button bên trong NavigationButton (ẩn khi Shop mở, Stats vẫn hiện)
 local NavButton = NavGui and NavGui:FindFirstChild("Button")
 
--- Assets dùng chung
-local Assets       = ReplicatedStorage:FindFirstChild("Assets")
-local GuiFolder    = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
-local ChestTemplate = GuiFolder and GuiFolder:FindFirstChild("ChestTemplate")
-local ItemTemplate  = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
-local ChestsFolder  = Assets and Assets:FindFirstChild("Chests")
-
 -- =========================================================
 -- STATE
 -- =========================================================
 
-local _currentTab       = "Icicle"  -- Tab đang hiển thị: "Icicle" hoặc "Block"
-local _selectedChest    = nil       -- ChestConfig entry đang mở trong PopUp
-local _listConnections  = {}        -- Connections của ChestList (dọn khi re-render)
-local _popupConnections = {}        -- Connections của ChestPopUp buttons
-local _popupChestModel  = nil       -- Model chest đang hiển thị trong PopUp viewport
+local _currentTab      = "Icicle"  -- Tab đang hiển thị: "Icicle" hoặc "Block"
+local _listConnections = {}        -- Connections của ChestList cards (dọn khi re-render)
+local _previewStates   = {}        -- [Frame] = { Amount: number } — trạng thái per-card
+local _lazyRenderQueue = {}        -- { Frame, ChestEntry } — cards chờ render viewport
+local _scrollConn      = nil       -- Connection theo dõi ChestScroll.CanvasPosition
 
 -- =========================================================
 -- SFX
@@ -189,187 +181,143 @@ local function LoadChestModel(Viewport, ChestId)
 	ViewportManager.RenderItem(Viewport, Clone, "Chest", ChestId)
 end
 
---- Lấy BuyText label bên trong một button (ImageButton thường có TextLabel con)
-local function GetBuyText(Button)
-	if not Button then return nil end
-	return Button:FindFirstChild("BuyText")
-		or Button:FindFirstChildOfClass("TextLabel")
-end
+--- Render danh sách item vào ItemPreview/ScrollingFrame của một card
+--- @param Card        Frame  — ChestPreview card
+--- @param ChestEntry  table  — entry từ ChestConfig
+local function LoadItemPreviews(Card, ChestEntry)
+	local ItemPreview  = Card:FindFirstChild("ItemPreview", true)
+	local ItemScroll   = ItemPreview and ItemPreview:FindFirstChildOfClass("ScrollingFrame")
+	if not ItemScroll or not ItemTemplate then return end
 
--- =========================================================
--- POPUP MANAGEMENT
--- =========================================================
-
---- Đóng và dọn dẹp ChestPopUp
-local function CleanPopUp()
-	if not ChestPopUp then return end
-	ChestPopUp.Visible = false
-	_selectedChest     = nil
-
-	-- Dọn model trong viewport PopUp
-	if PopUpChestView then
-		CleanViewport(PopUpChestView)
-	end
-	_popupChestModel = nil
-
-	-- Dọn danh sách item bên trong ItemInfo
-	if ItemInfoScroll then
-		for _, Child in ipairs(ItemInfoScroll:GetChildren()) do
-			if not Child:IsA("UIGridLayout") and not Child:IsA("UIListLayout") then
-				Child:Destroy()
-			end
+	-- Dọn sạch item cũ (nếu có)
+	for _, Child in ipairs(ItemScroll:GetChildren()) do
+		if not Child:IsA("UIGridLayout") and not Child:IsA("UIListLayout") then
+			Child:Destroy()
 		end
 	end
 
-	-- Ngắt kết nối event PopUp
-	DisconnectAll(_popupConnections)
+	for _, ItemEntry in ipairs(ChestEntry.Items) do
+		-- Lấy thông tin đầy đủ từ ItemRegistry
+		local FullEntry   = ItemRegistry.GetItem(ItemEntry.ItemId, ChestEntry.Type)
+		local RarityEntry = RarityConfig[FullEntry.Rarity]
+
+		local Frame = ItemTemplate:Clone()
+		Frame.Visible = true
+
+		-- Cập nhật các label
+		local NameText    = Frame:FindFirstChild("NameText",     true)
+		local RarityText  = Frame:FindFirstChild("RarityText",   true)
+		local DropText    = Frame:FindFirstChild("DropRateText", true)
+		local Background  = Frame:FindFirstChild("Background",   true)
+		local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
+
+		if NameText   then NameText.Text  = FullEntry.Name end
+		if RarityText then
+			RarityText.Text = FullEntry.Rarity
+			if RarityEntry then
+				RarityText.TextColor3 = RarityEntry.Color
+			end
+		end
+		if DropText then
+			DropText.Visible = true
+			DropText.Text    = ("%d%%"):format(ItemEntry.DropRate)
+		end
+		if EquippedTag then
+			EquippedTag.Visible = false
+		end
+		if Background and RarityEntry then
+			Background.Image = RarityEntry.ImageId
+		end
+
+		-- Render item model vào ItemViewport (nếu có)
+		local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
+		if ItemViewport then
+			CleanViewport(ItemViewport)
+			local ItemPreviewFolder = ReplicatedStorage:FindFirstChild("Assets")
+				and ReplicatedStorage.Assets:FindFirstChild("ItemPreview")
+				and ReplicatedStorage.Assets.ItemPreview:FindFirstChild(
+					ChestEntry.Type == "Icicle" and "Icicles" or "Blocks"
+				)
+			if ItemPreviewFolder then
+				local ItemModel = ItemPreviewFolder:FindFirstChild(FullEntry.Id)
+				if ItemModel then
+					local Clone = ItemModel:Clone()
+					Clone.Parent = ItemViewport
+					ViewportManager.RenderItem(ItemViewport, Clone, FullEntry.Type, FullEntry.Id)
+				end
+			end
+		end
+
+		Frame.Parent = ItemScroll
+	end
 end
 
---- Mở ChestPopUp với thông tin của rương được chọn
---- @param ChestEntry table  -- Entry từ ChestConfig
-local function OpenPopUp(ChestEntry)
-	if not ChestPopUp then return end
-	_selectedChest = ChestEntry
+-- =========================================================
+-- LAZY RENDER
+-- =========================================================
 
-	-- Hiện PopUp
-	ChestPopUp.Visible = true
+--- Kiểm tra queue và render các card đang nằm trong (hoặc gần) vùng nhìn thấy của ChestScroll
+local function CheckLazyQueue()
+	if not ChestScroll or #_lazyRenderQueue == 0 then return end
 
-	-- Cập nhật tên rương
-	if PopUpChestName then
-		PopUpChestName.Text = ChestEntry.Name
-	end
+	local Buffer       = ShopConfig.LazyRenderBuffer
+	local CanvasY      = ChestScroll.CanvasPosition.Y
+	local ScrollHeight = ChestScroll.AbsoluteSize.Y
+	local ScrollTop    = ChestScroll.AbsolutePosition.Y
 
-	-- Load Chest model vào viewport
-	if PopUpChestView then
-		LoadChestModel(PopUpChestView, ChestEntry.Id)
-	end
+	local VisibleTop    = CanvasY - Buffer
+	local VisibleBottom = CanvasY + ScrollHeight + Buffer
 
-	-- Cập nhật giá trên Buy1Button và Buy3Button
-	local Buy1Text = GetBuyText(Buy1Button)
-	local Buy3Text = GetBuyText(Buy3Button)
-	if Buy1Text then
-		Buy1Text.Text = ("Buy 1: %d"):format(ChestEntry.Price1)
-	end
-	if Buy3Text then
-		Buy3Text.Text = ("Buy 3: %d"):format(ChestEntry.Price3)
-	end
+	-- Duyệt ngược để an toàn khi xóa phần tử
+	for Index = #_lazyRenderQueue, 1, -1 do
+		local Entry = _lazyRenderQueue[Index]
+		local Frame = Entry.Frame
 
-	-- Render danh sách item + DropRate trong ItemInfo
-	if ItemInfoScroll and ItemTemplate then
-		for _, ItemEntry in ipairs(ChestEntry.Items) do
-			-- Lấy thông tin đầy đủ từ ItemRegistry
-			local FullEntry  = ItemRegistry.GetItem(ItemEntry.ItemId, ChestEntry.Type)
-			local RarityEntry = RarityConfig[FullEntry.Rarity]
+		-- Nếu card đã bị destroy (ví dụ: đổi tab), bỏ qua
+		if not Frame.Parent then
+			table.remove(_lazyRenderQueue, Index)
+			continue
+		end
 
-			local Frame = ItemTemplate:Clone()
-			Frame.Visible = true
+		-- Tính vị trí card trong canvas coordinate
+		local CardTop    = Frame.AbsolutePosition.Y - ScrollTop + CanvasY
+		local CardBottom = CardTop + Frame.AbsoluteSize.Y
 
-			-- Cập nhật các label
-			local NameText    = Frame:FindFirstChild("NameText",     true)
-			local RarityText  = Frame:FindFirstChild("RarityText",   true)
-			local DropText    = Frame:FindFirstChild("DropRateText", true)
-			local Background  = Frame:FindFirstChild("Background",   true)
-			local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
-
-			if NameText   then NameText.Text  = FullEntry.Name end
-			if RarityText then
-				RarityText.Text      = FullEntry.Rarity
-				if RarityEntry then
-					RarityText.TextColor3 = RarityEntry.Color
-				end
+		if CardBottom >= VisibleTop and CardTop <= VisibleBottom then
+			-- Card trong vùng nhìn thấy → render
+			local ChestView = Frame:FindFirstChild("ChestViewport", true)
+			if ChestView then
+				LoadChestModel(ChestView, Entry.ChestEntry.Id)
 			end
-			if DropText then
-				DropText.Visible = true
-				DropText.Text    = ("%d%%"):format(ItemEntry.DropRate)
-			end
-			if EquippedTag then
-				EquippedTag.Visible = false
-			end
-			if Background and RarityEntry then
-				Background.Image = RarityEntry.ImageId
-			end
-
-			-- Render item model vào ItemViewport và tự động tạo camera (nếu có)
-			local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
-			if ItemViewport then
-				CleanViewport(ItemViewport)
-				local ItemPreviewFolder = ReplicatedStorage:FindFirstChild("Assets")
-					and ReplicatedStorage.Assets:FindFirstChild("ItemPreview")
-					and ReplicatedStorage.Assets.ItemPreview:FindFirstChild(
-						ChestEntry.Type == "Icicle" and "Icicles" or "Blocks"
-					)
-				if ItemPreviewFolder then
-					local ItemModel = ItemPreviewFolder:FindFirstChild(FullEntry.Id)
-					if ItemModel then
-						local Clone = ItemModel:Clone()
-						Clone.Parent = ItemViewport
-						-- Tạo camera tự động qua ViewportManager
-						ViewportManager.RenderItem(ItemViewport, Clone, FullEntry.Type, FullEntry.Id)
-					end
-				end
-			end
-
-			Frame.Parent = ItemInfoScroll
+			LoadItemPreviews(Frame, Entry.ChestEntry)
+			table.remove(_lazyRenderQueue, Index)
 		end
 	end
+end
 
-	-- Kết nối nút Buy1
-	if Buy1Button then
-		local Conn = Buy1Button.MouseButton1Click:Connect(function()
-			if _selectedChest then
-				local BuyChestFn = RemoteDefinitions.GetFunction("BuyChest")
-				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 1)
-				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
-				if Result and Result.Success then
-					PlayGuiSound(SFX_CHEST_BUY, 10)
-					-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
-					local RewardCtrl = GetItemRewardController()
-					if RewardCtrl and Result.ReceivedItems then
-						RewardCtrl.ShowChestReward(Result.ReceivedItems, _selectedChest.Id)
-					end
-					task.spawn(function()
-						PlayerDataController.RefreshData()
-					end)
-				else
-					PlayGuiSound(SFX_BUY_FAIL)
-				end
-			end
-		end)
-		table.insert(_popupConnections, Conn)
-	end
+-- =========================================================
+-- BUY LOGIC
+-- =========================================================
 
-	-- Kết nối nút Buy3
-	if Buy3Button then
-		local Conn = Buy3Button.MouseButton1Click:Connect(function()
-			if _selectedChest then
-				local BuyChestFn = RemoteDefinitions.GetFunction("BuyChest")
-				local Result = BuyChestFn:InvokeServer(_selectedChest.Id, 3)
-				-- Sync lại dữ liệu sở hữu về client cache để Inventory hiển thị đúng
-				if Result and Result.Success then
-					PlayGuiSound(SFX_CHEST_BUY, 10)
-					-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
-					local RewardCtrl = GetItemRewardController()
-					if RewardCtrl and Result.ReceivedItems then
-						RewardCtrl.ShowChestReward(Result.ReceivedItems, _selectedChest.Id)
-					end
-					task.spawn(function()
-						PlayerDataController.RefreshData()
-					end)
-				else
-					PlayGuiSound(SFX_BUY_FAIL)
-				end
-			end
-		end)
-		table.insert(_popupConnections, Conn)
-	end
+--- Thực hiện mua rương với số lượng đã chọn
+--- @param ChestEntry table  — entry từ ChestConfig
+--- @param Amount     number — số lượng (1–5)
+local function ExecuteBuy(ChestEntry, Amount)
+	local BuyChestFn = RemoteDefinitions.GetFunction("BuyChest")
+	local Result = BuyChestFn:InvokeServer(ChestEntry.Id, Amount)
 
-	-- Kết nối CloseButton của PopUp
-	if PopUpClose then
-		local Conn = PopUpClose.MouseButton1Click:Connect(function()
-			PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
-			CleanPopUp()
+	if Result and Result.Success then
+		PlayGuiSound(SFX_CHEST_BUY, 10)
+		-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
+		local RewardCtrl = GetItemRewardController()
+		if RewardCtrl and Result.ReceivedItems then
+			RewardCtrl.ShowChestReward(Result.ReceivedItems, ChestEntry.Id)
+		end
+		task.spawn(function()
+			PlayerDataController.RefreshData()
 		end)
-		table.insert(_popupConnections, Conn)
+	else
+		PlayGuiSound(SFX_BUY_FAIL)
 	end
 end
 
@@ -377,9 +325,21 @@ end
 -- CHEST LIST RENDERING
 -- =========================================================
 
---- Xóa toàn bộ nội dung ChestScroll và dọn connections cũ
+--- Xóa toàn bộ nội dung ChestScroll và dọn connections + lazy state cũ
 local function ClearChestList()
 	DisconnectAll(_listConnections)
+
+	-- Ngắt connection theo dõi scroll
+	if _scrollConn and _scrollConn.Connected then
+		_scrollConn:Disconnect()
+		_scrollConn = nil
+	end
+
+	-- Reset state per-card
+	table.clear(_previewStates)
+	table.clear(_lazyRenderQueue)
+
+	-- Dọn card UI (giữ lại UIGridLayout/UIListLayout)
 	if not ChestScroll then return end
 	for _, Child in ipairs(ChestScroll:GetChildren()) do
 		if not Child:IsA("UIGridLayout") and not Child:IsA("UIListLayout") then
@@ -392,62 +352,93 @@ end
 --- @param Type string
 local function RenderChestList(Type)
 	ClearChestList()
-	if not ChestScroll or not ChestTemplate then
-		warn("[ShopController] Thiếu ChestScroll hoặc ChestTemplate — không thể render danh sách rương.")
+
+	if not ChestScroll then
+		warn("[ShopController] Thiếu ChestScroll — không thể render danh sách rương.")
 		return
 	end
+	if not ChestPreviewTemplate then
+		warn("[ShopController] Thiếu ChestPreview template trong Menu/Shop/Templates — không thể render.")
+		return
+	end
+
+	local MinAmount = ShopConfig.MinAmount
+	local MaxAmount = ShopConfig.MaxAmount
 
 	local Chests = ChestConfig.GetChestsByType(Type)
 
 	for _, ChestEntry in ipairs(Chests) do
-		local Frame = ChestTemplate:Clone()
-		Frame.Visible = true
+		local Card = ChestPreviewTemplate:Clone()
+		Card.Visible = true
 
-		-- Cập nhật tên rương
-		local NameText   = Frame:FindFirstChild("NameText", true)
-		if NameText then
-			NameText.Text = ChestEntry.Name
+		-- Khởi tạo trạng thái số lượng cho card này
+		local State = { Amount = MinAmount }
+		_previewStates[Card] = State
+
+		-- Tìm các element bên trong card (search từ Card để không phụ thuộc vào nesting cụ thể)
+		local ChestNameText     = Card:FindFirstChild("ChestNameText",     true)
+		local BuyButton         = Card:FindFirstChild("BuyButton",         true)
+		local AmountAlterButton = Card:FindFirstChild("AmountAlterButton", true)
+
+		-- Điền tên rương
+		if ChestNameText then
+			ChestNameText.Text = ChestEntry.Name
 		end
 
-		-- Load Chest model vào ChestViewport trong template
-		local ChestView = Frame:FindFirstChild("ChestViewport", true)
-		if ChestView then
-			LoadChestModel(ChestView, ChestEntry.Id)
-		end
-
-		-- Kết nối click để mở PopUp
-		local ClickTarget = Frame
-		if Frame:IsA("GuiButton") then
-			local Conn = Frame.MouseButton1Click:Connect(function()
-				CleanPopUp()
-				OpenPopUp(ChestEntry)
-			end)
-			table.insert(_listConnections, Conn)
-		else
-			-- Tìm GuiButton con
-			local Button = Frame:FindFirstChildOfClass("ImageButton")
-				or Frame:FindFirstChildOfClass("TextButton")
-			if Button then
-				local Conn = Button.MouseButton1Click:Connect(function()
-					CleanPopUp()
-					OpenPopUp(ChestEntry)
-				end)
-				table.insert(_listConnections, Conn)
-			else
-				-- Fallback: bắt InputBegan trên Frame
-				local Conn = Frame.InputBegan:Connect(function(Input)
-					if Input.UserInputType == Enum.UserInputType.MouseButton1
-						or Input.UserInputType == Enum.UserInputType.Touch then
-						CleanPopUp()
-						OpenPopUp(ChestEntry)
-					end
-				end)
-				table.insert(_listConnections, Conn)
+		-- Helper cập nhật text BuyButton theo Amount hiện tại
+		local function UpdateBuyText()
+			if BuyButton then
+				local BuyLabel = BuyButton:FindFirstChild("Text")
+				if BuyLabel then
+					BuyLabel.Text = tostring(ChestEntry.Price1 * State.Amount)
+				end
 			end
 		end
 
-		Frame.Parent = ChestScroll
+		-- Cập nhật text ban đầu
+		if AmountAlterButton then
+			local AlterLabel = AmountAlterButton:FindFirstChild("Text")
+			if AlterLabel then
+				AlterLabel.Text = "x" .. tostring(State.Amount)
+			end
+		end
+		UpdateBuyText()
+
+		-- Kết nối AmountAlterButton: vòng lặp MinAmount → MaxAmount → MinAmount
+		if AmountAlterButton then
+			local Conn = AmountAlterButton.MouseButton1Click:Connect(function()
+				PlayGuiSound(SFX_BUTTON_CLICK)
+				State.Amount = (State.Amount % MaxAmount) + 1
+				local AlterLabel = AmountAlterButton:FindFirstChild("Text")
+				if AlterLabel then
+					AlterLabel.Text = "x" .. tostring(State.Amount)
+				end
+				UpdateBuyText()
+			end)
+			table.insert(_listConnections, Conn)
+		end
+
+		-- Kết nối BuyButton
+		if BuyButton then
+			local Conn = BuyButton.MouseButton1Click:Connect(function()
+				ExecuteBuy(ChestEntry, State.Amount)
+			end)
+			table.insert(_listConnections, Conn)
+		end
+
+		Card.Parent = ChestScroll
+
+		-- Đẩy vào lazy render queue (viewport chưa render)
+		table.insert(_lazyRenderQueue, { Frame = Card, ChestEntry = ChestEntry })
 	end
+
+	-- Kết nối scroll để trigger lazy render khi cuộn
+	_scrollConn = ChestScroll:GetPropertyChangedSignal("CanvasPosition"):Connect(CheckLazyQueue)
+	table.insert(_listConnections, _scrollConn)
+
+	-- Render ngay các card đang trong vùng nhìn thấy (không chờ người dùng scroll)
+	-- Dùng task.defer để đảm bảo AbsolutePosition đã được tính bởi engine
+	task.defer(CheckLazyQueue)
 end
 
 -- =========================================================
@@ -465,7 +456,8 @@ function ShopController.SetVisible(Visible)
 		HideAllMenuFrames()
 		if NavButton then NavButton.Visible = false end
 	else
-		CleanPopUp()
+		-- Dọn dẹp lazy render khi đóng
+		ClearChestList()
 		-- Khôi phục NavButton trừ khi đang spectate
 		if NavButton then
 			local SpecCtrl = GetSpectateController()
@@ -489,7 +481,6 @@ function ShopController:Init()
 
 	-- Shop bắt đầu ẩn
 	Shop.Visible = false
-	if ChestPopUp then ChestPopUp.Visible = false end
 
 	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ──────────────────────────
 	if ShopClose then
@@ -505,7 +496,6 @@ function ShopController:Init()
 			if _currentTab == "Icicle" then return end
 			PlayGuiSound(SFX_BUTTON_CLICK)
 			_currentTab = "Icicle"
-			CleanPopUp()
 			UpdateTabHighlight("Icicle")
 			RenderChestList("Icicle")
 		end)
@@ -516,7 +506,6 @@ function ShopController:Init()
 			if _currentTab == "Block" then return end
 			PlayGuiSound(SFX_BUTTON_CLICK)
 			_currentTab = "Block"
-			CleanPopUp()
 			UpdateTabHighlight("Block")
 			RenderChestList("Block")
 		end)

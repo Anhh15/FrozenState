@@ -82,7 +82,7 @@ function ShopService:Start()
 	--- Handler BuyChest: Client gọi khi muốn mua rương
 	--- @param Player Player
 	--- @param ChestId string   -- Id của rương trong ChestConfig
-	--- @param Quantity number  -- 1 hoặc 3
+	--- @param Quantity number  -- Số lượng mua (1 — 5)
 	--- @return table           -- { Success, ReceivedItems, RefundAmount, NewMoney }
 	BuyChestFn.OnServerInvoke = function(Player, ChestId, Quantity)
 		-- ─── VALIDATE ────────────────────────────────────────────
@@ -92,7 +92,13 @@ function ShopService:Start()
 			return { Success = false, Reason = "INVALID_CHEST" }
 		end
 
-		if Quantity ~= 1 and Quantity ~= 3 then
+		local MinQty = 1
+		local MaxQty = 5
+		if type(Quantity) ~= "number"
+			or math.floor(Quantity) ~= Quantity
+			or Quantity < MinQty
+			or Quantity > MaxQty
+		then
 			warn(("[ShopService] BuyChest: Quantity không hợp lệ: %s"):format(tostring(Quantity)))
 			return { Success = false, Reason = "INVALID_QUANTITY" }
 		end
@@ -103,7 +109,7 @@ function ShopService:Start()
 		end
 
 		-- ─── TÍNH GIÁ ────────────────────────────────────────────
-		local TotalPrice = (Quantity == 1) and Chest.Price1 or Chest.Price3
+		local TotalPrice = Chest.Price1 * Quantity
 
 		if Data.Money < TotalPrice then
 			return { Success = false, Reason = "NOT_ENOUGH_MONEY" }

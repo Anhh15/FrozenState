@@ -11,6 +11,16 @@
 - **Chi tiết:** Trong `InventoryController`, khi render danh sách vật phẩm theo Tab ("Icicle" / "Block"), controller tra cứu ID đang trang bị trong `PlayerDataController.GetData()` (`EquippedIcicle` / `EquippedIceBlock`). Đặt thuộc tính `.Visible = true` cho nhãn `EquippedText` (hoặc fallback `Equipped`) trên ô vật phẩm khớp ID, và `.Visible = false` cho các vật phẩm khác. Khi bấm Equip thành công, hàm `UpdateEquippedTags()` quét danh sách `ScrollingFrame` để cập nhật `Visible` ngay lập tức mà không cần re-render toàn bộ danh sách. Đồng thời, tại các controller dùng chung `ItemTemplate` (`ItemRewardController`, `ShopController`, `ProfileController`), nhãn `EquippedText` được chủ động ẩn (`Visible = false`) khi clone.
 - **File liên quan:** [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ItemRewardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
 
+### Lazy Render ViewportFrame theo vùng nhìn thấy ScrollingFrame (Shop Preview In-Place)
+- **Ngày:** 28-07-2026
+- **Chi tiết:** Để tối ưu hiệu suất khi một danh sách card GUI mỗi card có ViewportFrame 3D, áp dụng lazy render: chỉ clone model và gọi `ViewportManager.RenderItem` khi card nằm trong (hoặc gần) vùng nhìn thấy của ScrollingFrame cha. Cơ chế: lưu queue `{ Frame, Data }`, connect `ScrollingFrame:GetPropertyChangedSignal("CanvasPosition")`, tính `CardTop = Frame.AbsolutePosition.Y - Scroll.AbsolutePosition.Y + CanvasPosition.Y` so với `[CanvasY - Buffer, CanvasY + ScrollHeight + Buffer]`. Gọi `task.defer(CheckLazyQueue)` sau khi render tất cả card để render ngay các card đầu tiên mà không chờ scroll. Buffer pre-load nên lưu vào Config (không hardcode).
+- **File liên quan:** [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ShopConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
+
+### Vị trí Template GUI: shared với GUI owner
+- **Ngày:** 28-07-2026
+- **Chi tiết:** Quy tắc phân loại vị trí template GUI: template **dùng chung giữa nhiều controller** (ví dụ `ItemTemplate` dùng bởi Shop/Inventory/Profile/ItemReward) → đặt tại `ReplicatedStorage/Assets/Gui`. Template **riêng của một GUI duy nhất** (ví dụ `ChestPreview` chỉ dùng bởi ShopController) → đặt trong chính GUI đó (`Menu/Shop/Templates`). Ưu điểm: dễ chỉnh sửa trong Studio đúng ngữ cảnh, không bị Rojo sync xóa, tuân thủ nguyên tắc co-location. Template phải được đặt trong Folder (không phải Frame để tránh render), hoặc đặt `Visible = false`.
+- **File liên quan:** [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+
 ### Phân định độc lập và cố định Nhạc nền Lobby cho Spectator (Decoupling MusicController & SpectateController)
 - **Ngày:** 28-07-2026
 - **Chi tiết:** Đơn giản hóa logic nhạc nền bằng cách quy định Spectator (người chơi không có đội) luôn nghe nhạc Lobby (`AudioConfig.Music.Lobby`), không thay đổi phụ thuộc vào người mà họ spectate hay phase InGame/FrozenState. Nhờ đó, loại bỏ hoàn toàn cơ chế callback/lazy-require chéo giữa `SpectateController` và `MusicController` (`OnSpectateChanged`), giúp hai hệ thống độc lập hoàn toàn (decoupled), giảm độ phức tạp và tránh nguy cơ circular dependency.
@@ -177,6 +187,13 @@
 - **Nguyên nhân:** Thiếu bước kiểm tra và xác thực dữ liệu từ phía Server khi nhận được tín hiệu RemoteEvent trang bị từ Client.
 - **Fix:** Server khi nhận yêu cầu phải đối chiếu danh sách `OwnedCosmetics` trong `DataStore` (hoặc Session Data) của người chơi. Chỉ cho phép trang bị và đồng bộ lại Client nếu hợp lệ.
 - **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
+
+### FindFirstChild thất bại silent khi tìm element GUI qua Frame trung gian
+- **Ngày:** 28-07-2026
+- **Vấn đề:** Các element GUI (button, label) tìm được qua Frame trung gian (ví dụ `ItemPreview:FindFirstChild("BuyButton", true)`) trả về `nil` khi nesting thực tế trong Studio khác giả định. Vì code có `if Button then` check, không có lỗi runtime nhưng connection không được tạo — click không phản hồi, text không cập nhật.
+- **Nguyên nhân:** Tìm qua Frame trung gian tạo dependency vào cấu trúc nesting cụ thể. Nếu Frame trung gian không chứa element đúng vị trí, toàn bộ search chain thất bại silent.
+- **Fix:** Tìm trực tiếp từ root card với `Card:FindFirstChild("ElementName", true)` (recursive) thay vì qua Frame trung gian. Đảm bảo tìm được bất kể element nằm ở đâu trong cây. Với TextLabel bên trong button, dùng `FindFirstChild("Tên thực tế")` thay vì `FindFirstChildOfClass("TextLabel")` để tránh nhầm label không đúng.
+- **File liên quan:** [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
 
 ### Lỗi Circular Dependency giữa các Controllers khi require trực tiếp
 - **Ngày:** 16-06-2026

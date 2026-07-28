@@ -6,8 +6,7 @@
 --   Id      (string) — Tên folder model tại ReplicatedStorage/Asset/Chests
 --   Name    (string) — Tên hiển thị trong Shop
 --   Type    (string) — "Icicle" hoặc "Block" (tab nào hiển thị rương này)
---   Price1  (number) — Giá mua 1 lần
---   Price3  (number) — Giá mua 3 lần (thường có discount)
+--   Price1  (number) — Giá mua 1 rương (nhân với số lượng để ra tổng giá)
 --   Items   (table)  — Danh sách item có thể rơi từ rương này:
 --                        { ItemId (string), DropRate (number 0-100) }
 --                        Tổng DropRate của tất cả Items PHẢI bằng 100
@@ -28,7 +27,6 @@ local CHEST_CATALOG = {
 		Name   = "Basic Icicle Chest",
 		Type   = "Icicle",
 		Price1 = 10,
-		Price3 = 30,
 		Items  = {
 			{ ItemId = "Green", DropRate = 60 },
 			{ ItemId = "Red",   DropRate = 40 },
@@ -42,7 +40,6 @@ local CHEST_CATALOG = {
 	--     Name   = "Premium Icicle Chest",
 	--     Type   = "Icicle",
 	--     Price1 = 2000,
-	--     Price3 = 5000,
 	--     Items  = {
 	--         { ItemId = "GoldenIcicle",   DropRate = 10 },
 	--         { ItemId = "DiamondIcicle",  DropRate = 90 },
@@ -57,7 +54,6 @@ local CHEST_CATALOG = {
 		Name   = "Basic Block Chest",
 		Type   = "Block",
 		Price1 = 10,
-		Price3 = 13,
 		Items  = {
 			{ ItemId = "Green", DropRate = 60 },
 			{ ItemId = "Red",   DropRate = 40 },
