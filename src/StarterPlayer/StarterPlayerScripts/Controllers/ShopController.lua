@@ -265,10 +265,11 @@ local function OpenPopUp(ChestEntry)
 			Frame.Visible = true
 
 			-- Cập nhật các label
-			local NameText   = Frame:FindFirstChild("NameText", true)
-			local RarityText = Frame:FindFirstChild("RarityText", true)
-			local DropText   = Frame:FindFirstChild("DropRateText", true)
-			local Background = Frame:FindFirstChild("Background", true)
+			local NameText    = Frame:FindFirstChild("NameText",     true)
+			local RarityText  = Frame:FindFirstChild("RarityText",   true)
+			local DropText    = Frame:FindFirstChild("DropRateText", true)
+			local Background  = Frame:FindFirstChild("Background",   true)
+			local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
 
 			if NameText   then NameText.Text  = FullEntry.Name end
 			if RarityText then
@@ -280,6 +281,9 @@ local function OpenPopUp(ChestEntry)
 			if DropText then
 				DropText.Visible = true
 				DropText.Text    = ("%d%%"):format(ItemEntry.DropRate)
+			end
+			if EquippedTag then
+				EquippedTag.Visible = false
 			end
 			if Background and RarityEntry then
 				Background.Image = RarityEntry.ImageId

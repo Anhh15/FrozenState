@@ -181,6 +181,12 @@ local function RenderSingleItem(Entry, LayoutOrder)
 		NameText.Text = Entry.Name
 	end
 
+	-- EquippedTag (ẩn trong profile view)
+	local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
+	if EquippedTag then
+		EquippedTag.Visible = false
+	end
+
 	-- ViewportFrame bên trong ItemFrame — dùng LoadPreviewModel pattern từ InventoryController
 	local ItemViewport = Frame:FindFirstChild("ItemViewport")
 	if ItemViewport then

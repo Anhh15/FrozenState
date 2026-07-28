@@ -15,6 +15,7 @@
 --           ItemViewport (ViewportFrame)
 --           RarityText  (TextLabel)
 --           NameText    (TextLabel)
+--           EquippedText (GuiObject) — Hiển thị khi item đang được trang bị
 --     ItemSelection (Frame)
 --       ItemViewport (ViewportFrame)
 --       NameText     (TextLabel)
@@ -176,6 +177,24 @@ local function RefreshEquipButton()
 	EquipButton.AutoButtonColor = not IsEquipped
 end
 
+--- Cập nhật trạng thái hiển thị của Equipped tag cho các item đang render trong ScrollingFrame
+local function UpdateEquippedTags()
+	if not ScrollingFrame then return end
+
+	local Data         = PlayerDataController.GetData()
+	local SlotKey      = (_currentTab == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
+	local CurrentEquip = Data and Data[SlotKey] or "Default"
+
+	for _, Child in ipairs(ScrollingFrame:GetChildren()) do
+		if Child ~= ItemTemplate and Child:IsA("GuiObject") then
+			local EquippedTag = Child:FindFirstChild("EquippedText", true) or Child:FindFirstChild("Equipped", true)
+			if EquippedTag then
+				EquippedTag.Visible = (Child.Name == CurrentEquip)
+			end
+		end
+	end
+end
+
 --- Cập nhật ItemSelection panel khi chọn một item
 --- @param Entry table — entry từ ItemRegistry
 local function SelectItem(Entry)
@@ -221,6 +240,7 @@ local function EquipCurrentItem()
 		if Data then
 			Data[SlotName] = _selectedEntry.Id
 		end
+		UpdateEquippedTags()
 		print(("[InventoryController] Đã trang bị '%s' vào slot '%s'"):format(_selectedEntry.Id, SlotName))
 	else
 		warn(("[InventoryController] EquipItem thất bại: %s"):format(tostring(Result)))
@@ -292,6 +312,9 @@ local function RenderList(ItemType)
 		end
 	end
 
+	local SlotKey      = (ItemType == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
+	local CurrentEquip = Data and Data[SlotKey] or "Default"
+
 	local Catalog = (ItemType == "Icicle")
 		and ItemRegistry.GetAllIcicles()
 		or  ItemRegistry.GetAllBlocks()
@@ -309,6 +332,12 @@ local function RenderList(ItemType)
 		Frame.Visible = true
 		Frame.LayoutOrder = LayoutOrder
 		LayoutOrder += 1
+
+		-- Gán trạng thái hiển thị Equipped tag
+		local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
+		if EquippedTag then
+			EquippedTag.Visible = (Entry.Id == CurrentEquip)
+		end
 
 		-- Gán Background theo Rarity
 		local Background = Frame:FindFirstChild("Background")

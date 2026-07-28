@@ -174,17 +174,19 @@ local function RenderItems(Items)
 		Frame.Visible     = true
 
 		-- Cập nhật các label
-		local NameText   = Frame:FindFirstChild("NameText",     true)
-		local RarityText = Frame:FindFirstChild("RarityText",   true)
-		local DropText   = Frame:FindFirstChild("DropRateText", true)
-		local Background = Frame:FindFirstChild("Background",   true)
+		local NameText    = Frame:FindFirstChild("NameText",     true)
+		local RarityText  = Frame:FindFirstChild("RarityText",   true)
+		local DropText    = Frame:FindFirstChild("DropRateText", true)
+		local Background  = Frame:FindFirstChild("Background",   true)
+		local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
 
 		if NameText   then NameText.Text     = FullEntry.Name end
 		if RarityText then
 			RarityText.Text = FullEntry.Rarity
 			if RarityEntry then RarityText.TextColor3 = RarityEntry.Color end
 		end
-		if DropText   then DropText.Visible  = false end  -- Ẩn DropRate trong màn hình reward
+		if DropText    then DropText.Visible    = false end  -- Ẩn DropRate trong màn hình reward
+		if EquippedTag then EquippedTag.Visible = false end  -- Ẩn Equipped tag trong màn hình reward
 		if Background and RarityEntry then
 			Background.Image = RarityEntry.ImageId
 		end

@@ -6,6 +6,11 @@
 
 ## Kiến trúc
 
+### Đồng bộ hiển thị nhãn trang bị vật phẩm (EquippedText Indicator) trong InventoryController
+- **Ngày:** 28-07-2026
+- **Chi tiết:** Trong `InventoryController`, khi render danh sách vật phẩm theo Tab ("Icicle" / "Block"), controller tra cứu ID đang trang bị trong `PlayerDataController.GetData()` (`EquippedIcicle` / `EquippedIceBlock`). Đặt thuộc tính `.Visible = true` cho nhãn `EquippedText` (hoặc fallback `Equipped`) trên ô vật phẩm khớp ID, và `.Visible = false` cho các vật phẩm khác. Khi bấm Equip thành công, hàm `UpdateEquippedTags()` quét danh sách `ScrollingFrame` để cập nhật `Visible` ngay lập tức mà không cần re-render toàn bộ danh sách. Đồng thời, tại các controller dùng chung `ItemTemplate` (`ItemRewardController`, `ShopController`, `ProfileController`), nhãn `EquippedText` được chủ động ẩn (`Visible = false`) khi clone.
+- **File liên quan:** [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ItemRewardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
+
 ### Phân định độc lập và cố định Nhạc nền Lobby cho Spectator (Decoupling MusicController & SpectateController)
 - **Ngày:** 28-07-2026
 - **Chi tiết:** Đơn giản hóa logic nhạc nền bằng cách quy định Spectator (người chơi không có đội) luôn nghe nhạc Lobby (`AudioConfig.Music.Lobby`), không thay đổi phụ thuộc vào người mà họ spectate hay phase InGame/FrozenState. Nhờ đó, loại bỏ hoàn toàn cơ chế callback/lazy-require chéo giữa `SpectateController` và `MusicController` (`OnSpectateChanged`), giúp hai hệ thống độc lập hoàn toàn (decoupled), giảm độ phức tạp và tránh nguy cơ circular dependency.
