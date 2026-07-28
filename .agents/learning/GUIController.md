@@ -1,10 +1,15 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 21-07-2026
+> Cập nhật lần cuối: 28-07-2026
 
 ---
 
 ## Kiến trúc
+
+### Phân định độc lập và cố định Nhạc nền Lobby cho Spectator (Decoupling MusicController & SpectateController)
+- **Ngày:** 28-07-2026
+- **Chi tiết:** Đơn giản hóa logic nhạc nền bằng cách quy định Spectator (người chơi không có đội) luôn nghe nhạc Lobby (`AudioConfig.Music.Lobby`), không thay đổi phụ thuộc vào người mà họ spectate hay phase InGame/FrozenState. Nhờ đó, loại bỏ hoàn toàn cơ chế callback/lazy-require chéo giữa `SpectateController` và `MusicController` (`OnSpectateChanged`), giúp hai hệ thống độc lập hoàn toàn (decoupled), giảm độ phức tạp và tránh nguy cơ circular dependency.
+- **File liên quan:** [MusicController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)
 
 ### Quản lý visibility GUI theo phase game + trạng thái team (Spectator-aware)
 - **Ngày:** 05-06-2026 (cập nhật 06-06-2026)

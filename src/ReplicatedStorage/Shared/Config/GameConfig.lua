@@ -8,7 +8,7 @@ local GameConfig = {
 	-- THỜI GIAN CÁC PHASE (đơn vị: giây)
 	-- =========================================================
 	Phase = {
-		IntermissionDuration  = 20,   -- Thời gian nghỉ giữa các trận
+		IntermissionDuration  = 6,   -- Thời gian nghỉ giữa các trận
 		ReadyDuration         = 3,    -- Đếm ngược trước khi bắt đầu
 		InGameDuration        = 180,  -- Thời gian tối đa mỗi trận
 		GameOverDuration      = 6,    -- Màn hình kết thúc

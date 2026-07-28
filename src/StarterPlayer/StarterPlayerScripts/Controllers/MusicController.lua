@@ -1,5 +1,5 @@
 -- MusicController.lua (ModuleScript)
--- Quản lý nhạc nền cho local player dựa trên phase của match và trạng thái spectate
+-- Quản lý nhạc nền cho local player dựa trên phase của match
 --
 -- Logic:
 --   Có team (đang tham gia trận):
@@ -8,9 +8,7 @@
 --     - Không InGame          → Nhạc Lobby
 --
 --   Không có team (spectator):
---     - Đang spectate + server InGame + FrozenState  → Nhạc FrozenState
---     - Đang spectate + server InGame                → Nhạc InGame
---     - Không spectate                               → Nhạc Lobby
+--     - Luôn phát Nhạc Lobby (không phụ thuộc vào việc đang spectate hay không)
 --
 -- Chuyển nhạc: dừng ngay lập tức, play nhạc mới (không fade)
 -- Phase 8.1
@@ -43,31 +41,11 @@ _bgmSound.Parent   = SoundService
 -- SkinId đang phát (để tránh restart nhạc khi không cần)
 local _currentSoundId = nil
 
--- Lazy reference đến SpectateController (load sau Main để tránh circular)
-local _spectateController = nil
-
 local UpdateGameStateEvent
 
 -- =========================================================
 -- PRIVATE
 -- =========================================================
-
---- Lấy lazy reference đến SpectateController
-local function GetSpectateController()
-	if not _spectateController then
-		local Controllers = LocalPlayer
-			:WaitForChild("PlayerScripts", 5)
-			and LocalPlayer.PlayerScripts
-		if Controllers then
-			local Module = Controllers:FindFirstChild("Controllers")
-				and Controllers.Controllers:FindFirstChild("SpectateController")
-			if Module then
-				_spectateController = require(Module)
-			end
-		end
-	end
-	return _spectateController
-end
 
 --- Xác định nhạc cần phát dựa trên trạng thái hiện tại
 --- @return number — SoundId cần phát
@@ -86,19 +64,8 @@ local function ResolveMusicId()
 			return AudioConfig.Music.Lobby
 		end
 	else
-		-- Spectator hoặc lobby
-		local SC = GetSpectateController()
-		local IsSpectating = SC and SC.IsSpectating() or false
-
-		if IsSpectating and _currentPhase == "InGame" then
-			if _isFrozenState then
-				return AudioConfig.Music.FrozenState
-			else
-				return AudioConfig.Music.InGame
-			end
-		else
-			return AudioConfig.Music.Lobby
-		end
+		-- Spectator luôn phát nhạc Lobby
+		return AudioConfig.Music.Lobby
 	end
 end
 
@@ -148,10 +115,5 @@ function MusicController:Init()
 	print("[MusicController] Đã khởi tạo.")
 end
 
---- Được gọi bởi SpectateController khi trạng thái spectate thay đổi
---- Cho phép MusicController cập nhật nhạc ngay lập tức
-function MusicController.OnSpectateChanged()
-	UpdateMusic()
-end
-
 return MusicController
+

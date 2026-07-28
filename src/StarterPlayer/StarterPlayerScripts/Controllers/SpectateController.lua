@@ -10,22 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 
--- Lazy reference đến MusicController để thông báo khi trạng thái spectate thay đổi
--- Dùng lazy để tránh circular load (MusicController load sau SpectateController)
-local _musicController = nil
-local function NotifyMusicController()
-	if not _musicController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MusicController")
-		if Module then
-			_musicController = require(Module)
-		end
-	end
-	if _musicController and _musicController.OnSpectateChanged then
-		_musicController.OnSpectateChanged()
-	end
-end
-
 -- =========================================================
 -- GUI REFERENCES (resolve lười trong Init để tránh lỗi timing)
 -- =========================================================
@@ -327,9 +311,6 @@ function SpectateController.SetVisible(Visible)
 		-- Focus vào target đầu tiên
 		ApplyCurrentTarget()
 
-		-- Thông báo MusicController để chuyển sang nhạc InGame/FrozenState
-		NotifyMusicController()
-
 		print("[SpectateController] Chế độ Spectate đã bật.")
 	else
 		-- Tắt spectate
@@ -354,9 +335,6 @@ function SpectateController.SetVisible(Visible)
 
 		-- Khôi phục camera
 		RestoreCamera()
-
-		-- Thông báo MusicController để chuyển về nhạc Lobby
-		NotifyMusicController()
 
 		print("[SpectateController] Chế độ Spectate đã tắt.")
 	end
