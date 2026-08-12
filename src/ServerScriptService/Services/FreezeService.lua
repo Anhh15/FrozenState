@@ -21,15 +21,17 @@ local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 -- HẰNG SỐ (từ GameConfig để không hardcode)
 -- =========================================================
 
-local DEFAULT_WALK_SPEED = 16
-local DEFAULT_JUMP_POWER = 50
-local DEFAULT_JUMP_HEIGHT = 7.2
+-- Hằng số di chuyển được lấy từ GameConfig.Player (không hardcode)
 
 -- =========================================================
 -- STATE
 -- =========================================================
 
 local _firstBloodClaimed = false
+
+-- Cache IceBlock theo UserId — để RemoveIceBlock chạy O(1) thay vì scan workspace
+-- { [UserId: number] = BlockModel: Model }
+local _iceBlocks = {}
 
 local UpdatePlayerStateEvent
 local UpdateMoneyEvent
@@ -99,6 +101,9 @@ local function SpawnIceBlock(Attacker, Victim)
 	-- Đặt parent vào workspace trước khi tạo WeldConstraint để cơ chế vật lý hoạt động chính xác
 	BlockModel.Parent = workspace
 
+	-- Lưu reference vào cache — dùng cho RemoveIceBlock O(1)
+	_iceBlocks[Victim.UserId] = BlockModel
+
 	-- Di chuyển Model về vị trí HRP sau khi đã parent vào workspace
 	BlockModel:PivotTo(HRP.CFrame)
 
@@ -122,15 +127,13 @@ local function SpawnIceBlock(Attacker, Victim)
 	Weld.Parent = PrimaryPart
 end
 
---- Xóa Model IceBlock của một player
+--- Xóa Model IceBlock của một player — O(1) qua cache _iceBlocks
 --- @param Victim Player
 local function RemoveIceBlock(Victim)
-	for _, Child in ipairs(workspace:GetChildren()) do
-		if Child:IsA("Model")
-			and Child:GetAttribute("VictimUserId") == Victim.UserId
-		then
-			Child:Destroy()
-		end
+	local Block = _iceBlocks[Victim.UserId]
+	if Block then
+		Block:Destroy()
+		_iceBlocks[Victim.UserId] = nil
 	end
 end
 
@@ -155,8 +158,8 @@ local function PlaySpatialSound(Character, SoundId)
 	Sound.Parent           = HRP
 	Sound:Play()
 
-	-- Tự dọn sau khi phát xong (hoặc tối đa 5 giây)
-	task.delay(5, function()
+	-- Tự dọn ngay khi phát xong (chính xác hơn task.delay(5) cố định)
+	Sound.Ended:Once(function()
 		if Sound and Sound.Parent then
 			Sound:Destroy()
 		end
@@ -223,8 +226,8 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	if VictimChar then
 		local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
 		if Humanoid then
-			Humanoid.WalkSpeed = 0
-			Humanoid.JumpPower = 0
+			Humanoid.WalkSpeed  = 0
+			Humanoid.JumpPower  = 0
 			Humanoid.JumpHeight = 0
 		end
 	end
@@ -312,9 +315,9 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	if VictimChar then
 		local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
 		if Humanoid then
-			Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
-			Humanoid.JumpPower = DEFAULT_JUMP_POWER
-			Humanoid.JumpHeight = DEFAULT_JUMP_HEIGHT
+			Humanoid.WalkSpeed  = GameConfig.Player.DefaultWalkSpeed
+			Humanoid.JumpPower  = GameConfig.Player.DefaultJumpPower
+			Humanoid.JumpHeight = GameConfig.Player.DefaultJumpHeight
 		end
 	end
 
@@ -375,9 +378,9 @@ function FreezeService.ThawAll()
 			if Char then
 				local Humanoid = Char:FindFirstChildOfClass("Humanoid")
 				if Humanoid then
-					Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
-					Humanoid.JumpPower = DEFAULT_JUMP_POWER
-					Humanoid.JumpHeight = DEFAULT_JUMP_HEIGHT
+					Humanoid.WalkSpeed  = GameConfig.Player.DefaultWalkSpeed
+					Humanoid.JumpPower  = GameConfig.Player.DefaultJumpPower
+					Humanoid.JumpHeight = GameConfig.Player.DefaultJumpHeight
 				end
 			end
 			RemoveIceBlock(Player)
@@ -454,6 +457,11 @@ function FreezeService:Init()
 	NotifyAccoladeEvent      = RemoteDefinitions.GetEvent("NotifyAccolade")
 
 	OnToolHitEvent.OnServerEvent:Connect(HandleToolHit)
+
+	-- Dọn cache IceBlock khi player rời game (tránh memory leak)
+	Players.PlayerRemoving:Connect(function(Player)
+		_iceBlocks[Player.UserId] = nil
+	end)
 
 	print("[FreezeService] Đã khởi tạo.")
 end

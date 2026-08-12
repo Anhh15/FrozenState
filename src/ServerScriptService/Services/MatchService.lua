@@ -19,9 +19,7 @@ local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 -- HẰNG SỐ
 -- =========================================================
 
-local DEFAULT_WALK_SPEED = 16
-local DEFAULT_JUMP_POWER = 50
-local DEFAULT_JUMP_HEIGHT = 7.2
+-- Hằng số di chuyển được lấy từ GameConfig.Player (không hardcode)
 
 -- =========================================================
 -- STATE
@@ -66,9 +64,9 @@ local function SetMovementLocked(Player, Locked)
 	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
 	if not Humanoid then return end
 
-	Humanoid.WalkSpeed = Locked and 0 or DEFAULT_WALK_SPEED
-	Humanoid.JumpPower = Locked and 0 or DEFAULT_JUMP_POWER
-	Humanoid.JumpHeight = Locked and 0 or DEFAULT_JUMP_HEIGHT
+	Humanoid.WalkSpeed  = Locked and 0 or GameConfig.Player.DefaultWalkSpeed
+	Humanoid.JumpPower  = Locked and 0 or GameConfig.Player.DefaultJumpPower
+	Humanoid.JumpHeight = Locked and 0 or GameConfig.Player.DefaultJumpHeight
 end
 
 --- Xác định đội thắng khi hết giờ (không ai bị wipe)

@@ -284,6 +284,7 @@ function DataService.SetMilestoneBase(Player, QuestId, NewBase)
 end
 
 --- Thêm cosmetic vào danh sách sở hữu (giữ lại cho tương thích ngược)
+--- @deprecated Không sử dụng cho vật phẩm mới. Dùng AddIcicle() hoặc AddBlock() thay thế.
 --- @param Player Player
 --- @param ItemId string
 function DataService.AddCosmetic(Player, ItemId)
