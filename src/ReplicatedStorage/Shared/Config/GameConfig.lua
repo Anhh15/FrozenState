@@ -54,11 +54,11 @@ local GameConfig = {
 		ViewportCameraDistance = 5,  -- Khoảng cách camera đến đầu nhân vật trong ViewportFrame (studs)
 		                               -- Tăng để zoom ra, giảm để zoom vào
 
-		-- LoadingScreen transition timing (đơn vị: giây)
-		LoadingScreen = {
-			FadeInDuration  = 1,   -- Thời gian fade-in (transparent → opaque)
-			HoldDuration    = 1,   -- Thời gian giữ nguyên trước khi fade-out
-			FadeOutDuration = 1,   -- Thời gian fade-out (opaque → transparent)
+		-- RoundLoadingScreen transition timing (đơn vị: giây)
+		RoundLoadingScreen = {
+			FadeInDuration  = 1.0,  -- Thời gian mờ đen màn hình khi bắt đầu Setup
+			HoldDuration    = 1.0,  -- Thời gian giữ màn hình đen khi vào Ready
+			FadeOutDuration = 0.5,  -- Thời gian sáng dần trở lại
 		},
 	},
 

@@ -426,13 +426,13 @@ local function RunSetup()
 
 	SessionService.SetMatchActive(true)
 
-	-- Báo client bắt đầu LoadingScreen
+	-- Báo client bắt đầu RoundLoadingScreen
 	BroadcastGameState("Setup", 0, false)
 
 	-- Load map ngẫu nhiên
 	MapService.LoadRandomMap()
 
-	task.wait(GameConfig.GUI.LoadingScreen.FadeInDuration)
+	task.wait(GameConfig.GUI.RoundLoadingScreen.FadeInDuration)
 	task.wait(0.5)  -- buffer nhỏ để map load xong
 end
 

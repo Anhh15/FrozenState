@@ -229,12 +229,12 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	end
 
 	-- Quản lý hiển thị InGameGui và các gameplay HUD con
-	local IsInGamePhase = (Phase == "Ready" or Phase == "InGame" or Phase == "GameOver" or Phase == "Setup")
+	local IsInGamePhase = (Phase == "Ready" or Phase == "InGame" or Phase == "GameOver")
 	if InGameGui then
 		InGameGui.Enabled = IsInGamePhase
 	end
 
-	local ShowGameplayHud = (Phase == "Ready" or Phase == "InGame" or Phase == "GameOver")
+	local ShowGameplayHud = IsInGamePhase
 	if PlayerStatus then
 		PlayerStatus.Visible = ShowGameplayHud and (_playerStatusType ~= "Disabled")
 	end

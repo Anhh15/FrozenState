@@ -1,6 +1,7 @@
--- LoadingScreenController.lua (ModuleScript)
--- Quan ly man hinh chuyen canh LoadingScreen khi bat dau tran dau
--- Chi hien voi player co team (tham gia tran), Spectator khong thay
+-- RoundLoadingScreenController.lua (ModuleScript)
+-- Quan ly man hinh chuyen canh RoundLoadingScreen khi bat dau tran dau
+-- Dat tai StarterGui/Special/RoundLoadingScreen
+-- Chi hien voi player co team (hoac tham gia tran: InMatch = true), Spectator khong thay
 --
 -- Luong:
 --   Setup  -> fade-in  (BackgroundTransparency: 1 -> 0, trong FadeInDuration giay)
@@ -18,9 +19,9 @@ local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 -- CONFIG
 -- =========================================================
 
-local FADE_IN_DURATION  = GameConfig.GUI.LoadingScreen.FadeInDuration
-local HOLD_DURATION     = GameConfig.GUI.LoadingScreen.HoldDuration
-local FADE_OUT_DURATION = GameConfig.GUI.LoadingScreen.FadeOutDuration
+local FADE_IN_DURATION  = GameConfig.GUI.RoundLoadingScreen.FadeInDuration
+local HOLD_DURATION     = GameConfig.GUI.RoundLoadingScreen.HoldDuration
+local FADE_OUT_DURATION = GameConfig.GUI.RoundLoadingScreen.FadeOutDuration
 
 local TWEEN_FADE_IN  = TweenInfo.new(FADE_IN_DURATION,  Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_FADE_OUT = TweenInfo.new(FADE_OUT_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
@@ -32,7 +33,7 @@ local TWEEN_FADE_OUT = TweenInfo.new(FADE_OUT_DURATION, Enum.EasingStyle.Quad, E
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local _LoadingScreen = nil  -- Frame: InGameGui/LoadingScreen
+local _RoundLoadingScreen = nil  -- Frame: Special/RoundLoadingScreen
 
 -- =========================================================
 -- STATE
@@ -58,18 +59,18 @@ local function CancelPending()
 	end
 end
 
---- An LoadingScreen ngay lap tuc (safety net hoac reset)
+--- An RoundLoadingScreen ngay lap tuc (safety net hoac reset)
 local function ForceHide()
 	CancelPending()
-	if _LoadingScreen then
-		_LoadingScreen.BackgroundTransparency = 1
-		_LoadingScreen.Visible = false
+	if _RoundLoadingScreen then
+		_RoundLoadingScreen.BackgroundTransparency = 1
+		_RoundLoadingScreen.Visible = false
 	end
 end
 
 --- Bat dau fade-in: hien man hinh roi tween transparency 1 -> 0
 local function StartFadeIn()
-	if not _LoadingScreen then return end
+	if not _RoundLoadingScreen then return end
 
 	-- Chi hien voi player tham gia tran (InMatch = true hoac co Team)
 	local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
@@ -77,10 +78,10 @@ local function StartFadeIn()
 
 	CancelPending()
 
-	_LoadingScreen.BackgroundTransparency = 1
-	_LoadingScreen.Visible = true
+	_RoundLoadingScreen.BackgroundTransparency = 1
+	_RoundLoadingScreen.Visible = true
 
-	local Tween = TweenService:Create(_LoadingScreen, TWEEN_FADE_IN, {
+	local Tween = TweenService:Create(_RoundLoadingScreen, TWEEN_FADE_IN, {
 		BackgroundTransparency = 0,
 	})
 	_activeTween = Tween
@@ -94,8 +95,8 @@ end
 
 --- Bat dau fade-out sau HoldDuration giay (danh cho Ready state)
 local function StartFadeOutSequence()
-	if not _LoadingScreen then return end
-	if not _LoadingScreen.Visible then return end  -- Neu khong dang hien thi khong can
+	if not _RoundLoadingScreen then return end
+	if not _RoundLoadingScreen.Visible then return end  -- Neu khong dang hien thi khong can
 
 	CancelPending()
 
@@ -104,9 +105,9 @@ local function StartFadeOutSequence()
 		_fadeOutTask = nil
 
 		-- Neu da bi force-hide (phase nhay sang InGame) thi bo qua
-		if not _LoadingScreen.Visible then return end
+		if not _RoundLoadingScreen.Visible then return end
 
-		local Tween = TweenService:Create(_LoadingScreen, TWEEN_FADE_OUT, {
+		local Tween = TweenService:Create(_RoundLoadingScreen, TWEEN_FADE_OUT, {
 			BackgroundTransparency = 1,
 		})
 		_activeTween = Tween
@@ -114,7 +115,7 @@ local function StartFadeOutSequence()
 		Tween.Completed:Connect(function()
 			if _activeTween == Tween then
 				_activeTween = nil
-				_LoadingScreen.Visible = false
+				_RoundLoadingScreen.Visible = false
 			end
 		end)
 	end)
@@ -143,16 +144,17 @@ end
 -- PUBLIC API
 -- =========================================================
 
-local LoadingScreenController = {}
+local RoundLoadingScreenController = {}
 
-function LoadingScreenController:Init()
-	-- Lay GUI reference - WaitForChild khong timeout de tranh race condition
-	local InGameGui  = PlayerGui:WaitForChild("InGameGui")
-	_LoadingScreen   = InGameGui:WaitForChild("LoadingScreen")
+function RoundLoadingScreenController:Init()
+	-- Lay GUI reference tu Special Gui - WaitForChild khong timeout de tranh race condition
+	local SpecialGui          = PlayerGui:WaitForChild("Special")
+	SpecialGui.ResetOnSpawn   = false
+	_RoundLoadingScreen       = SpecialGui:WaitForChild("RoundLoadingScreen")
 
 	-- Dam bao trang thai ban dau la an
-	_LoadingScreen.BackgroundTransparency = 1
-	_LoadingScreen.Visible = false
+	_RoundLoadingScreen.BackgroundTransparency = 1
+	_RoundLoadingScreen.Visible = false
 
 	-- Lang nghe UpdateGameState (cung remote voi GameStateController)
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
@@ -161,7 +163,7 @@ function LoadingScreenController:Init()
 		OnPhaseChanged(Data.Phase or "Intermission")
 	end)
 
-	print("[LoadingScreenController] Da khoi tao.")
+	print("[RoundLoadingScreenController] Da khoi tao.")
 end
 
-return LoadingScreenController
+return RoundLoadingScreenController

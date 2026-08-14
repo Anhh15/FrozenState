@@ -27,7 +27,7 @@ local SoundController          = require(Controllers:WaitForChild("SoundControll
 local PlayerStatusController   = require(Controllers:WaitForChild("PlayerStatusController"))
 local ScoreBoardController     = require(Controllers:WaitForChild("ScoreBoardController"))
 local AccoladesController      = require(Controllers:WaitForChild("AccoladesController"))
-local LoadingScreenController  = require(Controllers:WaitForChild("LoadingScreenController"))
+local RoundLoadingScreenController  = require(Controllers:WaitForChild("RoundLoadingScreenController"))
 
 -- Bước 3: Init tất cả controller
 -- (Init theo thứ tự — GameState trước để UI sẵn sàng ngay khi data đến)
@@ -48,7 +48,6 @@ SoundController:Init()
 PlayerStatusController:Init()
 ScoreBoardController:Init()
 AccoladesController:Init()
-LoadingScreenController:Init()
+RoundLoadingScreenController:Init()
 
 print("[Client] FrozenState đã sẵn sàng.")
-

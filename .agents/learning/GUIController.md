@@ -1,10 +1,15 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 28-07-2026
+> Cập nhật lần cuối: 15-08-2026
 
 ---
 
 ## Kiến trúc
+
+### Tách biệt màn hình chuyển cảnh vòng đấu (RoundLoadingScreen) sang ScreenGui Special
+- **Ngày:** 15-08-2026
+- **Chi tiết:** Đổi tên từ `LoadingScreen` sang `RoundLoadingScreen` để phân biệt rạch ròi với màn hình tải game ban đầu (`GameLoadingScreen`). Di chuyển Frame `RoundLoadingScreen` từ `InGameGui` sang `Special` ScreenGui (nơi chứa các lớp phủ toàn màn hình như `ItemReward`). Điều này giúp phân tách hoàn toàn lớp Full-screen Overlay đặc biệt khỏi HUD thi đấu (`InGameGui`), cho phép `InGameGui.Enabled` chỉ cần kích hoạt trong các phase gameplay thực tế (`Ready`, `InGame`, `GameOver`) thay vì phải bật sớm ở phase `Setup`.
+- **File liên quan:** [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
 ### Đồng bộ hiển thị nhãn trang bị vật phẩm (EquippedText Indicator) trong InventoryController
 - **Ngày:** 28-07-2026
@@ -36,10 +41,10 @@
 - **Chi tiết:** Khi mở bất kỳ Frame Menu nào (Shop, Inventory, Profile, Quest), tất cả các Frame Menu khác sẽ tự động bị ẩn để tránh chồng lấp UI. Đồng thời, Frame `Button` bên trong `NavigationButton` ScreenGui cũng sẽ bị ẩn (`Button.Visible = false`) để tránh việc người chơi bấm mở các menu khác cùng lúc. Frame `Stats` trong `NavigationButton` vẫn tiếp tục được hiển thị. Khi đóng các Frame Menu, Frame `Button` của NavigationButton sẽ tự động hiển thị trở lại (trừ khi người chơi đang ở chế độ Spectate).
 - **File liên quan:** [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
 
-### Quản lý hiển thị InGameGui theo nhóm phase hỗ trợ Loading Screen
-- **Ngày:** 21-07-2026
-- **Chi tiết:** `InGameGui` chứa cả màn hình chờ chuyển cảnh `LoadingScreen` và các gameplay HUD chơi game (`PlayerStatus`, `ScoreBoardButton`). Để che mắt người chơi khi load map mới, `InGameGui.Enabled` được giữ ở trạng thái `true` trong phase `Setup`, `Ready`, `InGame` và `GameOver` (chỉ ẩn hoàn toàn khi ở `Intermission`). Tuy nhiên, để tránh hiển thị sớm HUD chơi game, các sub-HUD này được set `.Visible = false` thủ công khi ở phase `Setup` và `Intermission`, chỉ bật lên từ phase `Ready`.
-- **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
+### Quản lý hiển thị InGameGui theo phase gameplay (Decoupled khỏi RoundLoadingScreen)
+- **Ngày:** 15-08-2026 (cập nhật từ 21-07-2026)
+- **Chi tiết:** `InGameGui` chỉ chứa thuần túy các gameplay HUD trong trận (`PlayerStatus`, `ScoreBoard`, `ScoreBoardButton`, `Accolades`). Màn hình chuyển cảnh `RoundLoadingScreen` đã được tách sang `Special` ScreenGui. Do đó, `InGameGui.Enabled` chỉ cần bật (`true`) trong các phase thi đấu (`Ready`, `InGame`, `GameOver`) và tự động tắt hoàn toàn (`false`) ở `Intermission` và `Setup`.
+- **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
 ### Render 3D Avatar lên GUI (ViewportFrame & WorldModel)
 - **Ngày:** 10-06-2026 (cập nhật 11-06-2026)
@@ -114,7 +119,7 @@
 ### Đồng bộ Loading Screen bằng trì hoãn Server (Server Delay Sync)
 - **Ngày:** 20-07-2026
 - **Chi tiết:** Để che giấu quá trình Setup (tải map, chia đội) khỏi người chơi, client khởi chạy animation fade-in của Loading Screen. Thay vì tạo RemoteEvent để client phản hồi khi fade-in hoàn tất, server thực hiện `task.wait(FadeInDuration)` ngay sau khi broadcast phase "Setup". Điều này giúp tinh giản network traffic và giảm độ phức tạp của logic đồng bộ mà vẫn đảm bảo Setup chỉ kết thúc sau khi màn hình đen đã che phủ hoàn toàn.
-- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua)
 
 ### Điều phối luồng setup phase trên Server tránh race condition Loading Screen và hỗ trợ AFK
 - **Ngày:** 21-07-2026
@@ -277,7 +282,7 @@
 - **Vấn đề:** Trình biên dịch Luau của Roblox báo lỗi `Expected identifier when parsing expression, got Unicode character U+feff` ở dòng 1 và module không thể load.
 - **Nguyên nhân:** Lệnh PowerShell `Set-Content -Encoding UTF8` ghi tệp tin đính kèm mã Byte Order Mark (BOM - `U+FEFF`) ở đầu tệp tin, vốn không được Luau hỗ trợ.
 - **Fix:** Ghi đè tệp tin sử dụng các thư viện chuẩn của hệ thống hoặc trình soạn thảo hỗ trợ UTF-8 Standard (No BOM).
-- **File liên quan:** [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
+- **File liên quan:** [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua)
 
 ### Lỗi crash QuestController do thiếu hàm require SpectateController
 - **Ngày:** 21-07-2026
@@ -291,7 +296,7 @@
 - **Vấn đề:** LoadingScreen không hiển thị ở trận đấu đầu tiên nhưng hoạt động bình thường ở các trận sau.
 - **Nguyên nhân:** Client kiểm tra thuộc tính `"Team"` ngay khi nhận được phase `"Setup"`. Tại trận đấu đầu tiên, server chưa kịp chia team nên thuộc tính này bị `nil`. Ở các trận sau, thuộc tính `"Team"` cũ từ trận trước chưa kịp bị reset nên vượt qua kiểm tra.
 - **Fix:** Thay đổi trình tự xử lý trên server: chia team mới và broadcast team trước khi phát tín hiệu phase `"Setup"`.
-- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/ServerScriptService/Services/MatchService.lua), [LoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/LoadingScreenController.lua)
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua)
 
 ### Lỗi ScoreBoard trống trơn và Player Status avatar hiển thị sai đội ở trận đầu tiên
 - **Ngày:** 21-07-2026
