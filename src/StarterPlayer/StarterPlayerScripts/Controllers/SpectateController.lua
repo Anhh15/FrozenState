@@ -267,9 +267,9 @@ end
 function SpectateController.SetVisible(Visible)
 	if Visible then
 		-- Kiểm tra điều kiện bật
-		local MyTeam = LocalPlayer:GetAttribute("Team")
-		if MyTeam then
-			-- Đang trong trận (có team) → không thể spectate
+		local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
+		if IsInMatch then
+			-- Đang trong trận → không thể spectate
 			return
 		end
 
@@ -406,13 +406,16 @@ function SpectateController:Init()
 		end
 	end)
 
-	-- Tự động tắt spectate khi player được phân team
-	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(function()
-		local MyTeam = LocalPlayer:GetAttribute("Team")
-		if MyTeam and _isSpectating then
+	-- Tự động tắt spectate khi player được đưa vào trận
+	local function CheckMatchEntry()
+		local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
+		if IsInMatch and _isSpectating then
 			SpectateController.SetVisible(false)
 		end
-	end)
+	end
+
+	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(CheckMatchEntry)
+	LocalPlayer:GetAttributeChangedSignal("InMatch"):Connect(CheckMatchEntry)
 
 	print("[SpectateController] Đã khởi tạo.")
 end

@@ -127,6 +127,8 @@ local GAMEPLAY_PHASES = {
 local _lastPhase          = "Intermission"
 local _lastTimeRemaining  = 0
 local _lastIsFrozenState  = false
+local _playerStatusType   = "TwoTeams"
+local _scoreboardType     = "TwoTeams"
 
 -- =========================================================
 -- HELPERS
@@ -215,13 +217,14 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	TimeText.Text        = TimeStr
 	TimeShadowText.Text  = TimeStr
 
-	-- Kiểm tra xem LocalPlayer có đang trong trận (có team) hay không
-	local MyTeam = LocalPlayer:GetAttribute("Team")
-	if MyTeam then
+	-- Kiểm tra xem LocalPlayer có đang trong trận không (Attribute InMatch = true)
+	-- Dùng InMatch thay vì Team vì chế độ FFA không có team
+	local IsInMatch = LocalPlayer:GetAttribute("InMatch") == true
+	if IsInMatch then
 		-- Player trong trận: ẩn/hiện theo phase
 		SetLobbyGuisVisible(not GAMEPLAY_PHASES[Phase])
 	else
-		-- Spectator (chưa có team): luôn hiện GUI để đổi skin
+		-- Spectator (chưa trong trận): luôn hiện GUI để đổi skin
 		SetLobbyGuisVisible(true)
 	end
 
@@ -233,15 +236,15 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 
 	local ShowGameplayHud = (Phase == "Ready" or Phase == "InGame" or Phase == "GameOver")
 	if PlayerStatus then
-		PlayerStatus.Visible = ShowGameplayHud
+		PlayerStatus.Visible = ShowGameplayHud and (_playerStatusType ~= "Disabled")
 	end
 	if ScoreBoard then
-		if not ShowGameplayHud then
+		if not ShowGameplayHud or _scoreboardType == "Disabled" then
 			ScoreBoard.Visible = false
 		end
 	end
 	if ScoreBoardButton then
-		ScoreBoardButton.Visible = ShowGameplayHud
+		ScoreBoardButton.Visible = ShowGameplayHud and (_scoreboardType ~= "Disabled")
 	end
 end
 
@@ -274,19 +277,35 @@ function GameStateController:Init()
 	end
 
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
+	local SetGameModeEvent     = RemoteDefinitions.GetEvent("SetGameMode")
+
+	SetGameModeEvent.OnClientEvent:Connect(function(Data)
+		if Data then
+			_playerStatusType = Data.PlayerStatusType or "TwoTeams"
+			_scoreboardType   = Data.ScoreboardType   or "TwoTeams"
+			UpdateDisplay(_lastPhase, _lastTimeRemaining, _lastIsFrozenState)
+		end
+	end)
 
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
 		if not Data then return end
+		local Phase = Data.Phase or "Intermission"
+		if Phase == "Intermission" then
+			_playerStatusType = "TwoTeams"
+			_scoreboardType   = "TwoTeams"
+		end
 		UpdateDisplay(
-			Data.Phase         or "Intermission",
+			Phase,
 			Data.TimeRemaining or 0,
 			Data.IsFrozenState or false
 		)
 	end)
 
-	-- Re-evaluate GUI ngay khi Attribute Team thay đổi
-	-- (ví dụ: Spectator được phân team khi trận mới bắt đầu, hoặc về Lobby sau GameOver)
+	-- Re-evaluate GUI ngay khi Attribute Team hoặc InMatch thay đổi
 	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(function()
+		UpdateDisplay(_lastPhase, _lastTimeRemaining, _lastIsFrozenState)
+	end)
+	LocalPlayer:GetAttributeChangedSignal("InMatch"):Connect(function()
 		UpdateDisplay(_lastPhase, _lastTimeRemaining, _lastIsFrozenState)
 	end)
 

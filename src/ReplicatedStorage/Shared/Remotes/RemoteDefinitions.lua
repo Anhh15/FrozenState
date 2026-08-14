@@ -53,6 +53,10 @@ local REMOTE_EVENTS = {
 	-- Server → Attacker/Rescuer Client: Thông báo đạt danh hiệu (FirstBlood, FreezingSpree, ThawingSpree)
 	-- Payload: { Type = "FirstBlood" | "FreezingSpree" | "ThawingSpree" }
 	"NotifyAccolade",
+
+	-- Server → Client: Broadcast GameMode khi bắt đầu trận (Setup phase)
+	-- Payload: { ModeKey, HighlightMode, ScoreboardType, PlayerStatusType }
+	"SetGameMode",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

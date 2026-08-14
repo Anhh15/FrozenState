@@ -14,6 +14,7 @@ local DataService       = require(script.Parent.DataService)
 local IcicleService     = require(script.Parent.IcicleService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 
@@ -199,11 +200,26 @@ local function BroadcastSpectateList()
 	UpdateSpectateListEvent:FireAllClients(NormalPlayers)
 end
 
---- Sau mỗi freeze: kiểm tra xem đội vừa bị đóng băng có bị wipe không
+--- Kiểm tra điều kiện thắng trận sau mỗi freeze/eliminate
+--- Phân nhánh theo WinCondition của mode hiện tại
 local function CheckWinCondition(FrozenTeam)
-	if SessionService.IsTeamWiped(FrozenTeam) then
-		local WinTeam = (FrozenTeam == "Team1") and "Team2" or "Team1"
-		SessionService.MatchEndSignal:Fire(WinTeam)
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+
+	if Mode.WinCondition == "TeamBased" then
+		if FrozenTeam and SessionService.IsTeamWiped(FrozenTeam) then
+			local WinTeam = (FrozenTeam == "Team1") and "Team2" or "Team1"
+			SessionService.MatchEndSignal:Fire({ WinTeam = WinTeam })
+		end
+
+	elseif Mode.WinCondition == "FFA" then
+		local NormalPlayers = SessionService.GetAllNormalPlayers()
+		if #NormalPlayers == 1 then
+			-- Chỉ còn 1 người Normal → đó là người thắng
+			SessionService.MatchEndSignal:Fire({ WinPlayer = NormalPlayers[1] })
+		elseif #NormalPlayers == 0 then
+			-- Edge case: 2 người cuối cùng bị loại đồng thời → hòa, WinPlayer = nil
+			SessionService.MatchEndSignal:Fire({ WinPlayer = nil })
+		end
 	end
 end
 
@@ -305,6 +321,11 @@ end
 --- @param Rescuer Player
 --- @param Victim Player
 function FreezeService.ThawPlayer(Rescuer, Victim)
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+
+	-- Không thể thaw nếu mode không cho phép (EternalFreeze, Chaos)
+	if not Mode.AllowThaw then return end
+
 	-- Không thể thaw trong FrozenState
 	if SessionService.GetFrozenState() then
 		return
@@ -406,13 +427,13 @@ function FreezeService.ThawAll()
 end
 
 --- Loại bỏ người chơi khỏi trận đấu (dùng khi nhân vật chết hoặc rơi khỏi map)
---- Đặt trạng thái Dead, gỡ Team attribute, thu Tool, xóa IceBlock và kiểm tra điều kiện thắng
+--- Đặt trạng thái Dead, gỡ InMatch & Team attribute, thu Tool, xóa IceBlock và kiểm tra điều kiện thắng
 --- @param Player Player
 function FreezeService.EliminatePlayer(Player)
 	if not SessionService.IsMatchActive() then return end
+	if SessionService.GetState(Player) == "Dead" then return end
 
 	local OldTeam = SessionService.GetTeam(Player)
-	if not OldTeam then return end
 
 	-- Unanchor HRP nếu player đang bị frozen
 	local Char = Player.Character
@@ -427,9 +448,10 @@ function FreezeService.EliminatePlayer(Player)
 	IcicleService.RemoveTool(Player)
 	RemoveIceBlock(Player)
 
-	-- Chuyển trạng thái sang Dead và xóa Team assignment
+	-- Chuyển trạng thái sang Dead, xóa Team assignment và gỡ InMatch attribute
 	SessionService.SetState(Player, "Dead")
 	SessionService.ClearTeam(Player)
+	Player:SetAttribute("InMatch", nil)
 
 	-- Reset streaks
 	SessionService.ResetFreezeStreak(Player)
@@ -439,7 +461,7 @@ function FreezeService.EliminatePlayer(Player)
 	BroadcastPlayerState(Player)
 	BroadcastSpectateList()
 
-	-- Kiểm tra điều kiện thắng trận cho đội cũ
+	-- Kiểm tra điều kiện thắng trận (OldTeam cho TeamBased, nil cho FFA)
 	CheckWinCondition(OldTeam)
 
 	print(("[FreezeService] 💀 %s đã bị loại khỏi trận và chuyển sang Spectator."):format(Player.Name))
@@ -465,11 +487,6 @@ local function HandleToolHit(Attacker, Target)
 	-- Attacker phải ở trạng thái Normal
 	if SessionService.GetState(Attacker) ~= "Normal" then return end
 
-	-- Cả hai phải có team (tức là đang trong trận)
-	local AttackerTeam = SessionService.GetTeam(Attacker)
-	local TargetTeam   = SessionService.GetTeam(Target)
-	if not AttackerTeam or not TargetTeam then return end
-
 	-- Server-side distance validation (chống lag exploit)
 	local AttackerChar = Attacker.Character
 	local TargetChar   = Target.Character
@@ -482,15 +499,30 @@ local function HandleToolHit(Attacker, Target)
 	local Distance = (AttackerHRP.Position - TargetHRP.Position).Magnitude
 	if Distance > GameConfig.Tool.HitboxRange * 1.5 then return end  -- 1.5x tolerance lag
 
-	if TargetTeam ~= AttackerTeam then
-		-- Kẻ địch → Freeze (chỉ khi đang Normal)
-		if SessionService.GetState(Target) == "Normal" then
-			FreezeService.FreezePlayer(Attacker, Target)
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+
+	if Mode.HasTeams then
+		-- TeamBased: cần cả 2 có team
+		local AttackerTeam = SessionService.GetTeam(Attacker)
+		local TargetTeam   = SessionService.GetTeam(Target)
+		if not AttackerTeam or not TargetTeam then return end
+
+		if TargetTeam ~= AttackerTeam then
+			-- Kẻ địch → Freeze (chỉ khi đang Normal)
+			if SessionService.GetState(Target) == "Normal" then
+				FreezeService.FreezePlayer(Attacker, Target)
+			end
+		else
+			-- Đồng minh → Thaw (chỉ khi Frozen và AllowThaw)
+			if Mode.AllowThaw and SessionService.GetState(Target) == "Frozen" then
+				FreezeService.ThawPlayer(Attacker, Target)
+			end
 		end
 	else
-		-- Đồng minh → Thaw (chỉ khi đang Frozen và không phải FrozenState)
-		if SessionService.GetState(Target) == "Frozen" then
-			FreezeService.ThawPlayer(Attacker, Target)
+		-- FFA: không có team → mọi người đều là kẻ địch → chỉ Freeze
+		-- Target phải có stats (tức đang trong trận)
+		if SessionService.GetStats(Target) and SessionService.GetState(Target) == "Normal" then
+			FreezeService.FreezePlayer(Attacker, Target)
 		end
 	end
 end

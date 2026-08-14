@@ -16,16 +16,17 @@ local LocalPlayer  = Players.LocalPlayer
 local PlayerGui    = LocalPlayer:WaitForChild("PlayerGui")
 local StatGui      = PlayerGui:WaitForChild("GameStatistic")
 
--- ── TeamWonStats (Bảng Đội Thắng) ─────────────────────────
-local TeamWonStats  = StatGui:WaitForChild("TeamWonStats")
-local TeamWonText   = TeamWonStats:WaitForChild("TeamWon"):WaitForChild("TeamWonText")
-local NextButton    = TeamWonStats:WaitForChild("NextButton")
-local CloseButton1  = TeamWonStats:WaitForChild("CloseButton")
+-- ── TopPlayersStats (Bảng Đội Thắng / Winner) ────────────────────────────────────
+local TopPlayersStats = StatGui:WaitForChild("TopPlayersStats")
+local WinLabel        = TopPlayersStats:WaitForChild("WinLabel")
+local AnnounceText    = WinLabel:WaitForChild("AnnounceText")
+local NextButton      = TopPlayersStats:WaitForChild("NextButton")
+local CloseButton1    = TopPlayersStats:WaitForChild("CloseButton")
 
 local PlayerSlots = {
-	TeamWonStats:WaitForChild("PlayerTop1"),
-	TeamWonStats:WaitForChild("PlayerTop2"),
-	TeamWonStats:WaitForChild("PlayerTop3"),
+	TopPlayersStats:WaitForChild("PlayerTop1"),
+	TopPlayersStats:WaitForChild("PlayerTop2"),
+	TopPlayersStats:WaitForChild("PlayerTop3"),
 }
 
 -- ── PlayerStats (Bảng Thống Kê Cá Nhân) ───────────────────
@@ -69,21 +70,21 @@ end
 -- =========================================================
 
 local function HideAll()
-	StatGui.Enabled      = false
-	TeamWonStats.Visible = false
-	PlayerStats.Visible  = false
+	StatGui.Enabled         = false
+	TopPlayersStats.Visible = false
+	PlayerStats.Visible     = false
 end
 
-local function ShowTeamWon()
-	StatGui.Enabled      = true
-	TeamWonStats.Visible = true
-	PlayerStats.Visible  = false
+local function ShowTopPlayers()
+	StatGui.Enabled         = true
+	TopPlayersStats.Visible = true
+	PlayerStats.Visible     = false
 end
 
 local function ShowPlayerStats()
-	StatGui.Enabled      = true
-	TeamWonStats.Visible = false
-	PlayerStats.Visible  = true
+	StatGui.Enabled         = true
+	TopPlayersStats.Visible = false
+	PlayerStats.Visible     = true
 	-- Phase 8.3: Phát 'overall' khi PlayerStats hiện ra
 	PlayGuiSound(SFX_OVERALL)
 end
@@ -184,14 +185,22 @@ function GameStatisticController:Init()
 	ShowGameOverEvent.OnClientEvent:Connect(function(data)
 		if not data then return end
 
-		local winTeam   = data.WinTeam or "Team1"
-		local teamLabel = (winTeam == "Team1") and "TEAM 1 WINS!" or "TEAM 2 WINS!"
-		TeamWonText.Text = teamLabel
+		-- Xác định text thông báo thắng theo mode
+		if data.WinTeam then
+			-- TeamBased: hiển thị tên đội
+			AnnounceText.Text = (data.WinTeam == "Team1") and "TEAM 1 WINS!" or "TEAM 2 WINS!"
+		elseif data.WinPlayer then
+			-- FFA: hiển thị tên người thắng
+			AnnounceText.Text = data.WinPlayer.Name .. " WINS!"
+		else
+			-- Edge case: hòa (FFA dừa 0 người Normal)
+			AnnounceText.Text = "DRAW!"
+		end
 
 		FillTopPlayers(data.TopPlayers or {})
 		FillPersonalStats(data.Won, data.PersonalStats or {})
 
-		ShowTeamWon()
+		ShowTopPlayers()
 	end)
 
 	-- Ẩn GUI khi bắt đầu trận đấu mới

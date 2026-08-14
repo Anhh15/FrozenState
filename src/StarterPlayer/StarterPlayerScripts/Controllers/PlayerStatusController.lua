@@ -35,6 +35,7 @@ local _Template       = nil  -- AvatarThumbnail ImageLabel template
 -- Cache danh sách clone để dọn dẹp khi reset trận
 local _AllyClones  = {}
 local _EnemyClones = {}
+local _playerStatusType = "TwoTeams"  -- "TwoTeams" | "Disabled"
 
 -- =========================================================
 -- PRIVATE
@@ -93,8 +94,11 @@ local function SpawnAvatarCard(UserId, IsAlly)
 end
 
 --- Xử lý khi nhận được bảng phân đội từ server
+--- Skip nếu PlayerStatusType == "Disabled"
 --- @param Teams table -- { [tostring(UserId)] = "Team1" | "Team2" }
 local function OnTeamAssigned(Teams)
+	if _playerStatusType == "Disabled" then return end
+
 	ClearAvatars()
 
 	local MyUserIdStr = tostring(LocalPlayer.UserId)
@@ -137,6 +141,19 @@ function PlayerStatusController:Init()
 	-- Ngăn reset khi player respawn
 	_InGameGui.ResetOnSpawn = false
 
+	-- Lắng nghe SetGameMode để biết PlayerStatusType
+	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
+	SetGameModeEvent.OnClientEvent:Connect(function(Data)
+		if Data and Data.PlayerStatusType then
+			_playerStatusType = Data.PlayerStatusType
+			-- Ẩn/hiện StatusFrame theo type
+			_StatusFrame.Visible = (_playerStatusType ~= "Disabled")
+			if _playerStatusType == "Disabled" then
+				ClearAvatars()
+			end
+		end
+	end)
+
 	-- Lắng nghe SetTeamAssignment để render avatar
 	local SetTeamEvent = RemoteDefinitions.GetEvent("SetTeamAssignment")
 	SetTeamEvent.OnClientEvent:Connect(function(Teams)
@@ -166,6 +183,8 @@ function PlayerStatusController:Init()
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
 		if Data and Data.Phase == "Intermission" then
 			ClearAvatars()
+			_playerStatusType = "TwoTeams"  -- reset về default cho vòng tiếp theo
+			_StatusFrame.Visible = true
 		end
 	end)
 

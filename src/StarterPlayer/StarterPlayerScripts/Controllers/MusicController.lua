@@ -50,9 +50,9 @@ local UpdateGameStateEvent
 --- Xác định nhạc cần phát dựa trên trạng thái hiện tại
 --- @return number — SoundId cần phát
 local function ResolveMusicId()
-	local HasTeam = LocalPlayer:GetAttribute("Team") ~= nil
+	local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
 
-	if HasTeam then
+	if IsInMatch then
 		-- Đang tham gia trận
 		if _currentPhase == "InGame" then
 			if _isFrozenState then
@@ -103,9 +103,11 @@ function MusicController:Init()
 		UpdateMusic()
 	end)
 
-	-- Lắng nghe thay đổi team attribute (khi vào/ra trận)
-	-- Khi server gán team cho local player, attribute "Team" thay đổi → update nhạc
+	-- Lắng nghe thay đổi team hoặc InMatch attribute (khi vào/ra trận)
 	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(function()
+		UpdateMusic()
+	end)
+	LocalPlayer:GetAttributeChangedSignal("InMatch"):Connect(function()
 		UpdateMusic()
 	end)
 

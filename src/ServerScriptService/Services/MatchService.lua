@@ -2,6 +2,7 @@
 -- Điều phối vòng lặp trận đấu
 -- State machine: Intermission → Setup → Ready → InGame → GameOver → (lặp lại)
 -- Sub-state FrozenState nằm bên trong InGame khi còn ≤ FrozenStateThreshold giây
+-- Chu kỳ mode: 2 vòng Normal → 1 Special round (Chaos, ...) → lặp lại
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,24 +15,21 @@ local IcicleService     = require(script.Parent.IcicleService)
 local DataService       = require(script.Parent.DataService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
-
--- =========================================================
--- HẰNG SỐ
--- =========================================================
-
--- Hằng số di chuyển được lấy từ GameConfig.Player (không hardcode)
+local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
 
 -- =========================================================
 -- STATE
 -- =========================================================
 
-local _currentPhase = "Intermission"
-local _earlyWinner  = nil  -- set khi FreezeService trigger MatchEndSignal
+local _currentPhase  = "Intermission"
+local _earlyResult   = nil   -- { WinTeam = "..." } hoặc { WinPlayer = player } khi kết thúc sớm
+local _roundCounter  = 0     -- đếm số vòng đã chơi (dùng cho chu kỳ mode)
 
 local UpdateGameStateEvent
 local ShowGameOverEvent
 local UpdateSpectateListEvent
 local RequestSpectateTargetEvent
+local SetGameModeEvent
 
 -- =========================================================
 -- PRIVATE: Helpers
@@ -45,7 +43,7 @@ local function BroadcastGameState(Phase, TimeRemaining, IsFrozenState)
 	})
 end
 
---- Teleport player đến một trong các spawn point của team
+--- Teleport player đến một trong các spawn point (ngẫu nhiên)
 local function TeleportToSpawn(Player, SpawnPoints)
 	if #SpawnPoints == 0 then return end
 	local Character = Player.Character
@@ -69,8 +67,37 @@ local function SetMovementLocked(Player, Locked)
 	Humanoid.JumpHeight = Locked and 0 or GameConfig.Player.DefaultJumpHeight
 end
 
---- Xác định đội thắng khi hết giờ (không ai bị wipe)
-local function ResolveWinner()
+--- Chọn mode cho vòng tiếp theo theo chu kỳ: 2 Normal → 1 Special → lặp
+local function PickMode()
+	_roundCounter = _roundCounter + 1
+
+	local Interval = GameConfig.Match.SpecialRoundInterval
+	local ModeKey
+
+	if _roundCounter % Interval == 0 then
+		-- Special round: chọn ngẫu nhiên trong danh sách Special modes
+		local SpecialKeys = GameModeConfig.GetSpecialModeKeys()
+		if #SpecialKeys > 0 then
+			ModeKey = SpecialKeys[math.random(1, #SpecialKeys)]
+		else
+			ModeKey = "Normal"
+		end
+	else
+		ModeKey = "Normal"
+	end
+
+	SessionService.SetCurrentModeKey(ModeKey)
+	local Mode = GameModeConfig.GetMode(ModeKey)
+	print(("[MatchService] 🎮 Vòng %d — Mode: %s (%s)"):format(_roundCounter, ModeKey, Mode.DisplayName))
+	return ModeKey, Mode
+end
+
+-- =========================================================
+-- PRIVATE: Win Condition Resolvers
+-- =========================================================
+
+--- TeamBased: so sánh số người Normal còn lại của từng team
+local function ResolveWinnerTeamBased()
 	local function CountAlive(TeamName)
 		local Count = 0
 		for _, P in ipairs(SessionService.GetTeamPlayers(TeamName)) do
@@ -86,15 +113,15 @@ local function ResolveWinner()
 	local Alive1 = CountAlive("Team1")
 	local Alive2 = CountAlive("Team2")
 
-	-- Bù số lượng nếu đội nhỏ hơn (đội ít người được cộng 1 survivor để công bằng)
+	-- Bù số lượng nếu đội nhỏ hơn
 	if #Team1Players < #Team2Players then
 		Alive1 = Alive1 + 1
 	elseif #Team2Players < #Team1Players then
 		Alive2 = Alive2 + 1
 	end
 
-	if Alive1 > Alive2 then return "Team1" end
-	if Alive2 > Alive1 then return "Team2" end
+	if Alive1 > Alive2 then return { WinTeam = "Team1" } end
+	if Alive2 > Alive1 then return { WinTeam = "Team2" } end
 
 	-- Hòa: so sánh tổng Freeze + Thaw
 	local function TotalScore(TeamName)
@@ -108,95 +135,216 @@ local function ResolveWinner()
 
 	local Score1 = TotalScore("Team1")
 	local Score2 = TotalScore("Team2")
+	if Score1 > Score2 then return { WinTeam = "Team1" } end
+	if Score2 > Score1 then return { WinTeam = "Team2" } end
 
-	if Score1 > Score2 then return "Team1" end
-	if Score2 > Score1 then return "Team2" end
-
-	-- Vẫn hòa: random (không có draw)
-	return math.random() < 0.5 and "Team1" or "Team2"
+	-- Vẫn hòa: random
+	return { WinTeam = math.random() < 0.5 and "Team1" or "Team2" }
 end
 
---- Tính top N player của đội thắng theo Freeze + Thaw
-local function GetTopPlayers(WinTeam, MaxCount)
-	local WinPlayers = SessionService.GetTeamPlayers(WinTeam)
+--- FFA: so sánh Freeze count của tất cả players khi hết giờ
+local function ResolveWinnerFFA()
+	local function GetFreezeCount(P)
+		local Stats = SessionService.GetStats(P) or {}
+		return Stats.Freezes or 0
+	end
 
-	table.sort(WinPlayers, function(A, B)
-		local SA = SessionService.GetStats(A) or {}
-		local SB = SessionService.GetStats(B) or {}
-		return ((SA.Freezes or 0) + (SA.Thaws or 0)) > ((SB.Freezes or 0) + (SB.Thaws or 0))
+	-- Lấy tất cả participants (có stats = đã từng trong trận)
+	local Participants = {}
+	for _, P in ipairs(Players:GetPlayers()) do
+		if SessionService.GetStats(P) then
+			table.insert(Participants, P)
+		end
+	end
+
+	if #Participants == 0 then return { WinPlayer = nil } end
+
+	-- Sắp xếp theo Freeze count giảm dần
+	table.sort(Participants, function(A, B)
+		return GetFreezeCount(A) > GetFreezeCount(B)
 	end)
 
-	local Result = {}
-	for i = 1, math.min(MaxCount, #WinPlayers) do
-		local P     = WinPlayers[i]
+	local TopScore = GetFreezeCount(Participants[1])
+
+	-- Gom những người có điểm bằng nhau ở vị trí đầu
+	local Tied = {}
+	for _, P in ipairs(Participants) do
+		if GetFreezeCount(P) == TopScore then
+			table.insert(Tied, P)
+		end
+	end
+
+	-- Chỉ 1 người điểm cao nhất
+	if #Tied == 1 then return { WinPlayer = Tied[1] } end
+
+	-- Nhiều người cùng điểm: random
+	return { WinPlayer = Tied[math.random(1, #Tied)] }
+end
+
+--- Xác định kết quả khi hết giờ (không ai kết thúc sớm)
+local function ResolveWinner()
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	if Mode.WinCondition == "FFA" then
+		return ResolveWinnerFFA()
+	else
+		return ResolveWinnerTeamBased()
+	end
+end
+
+-- =========================================================
+-- PRIVATE: Rewards & Broadcast
+-- =========================================================
+
+--- Tính top N player theo Freeze + Thaw (TeamBased) hoặc Freeze (FFA)
+local function GetTopPlayers(Result, MaxCount)
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local Pool = {}
+
+	if Mode.WinCondition == "FFA" then
+		-- FFA: tất cả participants
+		for _, P in ipairs(Players:GetPlayers()) do
+			if SessionService.GetStats(P) then
+				table.insert(Pool, P)
+			end
+		end
+		table.sort(Pool, function(A, B)
+			local SA = SessionService.GetStats(A) or {}
+			local SB = SessionService.GetStats(B) or {}
+			return (SA.Freezes or 0) > (SB.Freezes or 0)
+		end)
+	else
+		-- TeamBased: chỉ đội thắng
+		Pool = SessionService.GetTeamPlayers(Result.WinTeam)
+		table.sort(Pool, function(A, B)
+			local SA = SessionService.GetStats(A) or {}
+			local SB = SessionService.GetStats(B) or {}
+			return ((SA.Freezes or 0) + (SA.Thaws or 0)) > ((SB.Freezes or 0) + (SB.Thaws or 0))
+		end)
+	end
+
+	local TopList = {}
+	for i = 1, math.min(MaxCount, #Pool) do
+		local P     = Pool[i]
 		local Stats = SessionService.GetStats(P) or {}
-		table.insert(Result, {
+		table.insert(TopList, {
 			Name    = P.DisplayName,
 			UserId  = P.UserId,
 			Freezes = Stats.Freezes or 0,
 			Thaws   = Stats.Thaws   or 0,
 		})
 	end
-	return Result
+	return TopList
 end
 
---- Phát phần thưởng Win/Lose + LastStanding
-local function DistributeRewards(WinTeam)
-	-- Tìm Last Standing: người cuối còn Normal trong đội thắng
-	local WinPlayers  = SessionService.GetTeamPlayers(WinTeam)
-	local NormalCount = 0
-	local LastAlive   = nil
+--- Phát phần thưởng Win/Lose + LastStanding theo mode
+local function DistributeRewards(Result)
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
 
-	for _, P in ipairs(WinPlayers) do
-		if SessionService.GetState(P) == "Normal" then
-			NormalCount = NormalCount + 1
-			LastAlive   = P
-		end
-	end
+	if Mode.WinCondition == "TeamBased" then
+		local WinTeam = Result.WinTeam
 
-	if NormalCount == 1 and LastAlive then
-		SessionService.SetStat(LastAlive, "LastStanding", true)
-		DataService.IncrementStat(LastAlive, "TotalLastStanding")
-		DataService.AddMoney(LastAlive, GameConfig.Economy.RewardLastStanding)
-		SessionService.IncrementStat(LastAlive, "MoneyEarned", GameConfig.Economy.RewardLastStanding)
-	end
-
-	-- Thưởng Win / Lose cho tất cả player trong trận
-	for _, Player in ipairs(Players:GetPlayers()) do
-		local Team = SessionService.GetTeam(Player)
-		if not Team then continue end
-
-		local Reward = (Team == WinTeam)
-			and GameConfig.Economy.RewardWin
-			or  GameConfig.Economy.RewardLose
-
-		DataService.AddMoney(Player, Reward)
-		SessionService.IncrementStat(Player, "MoneyEarned", Reward)
-
-		-- Cộng số trận thắng cho toàn bộ member đội chiến thắng
-		if Team == WinTeam then
-			DataService.IncrementStat(Player, "TotalWins")
+		-- LastStanding: người duy nhất còn Normal trong đội thắng
+		if Mode.AllowLastStanding then
+			local WinPlayers  = SessionService.GetTeamPlayers(WinTeam)
+			local NormalCount = 0
+			local LastAlive   = nil
+			for _, P in ipairs(WinPlayers) do
+				if SessionService.GetState(P) == "Normal" then
+					NormalCount = NormalCount + 1
+					LastAlive   = P
+				end
+			end
+			if NormalCount == 1 and LastAlive then
+				SessionService.SetStat(LastAlive, "LastStanding", true)
+				DataService.IncrementStat(LastAlive, "TotalLastStanding")
+				DataService.AddMoney(LastAlive, GameConfig.Economy.RewardLastStanding)
+				SessionService.IncrementStat(LastAlive, "MoneyEarned", GameConfig.Economy.RewardLastStanding)
+			end
 		end
 
-		-- Sync tiền về client
-		local Data = DataService.GetData(Player)
-		if Data then
-			RemoteDefinitions.GetEvent("UpdateMoney"):FireClient(Player, Data.Money)
+		-- Thưởng Win / Lose cho tất cả participants
+		for _, Player in ipairs(Players:GetPlayers()) do
+			local Team = SessionService.GetTeam(Player)
+			if not Team then continue end
+
+			local Reward = (Team == WinTeam)
+				and GameConfig.Economy.RewardWin
+				or  GameConfig.Economy.RewardLose
+
+			DataService.AddMoney(Player, Reward)
+			SessionService.IncrementStat(Player, "MoneyEarned", Reward)
+
+			if Team == WinTeam then
+				DataService.IncrementStat(Player, "TotalWins")
+			end
+
+			local Data = DataService.GetData(Player)
+			if Data then
+				RemoteDefinitions.GetEvent("UpdateMoney"):FireClient(Player, Data.Money)
+			end
+		end
+
+	elseif Mode.WinCondition == "FFA" then
+		local WinPlayer = Result.WinPlayer
+
+		-- LastStanding: chỉ trao khi còn đúng 1 người Normal (thắng do last standing)
+		if Mode.AllowLastStanding and WinPlayer then
+			local NormalCount = #SessionService.GetAllNormalPlayers()
+			if NormalCount <= 1 then
+				SessionService.SetStat(WinPlayer, "LastStanding", true)
+				DataService.IncrementStat(WinPlayer, "TotalLastStanding")
+				DataService.AddMoney(WinPlayer, GameConfig.Economy.RewardLastStanding)
+				SessionService.IncrementStat(WinPlayer, "MoneyEarned", GameConfig.Economy.RewardLastStanding)
+			end
+		end
+
+		-- Thưởng Win / Lose cho tất cả participants
+		for _, Player in ipairs(Players:GetPlayers()) do
+			if not SessionService.GetStats(Player) then continue end
+
+			local Reward = (Player == WinPlayer)
+				and GameConfig.Economy.RewardWin
+				or  GameConfig.Economy.RewardLose
+
+			DataService.AddMoney(Player, Reward)
+			SessionService.IncrementStat(Player, "MoneyEarned", Reward)
+
+			if Player == WinPlayer then
+				DataService.IncrementStat(Player, "TotalWins")
+			end
+
+			local Data = DataService.GetData(Player)
+			if Data then
+				RemoteDefinitions.GetEvent("UpdateMoney"):FireClient(Player, Data.Money)
+			end
 		end
 	end
 end
 
 --- Gửi GameStatistic data về từng client
-local function BroadcastGameOver(WinTeam)
-	local TopPlayers = GetTopPlayers(WinTeam, 3)
+local function BroadcastGameOver(Result)
+	local TopPlayers = GetTopPlayers(Result, 3)
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
 
 	for _, Player in ipairs(Players:GetPlayers()) do
-		local PlayerTeam = SessionService.GetTeam(Player)
-		local Stats      = SessionService.GetStats(Player) or {}
-		local Won        = (PlayerTeam == WinTeam)
+		local Stats = SessionService.GetStats(Player) or {}
+
+		local Won
+		if Mode.WinCondition == "FFA" then
+			Won = (Player == Result.WinPlayer)
+		else
+			local PlayerTeam = SessionService.GetTeam(Player)
+			Won = (PlayerTeam == Result.WinTeam)
+		end
 
 		ShowGameOverEvent:FireClient(Player, {
-			WinTeam    = WinTeam,
+			-- TeamBased: WinTeam = "Team1"/"Team2", WinPlayer = nil
+			-- FFA:       WinTeam = nil, WinPlayer = { Name, UserId }
+			WinTeam    = Result.WinTeam,
+			WinPlayer  = Result.WinPlayer and {
+				Name   = Result.WinPlayer.DisplayName,
+				UserId = Result.WinPlayer.UserId,
+			} or nil,
 			Won        = Won,
 			TopPlayers = TopPlayers,
 			PersonalStats = {
@@ -216,7 +364,7 @@ end
 -- PHASE FUNCTIONS
 -- =========================================================
 
---- Intermission: 20 giây, reset về full nếu không đủ người
+--- Intermission: đếm ngược, reset về max nếu không đủ người
 local function RunIntermission()
 	_currentPhase     = "Intermission"
 	local Duration    = GameConfig.Phase.IntermissionDuration
@@ -226,7 +374,6 @@ local function RunIntermission()
 		local PlayerCount = #Players:GetPlayers()
 
 		if PlayerCount < GameConfig.Match.MinPlayers then
-			-- Không đủ người: giữ thời gian tối đa, không đếm ngược
 			TimeLeft = Duration
 			BroadcastGameState("Intermission", Duration, false)
 		else
@@ -238,63 +385,84 @@ local function RunIntermission()
 	end
 end
 
---- Setup: không có timer, ẩn khỏi client (vẫn broadcast Intermission)
+--- Setup: chọn mode, phân đội (nếu có), load map
 local function RunSetup()
 	_currentPhase = "Setup"
 
-	-- Reset session và flag
+	-- Reset session
 	SessionService.ResetSession()
 	FreezeService.ResetRound()
 
-	-- Quản lý top player avatar đã chuyển sang dùng 2D rbxthumb trên client
+	-- Chọn mode cho vòng này
+	local ModeKey, Mode = PickMode()
 
-	-- Phân đội và đặt state Normal
+	-- Danh sách player tham gia trận này
 	local ActivePlayers = Players:GetPlayers()
-	SessionService.AssignTeams(ActivePlayers)
+
+	-- Set Attribute "InMatch" để client biết player đang trong trận (dùng thay Team attribute ở FFA)
+	for _, Player in ipairs(ActivePlayers) do
+		Player:SetAttribute("InMatch", true)
+	end
+
+	-- Phân đội và set state Normal
+	if Mode.HasTeams then
+		SessionService.AssignTeams(ActivePlayers)
+	end
 
 	for _, Player in ipairs(ActivePlayers) do
 		SessionService.SetState(Player, "Normal")
 	end
 
-	-- Broadcast team xuống client để HighlightController cập nhật
+	-- Broadcast GameMode TRƯỚC (client cần biết mode trước khi nhận team data)
+	SetGameModeEvent:FireAllClients({
+		ModeKey          = ModeKey,
+		HighlightMode    = Mode.HighlightMode,
+		ScoreboardType   = Mode.ScoreboardType,
+		PlayerStatusType = Mode.PlayerStatusType,
+	})
+
+	-- Broadcast team sau (HighlightController đã biết mode, sẽ xử lý đúng)
 	TeamService.BroadcastTeamAssignment()
 
 	SessionService.SetMatchActive(true)
 
-	-- Báo client bắt đầu LoadingScreen fade-in
-	-- GameStateController vẫn hiện "INTERMISSION" vì PHASE_DISPLAY.Setup = "INTERMISSION"
-	-- LoadingScreenController sẽ nhận "Setup" và bắt đầu fade-in
+	-- Báo client bắt đầu LoadingScreen
 	BroadcastGameState("Setup", 0, false)
 
 	-- Load map ngẫu nhiên
 	MapService.LoadRandomMap()
 
-	-- Đợi client fade-in xong rồi mới thực hiện các công việc setup
-	-- (Setup kết thúc khi và chỉ khi fade-in đã hoàn tất — theo spec Phase 2.1)
 	task.wait(GameConfig.GUI.LoadingScreen.FadeInDuration)
-
 	task.wait(0.5)  -- buffer nhỏ để map load xong
 end
 
-
---- Ready: 3 giây, teleport + khóa di chuyển + cấp tool
+--- Ready: teleport + khóa di chuyển
 local function RunReady()
 	_currentPhase = "Ready"
 	local Duration = GameConfig.Phase.ReadyDuration
+	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
 
-	local Team1Spawns = MapService.GetSpawnPoints("Team1")
-	local Team2Spawns = MapService.GetSpawnPoints("Team2")
-
-	-- Teleport và khóa di chuyển
-	for _, Player in ipairs(Players:GetPlayers()) do
-		local Team = SessionService.GetTeam(Player)
-		if not Team then continue end
-
-		if Player.Character then
-			local Spawns = (Team == "Team1") and Team1Spawns or Team2Spawns
-			TeleportToSpawn(Player, Spawns)
+	-- Teleport theo SpawnType
+	if Mode.SpawnType == "FFA" then
+		local AllSpawns = MapService.GetSpawnPoints(nil, "FFA")
+		for _, Player in ipairs(Players:GetPlayers()) do
+			if Player.Character then
+				TeleportToSpawn(Player, AllSpawns)
+			end
+			SetMovementLocked(Player, true)
 		end
-		SetMovementLocked(Player, true)
+	else
+		local Team1Spawns = MapService.GetSpawnPoints("Team1", "TeamBased")
+		local Team2Spawns = MapService.GetSpawnPoints("Team2", "TeamBased")
+		for _, Player in ipairs(Players:GetPlayers()) do
+			local Team = SessionService.GetTeam(Player)
+			if not Team then continue end
+			if Player.Character then
+				local Spawns = (Team == "Team1") and Team1Spawns or Team2Spawns
+				TeleportToSpawn(Player, Spawns)
+			end
+			SetMovementLocked(Player, true)
+		end
 	end
 
 	-- Đếm ngược Ready
@@ -312,32 +480,32 @@ local function RunReady()
 	end
 end
 
---- InGame: tối đa InGameDuration giây, có thể kết thúc sớm khi một đội bị wipe
+--- InGame: tối đa InGameDuration giây, có thể kết thúc sớm
 local function RunInGame()
-	_currentPhase        = "InGame"
-	_earlyWinner         = nil
-	local Duration       = GameConfig.Phase.InGameDuration
-	local FSTThreshold   = GameConfig.Phase.FrozenStateThreshold
-	local FrozenStateOn  = false
+	_currentPhase    = "InGame"
+	_earlyResult     = nil
+	local Mode       = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local Duration   = Mode.InGameDuration
+	local FSTThresh  = Mode.FrozenStateThreshold
+	local FrozenStateOn = false
 
 	-- Broadcast danh sách Spectate đầy đủ khi InGame bắt đầu
 	local NormalPlayers = SessionService.GetAllNormalPlayers()
 	UpdateSpectateListEvent:FireAllClients(NormalPlayers)
 
-	-- Cấp tool khi vào phase InGame thay vì Ready
+	-- Cấp tool
 	IcicleService.GiveToolToAll()
 
-	-- Lắng nghe MatchEndSignal (fired bởi SessionService khi team bị wipe)
-	local EndConn = SessionService.MatchEndSignal.Event:Connect(function(WinTeam)
-		_earlyWinner = WinTeam
+	-- Lắng nghe MatchEndSignal
+	local EndConn = SessionService.MatchEndSignal.Event:Connect(function(Result)
+		_earlyResult = Result
 	end)
 
 	for t = Duration, 0, -1 do
-		-- Thoát sớm nếu có đội bị wipe
-		if _earlyWinner then break end
+		if _earlyResult then break end
 
-		-- Kích hoạt FrozenState khi còn đúng FSTThreshold giây
-		if t <= FSTThreshold and not FrozenStateOn then
+		-- Kích hoạt FrozenState nếu mode cho phép
+		if Mode.AllowFrozenState and t <= FSTThresh and not FrozenStateOn then
 			FrozenStateOn = true
 			SessionService.SetFrozenState(true)
 			TeamService.SetFrozenStateHighlights(true)
@@ -351,17 +519,17 @@ local function RunInGame()
 
 	EndConn:Disconnect()
 
-	-- Tắt FrozenState
+	-- Tắt FrozenState nếu đã bật
 	if FrozenStateOn then
 		SessionService.SetFrozenState(false)
 		TeamService.SetFrozenStateHighlights(false)
 	end
 
-	return _earlyWinner or ResolveWinner()
+	return _earlyResult or ResolveWinner()
 end
 
---- GameOver: đếm ngược song song với tạo model, hold tại t=0 cho đến khi model sẵn sàng
-local function RunGameOver(WinTeam)
+--- GameOver: thu tool, phát thưởng, đếm ngược, teleport lobby
+local function RunGameOver(Result)
 	_currentPhase  = "GameOver"
 	local Duration = GameConfig.Phase.GameOverDuration
 
@@ -373,9 +541,9 @@ local function RunGameOver(WinTeam)
 	UpdateSpectateListEvent:FireAllClients({})
 
 	-- Phát phần thưởng
-	DistributeRewards(WinTeam)
+	DistributeRewards(Result)
 
-	-- Thaw tất cả người bị đóng băng ngay lập tức
+	-- Thaw tất cả người bị đóng băng
 	FreezeService.ThawAll()
 
 	-- Đếm ngược GameOverDuration
@@ -385,23 +553,22 @@ local function RunGameOver(WinTeam)
 		task.wait(1)
 	end
 
-	-- Teleport tất cả player về SpawnLocation (lobby) sau khi hết giờ
-	-- Đồng thời reset ReplicationFocus về chính player để stream lobby, không còn stream đấu trường
+	-- Teleport tất cả player về SpawnLocation (lobby) và xóa InMatch attribute
 	local LobbySpawn = workspace:FindFirstChild("SpawnLocation")
 	for _, Player in ipairs(Players:GetPlayers()) do
+		Player:SetAttribute("InMatch", nil)
 		local Character = Player.Character
 		if not Character then continue end
 		local HRP = Character:FindFirstChild("HumanoidRootPart")
 		if HRP and LobbySpawn then
 			HRP.CFrame = LobbySpawn.CFrame + Vector3.new(0, 4, 0)
 		end
-		-- Reset ReplicationFocus: engine sẽ stream xung quanh vị trí mới của chính player
 		if HRP then
 			Player.ReplicationFocus = HRP
 		end
 	end
 
-	-- Dọn sạch IceBlock tàn dư còn sót trong Workspace
+	-- Dọn sạch IceBlock tàn dư
 	for _, Child in ipairs(workspace:GetChildren()) do
 		if Child.Name == "IceBlock" then
 			Child:Destroy()
@@ -411,11 +578,9 @@ local function RunGameOver(WinTeam)
 	-- Dọn dẹp map
 	MapService.UnloadMap()
 
-	-- Gửi thống kê cuối trận xuống client sau khi đã dọn dẹp xong
-	-- (player đã về Lobby trước khi thấy bảng thống kê)
-	BroadcastGameOver(WinTeam)
+	-- Gửi thống kê cuối trận xuống client
+	BroadcastGameOver(Result)
 end
-
 
 -- =========================================================
 -- GAME LOOP
@@ -423,7 +588,6 @@ end
 
 local function GameLoop()
 	while true do
-		-- Chờ đủ người tối thiểu trước khi bắt đầu vòng
 		while #Players:GetPlayers() < GameConfig.Match.MinPlayers do
 			BroadcastGameState("Intermission", GameConfig.Phase.IntermissionDuration, false)
 			task.wait(1)
@@ -431,15 +595,14 @@ local function GameLoop()
 
 		RunIntermission()
 
-		-- Kiểm tra lại sau intermission (player có thể đã thoát)
 		if #Players:GetPlayers() < GameConfig.Match.MinPlayers then
 			continue
 		end
 
 		RunSetup()
 		RunReady()
-		local WinTeam = RunInGame()
-		RunGameOver(WinTeam)
+		local Result = RunInGame()
+		RunGameOver(Result)
 	end
 end
 
@@ -462,8 +625,9 @@ function MatchService:Init()
 	ShowGameOverEvent          = RemoteDefinitions.GetEvent("ShowGameOver")
 	UpdateSpectateListEvent    = RemoteDefinitions.GetEvent("UpdateSpectateList")
 	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
+	SetGameModeEvent           = RemoteDefinitions.GetEvent("SetGameMode")
 
-	-- Đăng ký lắng nghe Humanoid.Died để loại người chơi khi họ chết (Reset character / Rơi khỏi map)
+	-- Đăng ký lắng nghe Humanoid.Died
 	local function BindCharacterDeath(Player, Character)
 		if not Character then return end
 		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
@@ -489,33 +653,34 @@ function MatchService:Init()
 		BindPlayer(P)
 	end
 
-	-- Khi player mới join giữa trận InGame:
-	-- Gửi danh sách Spectate để client có targetList sẵn sàng
-	-- Gửi thêm SetTeamAssignment để PlayerStatusController hiển thị avatar người chơi trong trận
+	-- Khi player mới join giữa trận
 	Players.PlayerAdded:Connect(function(NewPlayer)
 		BindPlayer(NewPlayer)
 
-		task.wait(2)  -- Chờ client load xong RemoteDefinitions
+		task.wait(2)
 		if _currentPhase == "InGame" and SessionService.IsMatchActive() then
 			local NormalPlayers = SessionService.GetAllNormalPlayers()
 			UpdateSpectateListEvent:FireClient(NewPlayer, NormalPlayers)
-
-			-- Fire SetTeamAssignment riêng cho người mới join để PlayerStatus hiển thị đúng
 			TeamService.BroadcastTeamAssignmentTo(NewPlayer)
+
+			-- Gửi lại GameMode cho người mới join
+			local ModeKey = SessionService.GetCurrentModeKey()
+			local Mode = GameModeConfig.GetMode(ModeKey)
+			SetGameModeEvent:FireClient(NewPlayer, {
+				ModeKey          = ModeKey,
+				HighlightMode    = Mode.HighlightMode,
+				ScoreboardType   = Mode.ScoreboardType,
+				PlayerStatusType = Mode.PlayerStatusType,
+			})
 		end
 	end)
 
-	-- Spectator yêu cầu focus vào một target cụ thể
-	-- Server set ReplicationFocus để engine stream world xung quanh target về cho spectator
-	-- Nếu TargetPlayer là nil → spectator đang tắt spectate → reset focus về chính họ
+	-- Spectator yêu cầu focus vào target
 	RequestSpectateTargetEvent.OnServerEvent:Connect(function(SpectatorPlayer, TargetPlayer)
-		-- Chỉ xử lý khi đang trong phase InGame
 		if _currentPhase ~= "InGame" then return end
+		-- Player đang trong trận (có InMatch hoặc Team) không được phép spectate
+		if SpectatorPlayer:GetAttribute("InMatch") or SpectatorPlayer:GetAttribute("Team") then return end
 
-		-- SpectatorPlayer không được có team (phải là Spectator)
-		if SpectatorPlayer:GetAttribute("Team") then return end
-
-		-- nil = yêu cầu reset (tắt spectate) → trả focus về character của chính spectator
 		if TargetPlayer == nil then
 			local SpectatorCharacter = SpectatorPlayer.Character
 			if SpectatorCharacter then
@@ -527,15 +692,12 @@ function MatchService:Init()
 			return
 		end
 
-		-- TargetPlayer phải hợp lệ và đang trong game
 		if not TargetPlayer:IsDescendantOf(Players) then return end
 		local TargetCharacter = TargetPlayer.Character
 		if not TargetCharacter then return end
-
 		local TargetHRP = TargetCharacter:FindFirstChild("HumanoidRootPart")
 		if not TargetHRP then return end
 
-		-- Set ReplicationFocus: engine sẽ stream world xung quanh TargetHRP về cho SpectatorPlayer
 		SpectatorPlayer.ReplicationFocus = TargetHRP
 	end)
 

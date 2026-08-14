@@ -16,6 +16,7 @@ local _thawStreaks    = {}  -- { [Player] = number } thaw liên tiếp
 
 local _isMatchActive  = false
 local _isFrozenState  = false
+local _currentModeKey = "Normal"  -- key của GameModeConfig hiện tại
 
 -- BindableEvent: fires khi một đội bị đóng băng toàn bộ
 -- Payload: winTeam (string "Team1" | "Team2")
@@ -39,8 +40,9 @@ local function InitPlayerSession(Player)
 		LastStanding   = false,
 		MoneyEarned    = 0,
 	}
-	-- Xóa Attribute team để client biết player này là Spectator
+	-- Xóa Attribute team và InMatch để client biết player này là Spectator
 	Player:SetAttribute("Team", nil)
+	Player:SetAttribute("InMatch", nil)
 end
 
 -- =========================================================
@@ -68,6 +70,21 @@ end
 
 function SessionService.SetFrozenState(Active)
 	_isFrozenState = Active
+end
+
+-- ── GameMode ───────────────────────────────────────────────────────────────
+
+--- Lấy key của GameMode đang chạy
+--- @return string -- "Normal" | "Chaos" | ...
+function SessionService.GetCurrentModeKey()
+	return _currentModeKey
+end
+
+--- Đặt GameMode cho trận hiện tại
+--- Được gọi bởi MatchService trong RunSetup trước khi trận bắt đầu
+--- @param Key string
+function SessionService.SetCurrentModeKey(Key)
+	_currentModeKey = Key
 end
 
 -- ── Player State ─────────────────────────────────────────
@@ -229,8 +246,9 @@ function SessionService.ResetSession()
 	for Player in pairs(_playerStates) do
 		InitPlayerSession(Player)
 	end
-	_isMatchActive = false
-	_isFrozenState = false
+	_isMatchActive  = false
+	_isFrozenState  = false
+	_currentModeKey = "Normal"
 end
 
 -- =========================================================
@@ -248,7 +266,7 @@ function SessionService:Init()
 	end)
 
 	Players.PlayerRemoving:Connect(function(Player)
-		-- Nếu thoát giữa trận: loại khỏi trận (Dead) → trigger win condition nếu làm team bị wipe
+		-- Nếu thoát giữa trận: loại khỏi trận (Dead) → trigger win condition nếu làm team bị wipe / FFA kết thúc
 		if _isMatchActive then
 			local Team = _teamAssignment[Player]
 			_playerStates[Player] = "Dead"
@@ -268,15 +286,25 @@ function SessionService:Init()
 			end
 
 			SessionService.ClearTeam(Player)
+			Player:SetAttribute("InMatch", nil)
 
 			if Team and SessionService.IsTeamWiped(Team) then
 				local WinTeam = (Team == "Team1") and "Team2" or "Team1"
-				MatchEndSignal:Fire(WinTeam)
+				MatchEndSignal:Fire({ WinTeam = WinTeam })
+			elseif not Team then
+				-- FFA: kiểm tra xem chỉ còn 1 hoặc 0 người Normal không
+				local NormalPlayers = SessionService.GetAllNormalPlayers()
+				if #NormalPlayers == 1 then
+					MatchEndSignal:Fire({ WinPlayer = NormalPlayers[1] })
+				elseif #NormalPlayers == 0 then
+					MatchEndSignal:Fire({ WinPlayer = nil })
+				end
 			end
 		end
 
-		-- Xóa Attribute team trước khi dọn entry
+		-- Xóa Attribute team và InMatch trước khi dọn entry
 		Player:SetAttribute("Team", nil)
+		Player:SetAttribute("InMatch", nil)
 
 		-- Dọn dẹp entry
 		_playerStates[Player]   = nil

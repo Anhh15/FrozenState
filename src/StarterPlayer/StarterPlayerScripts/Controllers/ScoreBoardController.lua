@@ -24,7 +24,8 @@ local _EnemyStatsFrame  = nil
 local _Template         = nil  -- PlayerStats Frame template
 
 -- Cache: { [UserId] = Clone Frame } để cập nhật nhanh khi nhận UpdatePlayerState
-local _PlayerCards = {}
+local _PlayerCards    = {}
+local _scoreboardType = "TwoTeams"  -- "TwoTeams" | "Disabled"
 
 -- =========================================================
 -- CONFIG
@@ -47,8 +48,12 @@ end
 
 --- Hiển thị hoặc ẩn ScoreBoard
 --- Spectator (không có team) không được xem ScoreBoard
+--- Disabled (chế độ không có Scoreboard) — block toàn bộ
 --- @param Visible boolean
 local function SetScoreBoardVisible(Visible)
+	-- Block nếu mode không có ScoreBoard
+	if _scoreboardType == "Disabled" then return end
+
 	-- Ẩn với Spectator
 	if Visible then
 		local MyTeam = LocalPlayer:GetAttribute("Team")
@@ -243,6 +248,18 @@ function ScoreBoardController:Init()
 		end
 	end)
 
+	-- ── DATA: Lắng nghe SetGameMode để biết loại ScoreBoard ──
+	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
+	SetGameModeEvent.OnClientEvent:Connect(function(Data)
+		if Data and Data.ScoreboardType then
+			_scoreboardType = Data.ScoreboardType
+			-- Ẩn ScoreBoard ngay nếu mode không có Scoreboard
+			if _scoreboardType == "Disabled" then
+				SetScoreBoardVisible(false)
+			end
+		end
+	end)
+
 	-- ── DATA: Lắng nghe SetTeamAssignment để build board ──
 	local SetTeamEvent = RemoteDefinitions.GetEvent("SetTeamAssignment")
 	SetTeamEvent.OnClientEvent:Connect(function(Teams)
@@ -261,6 +278,7 @@ function ScoreBoardController:Init()
 		if Data and Data.Phase == "Intermission" then
 			ClearBoard()
 			SetScoreBoardVisible(false)
+			_scoreboardType = "TwoTeams"  -- reset về default cho vòng tiếp theo
 		end
 	end)
 

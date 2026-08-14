@@ -109,10 +109,11 @@ function IcicleService.RemoveTool(Player)
 	end
 end
 
---- Cấp Tool cho tất cả player đang có team (đang trong trận)
+--- Cấp Tool cho tất cả player đang trong trận (có Attribute InMatch = true)
+--- Dùng InMatch thay vì GetTeam để hỗ trợ cả chế độ FFA (không có team)
 function IcicleService.GiveToolToAll()
 	for _, Player in ipairs(Players:GetPlayers()) do
-		if SessionService.GetTeam(Player) ~= nil then
+		if Player:GetAttribute("InMatch") then
 			IcicleService.GiveTool(Player)
 		end
 	end

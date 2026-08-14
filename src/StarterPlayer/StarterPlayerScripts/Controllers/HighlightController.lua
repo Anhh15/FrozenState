@@ -29,6 +29,7 @@ local LocalPlayer    = Players.LocalPlayer
 local KnownTeams     = {}   -- { [tostring(userId)] = "Team1" | "Team2" }
 local _isFrozenState = false
 local _frozenPlayers = {}   -- { [tostring(userId)] = true | false }
+local _highlightMode = "TeamBased"  -- "TeamBased" | "FFA" | "Disabled"
 
 -- =========================================================
 -- PRIVATE
@@ -53,7 +54,8 @@ end
 --- @param Player Player
 --- @param IsEnemy boolean
 --- @param IsFrozen boolean
-local function ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen)
+--- @param ForceAlwaysOnTop boolean -- bật AlwaysOnTop được buộc lược (FFA mode)
+local function ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen, ForceAlwaysOnTop)
 	if not Player or Player == LocalPlayer then return end
 
 	local Character = Player.Character
@@ -71,7 +73,7 @@ local function ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen)
 	Highlight.OutlineColor        = IsEnemy and ENEMY_COLOR or ALLY_COLOR
 	Highlight.FillTransparency    = FILL_TRANSPARENCY
 	Highlight.OutlineTransparency = OUTLINE_TRANSPARENCY
-	Highlight.DepthMode           = (IsFrozen or _isFrozenState)
+	Highlight.DepthMode           = (IsFrozen or _isFrozenState or ForceAlwaysOnTop)
 		and Enum.HighlightDepthMode.AlwaysOnTop
 		or  Enum.HighlightDepthMode.Occluded
 
@@ -83,11 +85,9 @@ local function ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen)
 		if HighlightHelper and HighlightHelper:IsA("BasePart") then
 			Highlight.Adornee = HighlightHelper
 		else
-			-- Fallback gán vào Character nếu chưa/không tìm thấy HighlightHelper
 			Highlight.Adornee = Character
 		end
 	else
-		-- Khi bình thường, trả Adornee về Character
 		Highlight.Adornee = Character
 	end
 end
@@ -99,11 +99,33 @@ end
 
 --- Refresh highlight cho tất cả player (gọi lại khi team thay đổi hoặc FrozenState đổi)
 local function RefreshAll()
+	-- Disabled: không tạo highlight
+	if _highlightMode == "Disabled" then
+		for _, Player in ipairs(Players:GetPlayers()) do
+			if Player.Character then
+				RemoveHighlight(Player.Character)
+			end
+		end
+		return
+	end
+
+	if _highlightMode == "FFA" then
+		-- FFA: tất cả là kẻ địch, luôn AlwaysOnTop
+		for _, Player in ipairs(Players:GetPlayers()) do
+			if Player == LocalPlayer then continue end
+			local Character = Player.Character
+			if not Character then continue end
+			local IsFrozen = (_frozenPlayers[tostring(Player.UserId)] == true)
+			ApplyHighlightForPlayer(Player, true, IsFrozen, true)  -- IsEnemy=true, ForceAlwaysOnTop=true
+		end
+		return
+	end
+
+	-- TeamBased: logic cũ
 	local MyTeamKey = tostring(LocalPlayer.UserId)
 	local MyTeam    = KnownTeams[MyTeamKey]
 
 	for _, Player in ipairs(Players:GetPlayers()) do
-		-- Không highlight bản thân
 		if Player == LocalPlayer then continue end
 
 		local Character = Player.Character
@@ -113,12 +135,11 @@ local function RefreshAll()
 		local PlayerTeam      = KnownTeams[PlayerUserIdStr]
 
 		if not PlayerTeam or not MyTeam then
-			-- Chưa có team info hoặc trận chưa bắt đầu: xóa highlight
 			RemoveHighlight(Character)
 		else
 			local IsEnemy  = (PlayerTeam ~= MyTeam)
 			local IsFrozen = (_frozenPlayers[PlayerUserIdStr] == true)
-			ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen)
+			ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen, false)
 		end
 	end
 end
@@ -147,6 +168,19 @@ end
 local HighlightController = {}
 
 function HighlightController:Init()
+	-- Nhận GameMode khi mỗi trận bắt đầu
+	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
+	SetGameModeEvent.OnClientEvent:Connect(function(Data)
+		if Data and Data.HighlightMode then
+			_highlightMode = Data.HighlightMode
+			-- Reset state cũ của trận trước
+			KnownTeams     = {}
+			_frozenPlayers = {}
+			_isFrozenState = false
+			RefreshAll()
+		end
+	end)
+
 	-- Nhận bảng phân đội khi match bắt đầu
 	local SetTeamEvent = RemoteDefinitions.GetEvent("SetTeamAssignment")
 	SetTeamEvent.OnClientEvent:Connect(function(Teams)
@@ -178,14 +212,12 @@ function HighlightController:Init()
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
 		if Data and Data.Phase == "Ready" then
-			-- Reset trạng thái đóng băng khi bắt đầu vòng mới
 			_frozenPlayers = {}
-			-- Team sẽ được set lại qua SetTeamAssignment ngay trước Ready
-			-- Chỉ cần refresh lại
 			RefreshAll()
 		elseif Data and Data.Phase == "Intermission" then
-			-- Xóa highlight khi vào Intermission
-			KnownTeams = {}
+			-- Reset hoàn toàn khi vào Intermission
+			_highlightMode = "TeamBased"
+			KnownTeams     = {}
 			_frozenPlayers = {}
 			for _, Player in ipairs(Players:GetPlayers()) do
 				if Player.Character then

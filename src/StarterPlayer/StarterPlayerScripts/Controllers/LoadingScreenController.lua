@@ -71,9 +71,9 @@ end
 local function StartFadeIn()
 	if not _LoadingScreen then return end
 
-	-- Chi hien voi player co team (tham gia tran)
-	local MyTeam = LocalPlayer:GetAttribute("Team")
-	if not MyTeam then return end
+	-- Chi hien voi player tham gia tran (InMatch = true hoac co Team)
+	local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
+	if not IsInMatch then return end
 
 	CancelPending()
 
