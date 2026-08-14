@@ -18,6 +18,8 @@ local Player           = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService       = game:GetService("RunService")
 
+local ContentProvider  = game:GetService("ContentProvider")
+
 -- Chờ các dependency sẵn sàng
 local Remotes          = ReplicatedStorage:WaitForChild("Remotes")
 local OnToolHit        = Remotes:WaitForChild("OnToolHit")
@@ -39,6 +41,59 @@ local COOLDOWN         = GameConfig.Tool.IcicleCooldown
 local _IsOnCooldown      = false
 local _CurrentSwingTrack = nil  -- Lưu Track đang chạy để dừng khi Unequip
 local _HitboxConnection  = nil  -- Heartbeat connection trong cửa sổ HitStart→HitEnd
+
+-- =========================================================
+-- PRIVATE: Preload Assets
+-- =========================================================
+
+--- Nạp trước Animation và Audio để tránh trễ trong lần bấm Activated đầu tiên
+local function PreloadAssets()
+	local IcicleSkinId = Player:GetAttribute("EquippedIcicleSkinId") or "Default"
+	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
+	local Audios = AudioConfig.GetSwingAudios(IcicleSkinId)
+
+	local ItemsToPreload = {}
+
+	local Anim = Instance.new("Animation")
+	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
+	table.insert(ItemsToPreload, Anim)
+
+	for _, AudioId in ipairs(Audios) do
+		local Sound = Instance.new("Sound")
+		Sound.SoundId = "rbxassetid://" .. tostring(AudioId)
+		table.insert(ItemsToPreload, Sound)
+	end
+
+	pcall(function()
+		ContentProvider:PreloadAsync(ItemsToPreload)
+	end)
+
+	for _, Item in ipairs(ItemsToPreload) do
+		Item:Destroy()
+	end
+
+	-- Pre-load AnimationTrack lên Animator nếu Character đã có sẵn
+	local Character = Player.Character
+	if Character then
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+		if Humanoid then
+			local Animator = Humanoid:FindFirstChildOfClass("Animator")
+			if Animator then
+				local PreloadAnim = Instance.new("Animation")
+				PreloadAnim.AnimationId = "rbxassetid://" .. tostring(AnimId)
+				local Track = Animator:LoadAnimation(PreloadAnim)
+				PreloadAnim:Destroy()
+			end
+		end
+	end
+end
+
+-- Preload ngay khi script khởi tạo
+task.spawn(PreloadAssets)
+
+Tool.Equipped:Connect(function()
+	task.spawn(PreloadAssets)
+end)
 
 -- =========================================================
 -- PRIVATE: Audio & Animation

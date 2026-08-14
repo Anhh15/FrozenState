@@ -149,10 +149,10 @@ local function OnPlayerStateUpdated(Data)
 	local Card = _PlayerCards[Data.PlayerId]
 	if not Card then return end
 
-	-- Cập nhật FrozenStatus icon
+	-- Cập nhật FrozenStatus icon (Frozen hoặc Dead đều hiện biểu tượng FrozenStatus)
 	local FrozenStatus = Card:FindFirstChild("FrozenStatus")
 	if FrozenStatus then
-		FrozenStatus.Visible = (Data.State == "Frozen")
+		FrozenStatus.Visible = (Data.State == "Frozen" or Data.State == "Dead")
 	end
 
 	-- Cập nhật stats count

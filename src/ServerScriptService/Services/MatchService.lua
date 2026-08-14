@@ -463,10 +463,38 @@ function MatchService:Init()
 	UpdateSpectateListEvent    = RemoteDefinitions.GetEvent("UpdateSpectateList")
 	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
 
+	-- Đăng ký lắng nghe Humanoid.Died để loại người chơi khi họ chết (Reset character / Rơi khỏi map)
+	local function BindCharacterDeath(Player, Character)
+		if not Character then return end
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+		if not Humanoid then return end
+
+		Humanoid.Died:Connect(function()
+			if (_currentPhase == "InGame" or _currentPhase == "Ready") and SessionService.IsMatchActive() then
+				FreezeService.EliminatePlayer(Player)
+			end
+		end)
+	end
+
+	local function BindPlayer(Player)
+		if Player.Character then
+			BindCharacterDeath(Player, Player.Character)
+		end
+		Player.CharacterAdded:Connect(function(Char)
+			BindCharacterDeath(Player, Char)
+		end)
+	end
+
+	for _, P in ipairs(Players:GetPlayers()) do
+		BindPlayer(P)
+	end
+
 	-- Khi player mới join giữa trận InGame:
 	-- Gửi danh sách Spectate để client có targetList sẵn sàng
 	-- Gửi thêm SetTeamAssignment để PlayerStatusController hiển thị avatar người chơi trong trận
 	Players.PlayerAdded:Connect(function(NewPlayer)
+		BindPlayer(NewPlayer)
+
 		task.wait(2)  -- Chờ client load xong RemoteDefinitions
 		if _currentPhase == "InGame" and SessionService.IsMatchActive() then
 			local NormalPlayers = SessionService.GetAllNormalPlayers()

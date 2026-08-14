@@ -143,6 +143,23 @@ function PlayerStatusController:Init()
 		OnTeamAssigned(Teams)
 	end)
 
+	-- Lắng nghe UpdatePlayerState để cập nhật FrozenStatus trên Avatar card nếu có
+	local UpdatePlayerStateEvent = RemoteDefinitions.GetEvent("UpdatePlayerState")
+	UpdatePlayerStateEvent.OnClientEvent:Connect(function(Data)
+		if Data and Data.PlayerId then
+			local CardName = tostring(Data.PlayerId)
+			local AllyCard = _AllyTeamFrame and _AllyTeamFrame:FindFirstChild(CardName)
+			local EnemyCard = _EnemyTeamFrame and _EnemyTeamFrame:FindFirstChild(CardName)
+			local Card = AllyCard or EnemyCard
+			if Card then
+				local FrozenStatus = Card:FindFirstChild("FrozenStatus")
+				if FrozenStatus then
+					FrozenStatus.Visible = (Data.State == "Frozen" or Data.State == "Dead")
+				end
+			end
+		end
+	end)
+
 	-- Dọn avatar khi trận kết thúc (phase chuyển về Intermission)
 	-- GameStateController sẽ broadcast UpdateGameState — listen và dọn khi cần
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")

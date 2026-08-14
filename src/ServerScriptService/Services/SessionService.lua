@@ -87,9 +87,17 @@ end
 -- ── Team ─────────────────────────────────────────────────
 
 --- @param Player Player
+--- @param Player Player
 --- @return "Team1" | "Team2" | nil
 function SessionService.GetTeam(Player)
 	return _teamAssignment[Player]
+end
+
+--- Xóa phân đội của player và gỡ attribute Team
+--- @param Player Player
+function SessionService.ClearTeam(Player)
+	_teamAssignment[Player] = nil
+	Player:SetAttribute("Team", nil)
 end
 
 --- Chia đội ngẫu nhiên, lệch tối đa 1 người
@@ -137,13 +145,13 @@ function SessionService.GetTeamPlayers(TeamName)
 	return Result
 end
 
---- Kiểm tra một team đã bị đóng băng hết chưa
---- (Dead cũng tính là "không còn Normal")
+--- Kiểm tra một team đã bị đóng băng hoặc bị loại hết chưa
+--- (Dead và Frozen đều tính là "không còn Normal")
 --- @param TeamName "Team1" | "Team2"
 --- @return boolean
 function SessionService.IsTeamWiped(TeamName)
 	local TeamPlayers = SessionService.GetTeamPlayers(TeamName)
-	if #TeamPlayers == 0 then return false end
+	if #TeamPlayers == 0 then return true end
 
 	for _, Player in ipairs(TeamPlayers) do
 		if _playerStates[Player] == "Normal" then
@@ -240,10 +248,27 @@ function SessionService:Init()
 	end)
 
 	Players.PlayerRemoving:Connect(function(Player)
-		-- Nếu thoát giữa trận: coi như bị đóng băng → có thể trigger win condition
-		if _isMatchActive and _playerStates[Player] == "Normal" then
-			_playerStates[Player] = "Frozen"
+		-- Nếu thoát giữa trận: loại khỏi trận (Dead) → trigger win condition nếu làm team bị wipe
+		if _isMatchActive then
 			local Team = _teamAssignment[Player]
+			_playerStates[Player] = "Dead"
+
+			-- Broadcast state mới để tất cả client (ScoreBoard/HUD) cập nhật biểu tượng FrozenStatus
+			local ReplicatedStorage = game:GetService("ReplicatedStorage")
+			local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+			local UpdatePlayerStateEvent = RemoteDefinitions.GetEvent("UpdatePlayerState")
+			if UpdatePlayerStateEvent then
+				local Stats = _sessionStats[Player] or {}
+				UpdatePlayerStateEvent:FireAllClients({
+					PlayerId = Player.UserId,
+					State    = "Dead",
+					Freezes  = Stats.Freezes or 0,
+					Thaws    = Stats.Thaws   or 0,
+				})
+			end
+
+			SessionService.ClearTeam(Player)
+
 			if Team and SessionService.IsTeamWiped(Team) then
 				local WinTeam = (Team == "Team1") and "Team2" or "Team1"
 				MatchEndSignal:Fire(WinTeam)

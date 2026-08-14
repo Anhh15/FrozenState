@@ -221,7 +221,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	SessionService.SetState(Victim, "Frozen")
 	BroadcastPlayerState(Victim)
 
-	-- Khóa chuyển động
+	-- Khóa chuyển động và vị trí
 	local VictimChar = Victim.Character
 	if VictimChar then
 		local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
@@ -229,6 +229,10 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 			Humanoid.WalkSpeed  = 0
 			Humanoid.JumpPower  = 0
 			Humanoid.JumpHeight = 0
+		end
+		local HRP = VictimChar:FindFirstChild("HumanoidRootPart")
+		if HRP then
+			HRP.Anchored = true
 		end
 	end
 
@@ -310,7 +314,7 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	SessionService.SetState(Victim, "Normal")
 	BroadcastPlayerState(Victim)
 
-	-- Khôi phục chuyển động
+	-- Khôi phục chuyển động và vị trí
 	local VictimChar = Victim.Character
 	if VictimChar then
 		local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
@@ -318,6 +322,10 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 			Humanoid.WalkSpeed  = GameConfig.Player.DefaultWalkSpeed
 			Humanoid.JumpPower  = GameConfig.Player.DefaultJumpPower
 			Humanoid.JumpHeight = GameConfig.Player.DefaultJumpHeight
+		end
+		local HRP = VictimChar:FindFirstChild("HumanoidRootPart")
+		if HRP then
+			HRP.Anchored = false
 		end
 	end
 
@@ -382,6 +390,10 @@ function FreezeService.ThawAll()
 					Humanoid.JumpPower  = GameConfig.Player.DefaultJumpPower
 					Humanoid.JumpHeight = GameConfig.Player.DefaultJumpHeight
 				end
+				local HRP = Char:FindFirstChild("HumanoidRootPart")
+				if HRP then
+					HRP.Anchored = false
+				end
 			end
 			RemoveIceBlock(Player)
 			SessionService.SetState(Player, "Normal")
@@ -391,6 +403,46 @@ function FreezeService.ThawAll()
 			PlayThawSFXEvent:FireClient(Player)
 		end
 	end
+end
+
+--- Loại bỏ người chơi khỏi trận đấu (dùng khi nhân vật chết hoặc rơi khỏi map)
+--- Đặt trạng thái Dead, gỡ Team attribute, thu Tool, xóa IceBlock và kiểm tra điều kiện thắng
+--- @param Player Player
+function FreezeService.EliminatePlayer(Player)
+	if not SessionService.IsMatchActive() then return end
+
+	local OldTeam = SessionService.GetTeam(Player)
+	if not OldTeam then return end
+
+	-- Unanchor HRP nếu player đang bị frozen
+	local Char = Player.Character
+	if Char then
+		local HRP = Char:FindFirstChild("HumanoidRootPart")
+		if HRP then
+			HRP.Anchored = false
+		end
+	end
+
+	-- Thu hồi Tool & xóa IceBlock
+	IcicleService.RemoveTool(Player)
+	RemoveIceBlock(Player)
+
+	-- Chuyển trạng thái sang Dead và xóa Team assignment
+	SessionService.SetState(Player, "Dead")
+	SessionService.ClearTeam(Player)
+
+	-- Reset streaks
+	SessionService.ResetFreezeStreak(Player)
+	SessionService.ResetThawStreak(Player)
+
+	-- Broadcast state mới (để Spectate UI & ScoreBoard cập nhật)
+	BroadcastPlayerState(Player)
+	BroadcastSpectateList()
+
+	-- Kiểm tra điều kiện thắng trận cho đội cũ
+	CheckWinCondition(OldTeam)
+
+	print(("[FreezeService] 💀 %s đã bị loại khỏi trận và chuyển sang Spectator."):format(Player.Name))
 end
 
 --- Reset flag First Blood (gọi khi bắt đầu trận mới)
