@@ -505,6 +505,13 @@ function ShopController:Init()
 	end
 
 	-- ─── NAVIGATION BUTTON MỞ SHOP ───────────────────────────
+	if not ShopNavButton then
+		ShopNavButton = GuiHelper.GetNavButton("Shop")
+	end
+	if not NavButton then
+		NavButton = GuiHelper.GetNavButtonsContainer()
+	end
+
 	if ShopNavButton then
 		local NavBtn = ShopNavButton:IsA("GuiButton")
 			and ShopNavButton
@@ -523,6 +530,8 @@ function ShopController:Init()
 				end
 			end)
 		end
+	else
+		warn("[ShopController] Không tìm thấy nút Shop trong NavigationButtons.")
 	end
 
 	-- Highlight tab mặc định

@@ -2,7 +2,7 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="ScreenGui" referent="RBXC52CAA63FA084CDCA53EE10086D9265D">
+	<Item class="ScreenGui" referent="RBX8E25BB4D5D5148F1BC67E8DF8ED9CE0E">
 		<Properties>
 			<bool name="ClipToDeviceSafeArea">true</bool>
 			<int name="DisplayOrder">10</int>
@@ -25,7 +25,7 @@
 			<int64 name="SourceAssetId">-1</int64>
 			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 		</Properties>
-		<Item class="Frame" referent="RBXB66207E7E9F44553B73A3A67EAE20A47">
+		<Item class="Frame" referent="RBX7DC704F64B844CFDA9D5BE9F452AAE15">
 			<Properties>
 				<token name="Style">0</token>
 				<bool name="Active">false</bool>
@@ -89,7 +89,7 @@
 				<int64 name="SourceAssetId">-1</int64>
 				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="UIAspectRatioConstraint" referent="RBX3FA6A352CF124CFFB2EDAC600F06E605">
+			<Item class="UIAspectRatioConstraint" referent="RBXC4212EA749264B2C878DC6A5A094D43B">
 				<Properties>
 					<float name="AspectRatio">2.4664402</float>
 					<token name="AspectType">0</token>
@@ -102,7 +102,7 @@
 					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBX9116F9E1DF6E4B7FA3DBDAA684D56BF5">
+			<Item class="TextLabel" referent="RBX8EDF2E9B27A54739B77E09046AC3B27D">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -197,7 +197,7 @@
 					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBXCE05EC064A4E467A9813DBAA60B36C0A">
+			<Item class="TextLabel" referent="RBXE6C87E7CE6C24B67BD118B740218E67A">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -292,7 +292,7 @@
 					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="ImageLabel" referent="RBXCFC33EAE437D432281283E5C8D84C8E8">
+			<Item class="ImageLabel" referent="RBX12B82755A19844B9B07281A60EFD5179">
 				<Properties>
 					<Content name="Image"><url>rbxassetid://90106398486911</url></Content>
 					<Color3 name="ImageColor3">
@@ -390,7 +390,7 @@
 					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBXF6795B51885043BC92C09EE5CEEA4EA6">
+			<Item class="TextLabel" referent="RBX98E553B329914C70AA35A29D93EE0398">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -485,7 +485,7 @@
 					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
-			<Item class="TextLabel" referent="RBXE5A1DEF1903141CF86D25E8C753F50AD">
+			<Item class="TextLabel" referent="RBX11FF47B29AE145E885D8A1A4C3AC11D0">
 				<Properties>
 					<Font name="FontFace">
 						<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>

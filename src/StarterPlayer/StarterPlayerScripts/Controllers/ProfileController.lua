@@ -337,6 +337,13 @@ function ProfileController:Init()
 	-- Ẩn mặc định khi khởi tạo
 	Profile.Visible = false
 
+	if not ProfileNavButton then
+		ProfileNavButton = GuiHelper.GetNavButton("Profile")
+	end
+	if not NavButton then
+		NavButton = GuiHelper.GetNavButtonsContainer()
+	end
+
 	-- Nút mở Profile từ NavigationButtons
 	if ProfileNavButton then
 		ProfileNavButton.MouseButton1Click:Connect(OpenProfile)

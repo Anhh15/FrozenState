@@ -568,4 +568,15 @@ function QuestController:Init()
 	print("[QuestController] Đã khởi tạo.")
 end
 
+--- Hàm public để đóng/mở Quest từ bên ngoài (ví dụ GameStateController)
+--- @param Visible boolean
+function QuestController.SetVisible(Visible)
+	if not _questGui then return end
+	if Visible then
+		OpenQuest()
+	else
+		CloseQuest()
+	end
+end
+
 return QuestController

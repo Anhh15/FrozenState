@@ -451,6 +451,13 @@ function InventoryController:Init()
 	-- Đóng Inventory khi khởi tạo (đảm bảo trạng thái ban đầu là ẩn)
 	Inventory.Visible = false
 
+	if not InventoryNavButton then
+		InventoryNavButton = GuiHelper.GetNavButton("Inventory")
+	end
+	if not NavButton then
+		NavButton = GuiHelper.GetNavButtonsContainer()
+	end
+
 	-- Nút mở Inventory từ NavigationButtons
 	if InventoryNavButton then
 		InventoryNavButton.MouseButton1Click:Connect(OpenInventory)

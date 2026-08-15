@@ -26,6 +26,9 @@ end
 function GuiHelper.GetScreenGui(GuiKey, Timeout)
 	local GuiName = GuiConfig.ScreenGuis[GuiKey] or GuiKey
 	local WaitTime = Timeout or GuiConfig.Timeouts.DefaultWaitForGui
+	if WaitTime <= 0 then
+		return PlayerGui:FindFirstChild(GuiName)
+	end
 	return PlayerGui:WaitForChild(GuiName, WaitTime)
 end
 
@@ -37,25 +40,39 @@ function GuiHelper.GetNavigationGui(Timeout)
 end
 
 --- Lấy Frame chứa danh sách các nút điều hướng trong NavigationButtons
+--- @param Timeout number?
 --- @return Frame?
-function GuiHelper.GetNavButtonsContainer()
-	local NavGui = GuiHelper.GetNavigationGui()
+function GuiHelper.GetNavButtonsContainer(Timeout)
+	local WaitTime = Timeout or GuiConfig.Timeouts.ShortWait
+	local NavGui   = GuiHelper.GetNavigationGui(WaitTime)
 	if not NavGui then return nil end
 
 	local ContainerName = GuiConfig.NavContainers.Buttons
 	-- Hỗ trợ tìm "Buttons" hoặc fallback "Button" nếu studio chưa đổi kịp
 	local Container = NavGui:FindFirstChild(ContainerName) or NavGui:FindFirstChild("Button")
+	if not Container and WaitTime and WaitTime > 0 then
+		Container = NavGui:WaitForChild(ContainerName, WaitTime) or NavGui:WaitForChild("Button", WaitTime)
+	end
 	return Container
 end
 
 --- Tìm nút điều hướng (NavButton) trong NavigationButtons theo tên đệ quy
 --- @param ButtonName string Tên nút (ví dụ: "Profile", "Shop", "Inventory", "Quest", "Spectate", "Setting")
+--- @param Timeout number?
 --- @return GuiButton?
-function GuiHelper.GetNavButton(ButtonName)
-	local NavGui = GuiHelper.GetNavigationGui()
+function GuiHelper.GetNavButton(ButtonName, Timeout)
+	local WaitTime = Timeout or GuiConfig.Timeouts.ShortWait
+	local NavGui   = GuiHelper.GetNavigationGui(WaitTime)
 	if not NavGui then return nil end
 
 	local Button = NavGui:FindFirstChild(ButtonName, true)
+	if not Button and WaitTime and WaitTime > 0 then
+		local Container = GuiHelper.GetNavButtonsContainer(WaitTime)
+		if Container then
+			Button = Container:FindFirstChild(ButtonName, true)
+		end
+	end
+
 	if not Button then
 		warn(string.format("[GuiHelper] Không tìm thấy nút điều hướng '%s' trong NavigationButtons.", tostring(ButtonName)))
 	end
@@ -63,9 +80,11 @@ function GuiHelper.GetNavButton(ButtonName)
 end
 
 --- Lấy TextLabel hiển thị tiền (Cash) trong NavigationButtons/Stats/MoneyStats/MoneyText
+--- @param Timeout number?
 --- @return TextLabel?
-function GuiHelper.GetMoneyLabel()
-	local NavGui = GuiHelper.GetNavigationGui(GuiConfig.Timeouts.ShortWait)
+function GuiHelper.GetMoneyLabel(Timeout)
+	local WaitTime = Timeout or GuiConfig.Timeouts.ShortWait
+	local NavGui   = GuiHelper.GetNavigationGui(WaitTime)
 	if not NavGui then
 		warn("[GuiHelper] Không tìm thấy NavigationButtons GUI để lấy MoneyLabel.")
 		return nil
@@ -75,9 +94,18 @@ function GuiHelper.GetMoneyLabel()
 	local MoneyStatsName     = GuiConfig.Stats.MoneyStats
 	local MoneyTextName      = GuiConfig.Stats.MoneyText
 
-	local Stats      = NavGui:FindFirstChild(StatsContainerName, true)
-	local MoneyStats = Stats and Stats:FindFirstChild(MoneyStatsName)
-	local MoneyText  = MoneyStats and MoneyStats:FindFirstChild(MoneyTextName)
+	local Stats = NavGui:FindFirstChild(StatsContainerName, true)
+		or (WaitTime > 0 and NavGui:WaitForChild(StatsContainerName, WaitTime))
+
+	local MoneyStats = Stats and (
+		Stats:FindFirstChild(MoneyStatsName)
+		or (WaitTime > 0 and Stats:WaitForChild(MoneyStatsName, WaitTime))
+	)
+
+	local MoneyText = MoneyStats and (
+		MoneyStats:FindFirstChild(MoneyTextName)
+		or (WaitTime > 0 and MoneyStats:WaitForChild(MoneyTextName, WaitTime))
+	)
 
 	if not MoneyText then
 		warn(string.format("[GuiHelper] Không tìm thấy %s trong NavigationButtons/%s/%s/.", MoneyTextName, StatsContainerName, MoneyStatsName))
@@ -119,13 +147,11 @@ function GuiHelper.BindButtonSound(Button, ClickSoundId, HoverSoundId)
 end
 
 --- Gắn âm thanh Hover/Click cho tất cả các nút con/cháu trong container Buttons (kể cả trong Extra)
+--- Đồng thời tự động lắng nghe các nút con xuất hiện sau qua DescendantAdded
 --- @param ClickSoundId number?
 --- @param HoverSoundId number?
 function GuiHelper.BindAllNavButtonsSound(ClickSoundId, HoverSoundId)
-	local NavGui = GuiHelper.GetNavigationGui()
-	if not NavGui then return end
-
-	local Container = GuiHelper.GetNavButtonsContainer()
+	local Container = GuiHelper.GetNavButtonsContainer(GuiConfig.Timeouts.ShortWait)
 	if not Container then return end
 
 	for _, Descendant in ipairs(Container:GetDescendants()) do
@@ -133,6 +159,13 @@ function GuiHelper.BindAllNavButtonsSound(ClickSoundId, HoverSoundId)
 			GuiHelper.BindButtonSound(Descendant, ClickSoundId, HoverSoundId)
 		end
 	end
+
+	-- Lắng nghe các element xuất hiện sau (do streaming hoặc clone)
+	Container.DescendantAdded:Connect(function(Descendant)
+		if Descendant:IsA("GuiButton") then
+			GuiHelper.BindButtonSound(Descendant, ClickSoundId, HoverSoundId)
+		end
+	end)
 end
 
 --- Ẩn tất cả các Frame con trong MenuGui ngoại trừ Frame được chỉ định

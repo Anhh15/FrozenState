@@ -105,6 +105,19 @@ local function GetSpectateController()
 	return _spectateController
 end
 
+-- Quest nằm bên trong Menu — lazy-require để tránh circular load
+local _questController = nil
+local function GetQuestController()
+	if not _questController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("QuestController")
+		if Module then
+			_questController = require(Module)
+		end
+	end
+	return _questController
+end
+
 -- =========================================================
 -- CONFIG
 -- =========================================================
@@ -190,6 +203,10 @@ local function SetLobbyGuisVisible(Visible)
 		local SpecCtrl = GetSpectateController()
 		if SpecCtrl then
 			SpecCtrl.SetVisible(false)
+		end
+		local QuestCtrl = GetQuestController()
+		if QuestCtrl then
+			QuestCtrl.SetVisible(false)
 		end
 		-- Reset hiệu ứng mở rương nếu đang chạy (phần thưởng vẫn an toàn vì đã được trao trước đó)
 		local RewardCtrl = GetItemRewardController()
