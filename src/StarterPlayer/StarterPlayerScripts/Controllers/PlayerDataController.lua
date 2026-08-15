@@ -1,11 +1,13 @@
 -- PlayerDataController.lua (ModuleScript)
 -- Sync dữ liệu bền vững từ DataStore về client khi mới join
--- Cập nhật money display trong NavigationButton mỗi khi tiền thay đổi
+-- Cập nhật money display trong NavigationButtons mỗi khi tiền thay đổi
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- STATE
@@ -15,29 +17,14 @@ local LocalPlayer = Players.LocalPlayer
 local _localData  = {}    -- Cache dữ liệu player
 
 -- =========================================================
--- GUI REFERENCES (NavigationButton — Money label)
+-- GUI REFERENCES (NavigationButtons — Money label)
 -- =========================================================
 
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local PlayerGui = GuiHelper.GetPlayerGui()
 
--- Tìm Money label trong NavigationButton GUI
--- Đường dẫn: NavigationButton/Stats/MoneyStats/MoneyText
+-- Tìm Money label trong NavigationButtons GUI
 local function FindMoneyLabel()
-	local NavGui = PlayerGui:WaitForChild("NavigationButton", 5)
-	if not NavGui then
-		warn("[PlayerDataController] Không tìm thấy NavigationButton GUI.")
-		return nil
-	end
-
-	-- Path: Stats → MoneyStats → MoneyText
-	local Stats      = NavGui:FindFirstChild("Stats", true)
-	local MoneyStats = Stats and Stats:FindFirstChild("MoneyStats")
-	local MoneyText  = MoneyStats and MoneyStats:FindFirstChild("MoneyText")
-
-	if not MoneyText then
-		warn("[PlayerDataController] Không tìm thấy MoneyText trong NavigationButton/Stats/MoneyStats/.")
-	end
-	return MoneyText
+	return GuiHelper.GetMoneyLabel()
 end
 
 local MoneyLabel = nil  -- lazy-init khi cần

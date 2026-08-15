@@ -5,9 +5,12 @@
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris            = game:GetService("Debris")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local QuestConfig       = require(ReplicatedStorage.Shared.Config.QuestConfig)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
@@ -33,8 +36,8 @@ local _rewardAmount      = nil  -- RewardAnnouncement/AmountText (TextLabel)
 local _rewardOriginalSize = nil -- Kích thước ban đầu từ GUI (UDim2)
 local _templates         = nil  -- Templates (Folder)
 local _menuFrame         = nil  -- StarterGui/Menu (Frame — parent của Quest)
-local _navGui            = nil  -- NavigationButton ScreenGui
-local _navButton         = nil  -- NavigationButton/Button (Frame — ẩn khi Quest mở)
+local _navGui            = nil  -- NavigationButtons ScreenGui
+local _navButton         = nil  -- NavigationButtons/Buttons (Frame — ẩn khi Quest mở)
 
 -- Tab đang active: "Daily" hoặc "Milestone"
 local _currentTab = "Daily"
@@ -63,12 +66,7 @@ local SFX_CLOSE_BUTTON_CLICK = 103307955424380
 local SFX_QUEST_REWARD       = 116439187028468
 
 local function PlayGuiSound(SoundId)
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = 1
-	S.Parent = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 3)
+	GuiHelper.PlayGuiSound(SoundId)
 end
 
 -- =========================================================
@@ -108,12 +106,7 @@ end
 --- Ẩn tất cả Frame con trong Menu (trừ frame đang mở)
 --- @param ExceptFrame Instance | nil
 local function HideAllMenuFrames(ExceptFrame)
-	if not _menuFrame then return end
-	for _, Child in ipairs(_menuFrame:GetChildren()) do
-		if Child:IsA("Frame") and Child ~= ExceptFrame then
-			Child.Visible = false
-		end
-	end
+	GuiHelper.HideOtherMenuFrames(_menuFrame, ExceptFrame)
 end
 
 --- Highlight tab button đang active
@@ -539,9 +532,9 @@ function QuestController:Init()
 	_rewardOriginalSize = _rewardAnnouncement.Size
 	_rewardAnnouncement.Visible = false
 
-	-- NavigationButton
-	_navGui    = PlayerGui:WaitForChild("NavigationButton")
-	_navButton = _navGui:WaitForChild("Button")
+	-- NavigationButtons
+	_navGui    = GuiHelper.GetNavigationGui()
+	_navButton = GuiHelper.GetNavButtonsContainer()
 
 	-- ── Kết nối sự kiện ──
 
@@ -562,11 +555,11 @@ function QuestController:Init()
 	end)
 
 	-- Navigation button mở Quest
-	local NavButton = _navGui:WaitForChild("Button"):WaitForChild("Quest")
-	if NavButton then
-		NavButton.MouseButton1Click:Connect(OpenQuest)
+	local NavQuestBtn = GuiHelper.GetNavButton("Quest")
+	if NavQuestBtn then
+		NavQuestBtn.MouseButton1Click:Connect(OpenQuest)
 	else
-		warn("[QuestController] Không tìm thấy NavigationButton/Button/Quest.")
+		warn("[QuestController] Không tìm thấy nút Quest trong NavigationButtons.")
 	end
 
 	-- Highlight tab mặc định

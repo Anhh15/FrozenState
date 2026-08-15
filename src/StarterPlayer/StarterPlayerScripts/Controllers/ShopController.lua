@@ -23,12 +23,15 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions    = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local GameConfig           = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ChestConfig          = require(ReplicatedStorage.Shared.Config.ChestConfig)
 local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ShopConfig           = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local GuiConfig            = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController = require(script.Parent.PlayerDataController)
 local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportManager)
+local GuiHelper            = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -37,8 +40,8 @@ local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportMana
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui = PlayerGui:WaitForChild("Menu", 10)
-local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
+local MenuGui = GuiHelper.GetScreenGui("Menu")
+local NavGui  = GuiHelper.GetNavigationGui()
 
 -- Shop frame nằm bên trong Menu
 local Shop = MenuGui and MenuGui:FindFirstChild("Shop", true)	
@@ -63,11 +66,11 @@ local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
 -- Folder chứa model 3D rương
 local ChestsFolder = Assets and Assets:FindFirstChild("Chests")
 
--- Nút mở Shop trong NavigationButton
-local ShopNavButton = NavGui and NavGui:FindFirstChild("Shop", true)
+-- Nút mở Shop trong NavigationButtons
+local ShopNavButton = GuiHelper.GetNavButton("Shop")
 
--- Frame Button bên trong NavigationButton (ẩn khi Shop mở, Stats vẫn hiện)
-local NavButton = NavGui and NavGui:FindFirstChild("Button")
+-- Frame Buttons bên trong NavigationButtons (ẩn khi Shop mở, Stats vẫn hiện)
+local NavButton = GuiHelper.GetNavButtonsContainer()
 
 -- =========================================================
 -- STATE
@@ -89,12 +92,7 @@ local SFX_CHEST_BUY          = 113890702074571
 local SFX_BUY_FAIL           = 128827503277042
 
 local function PlayGuiSound(SoundId, Volume)
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = Volume or 1
-	S.Parent = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 3)
+	GuiHelper.PlayGuiSound(SoundId)
 end
 
 -- =========================================================
@@ -127,12 +125,7 @@ end
 
 --- Ẩn tất cả Frame con trong Menu ngoại trừ Shop
 local function HideAllMenuFrames()
-	if not MenuGui then return end
-	for _, Child in ipairs(MenuGui:GetChildren()) do
-		if Child:IsA("Frame") and Child ~= Shop then
-			Child.Visible = false
-		end
-	end
+	GuiHelper.HideOtherMenuFrames(MenuGui, Shop)
 end
 
 --- Dọn dẹp ViewportFrame tránh memory leak (cả Camera lẫn Model)

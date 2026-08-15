@@ -1,10 +1,15 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 15-08-2026
+> Cập nhật lần cuối: 16-08-2026
 
 ---
 
 ## Kiến trúc
+
+### Tập trung hóa cấu trúc UI qua GuiConfig và GuiHelper (Decoupled GUI Paths)
+- **Ngày:** 16-08-2026
+- **Chi tiết:** Loại bỏ hoàn toàn Hardcoded Paths và Magic Strings rải rác trong các controller khi đổi tên hoặc tái cấu trúc phân cấp GUI (ví dụ: chuyển nút sang `Buttons/Extra/` và đổi tên `NavigationButtons`). Sử dụng `GuiConfig.lua` làm Single Source of Truth cho toàn bộ tên ScreenGui, Frame, Button, Stats keys. Cung cấp `GuiHelper.lua` với các tiện ích: `GetScreenGui`, `GetNavButton` (tìm kiếm đệ quy an toàn), `GetMoneyLabel`, `HideOtherMenuFrames`, và `BindAllNavButtonsSound` (dùng `GetDescendants()` để tự động gắn âm thanh hover/click cho mọi nút bấm con/cháu). Giúp các controller hoàn toàn độc lập với cấu trúc cây UI thực tế trong Studio.
+- **File liên quan:** [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [PlayerDataController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua)
 
 ### Tách biệt màn hình chuyển cảnh vòng đấu (RoundLoadingScreen) sang ScreenGui Special
 - **Ngày:** 15-08-2026
@@ -129,6 +134,13 @@
 ---
 
 ## Bug & biện pháp
+
+### Bỏ sót sự kiện SFX khi nút bấm nằm trong Frame con lồng sâu (Nesting Frame)
+- **Ngày:** 16-08-2026
+- **Vấn đề:** Khi tái cấu trúc các nút điều hướng chuyển vào container con (như `NavigationButtons/Buttons/Extra/Profile` và `Setting`), nút bấm bị mất hiệu ứng âm thanh click và hover chuột.
+- **Nguyên nhân:** Mã nguồn cũ trong `GameStateController` duyệt trực tiếp qua `Container:GetChildren()`, chỉ kiểm tra các phần tử con cấp 1 trực thuộc `Buttons`. Khi nút nằm trong Frame `Extra` (con cấp 2), `GetChildren()` chỉ thấy Frame `Extra` (không phải `GuiButton`) nên bỏ qua việc gắn sự kiện SFX.
+- **Fix:** Thay đổi logic duyệt sang đệ quy toàn bộ con cháu bằng `Container:GetDescendants()` (được đóng gói trong `GuiHelper.BindAllNavButtonsSound`), kiểm tra `Descendant:IsA("GuiButton")` để gắn âm thanh cho tất cả các nút bất kể độ sâu phân cấp.
+- **File liên quan:** [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
 ### GUI bị reset khi player chết (ResetOnSpawn)
 - **Ngày:** 05-06-2026

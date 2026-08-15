@@ -9,6 +9,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES (resolve lười trong Init để tránh lỗi timing)
@@ -53,12 +55,7 @@ local SFX_BUTTON_CLICK       = 7249903719
 local SFX_CLOSE_BUTTON_CLICK = 103307955424380
 
 local function PlayGuiSound(SoundId)
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = 1
-	S.Parent = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 3)
+	GuiHelper.PlayGuiSound(SoundId)
 end
 
 -- =========================================================
@@ -293,19 +290,13 @@ function SpectateController.SetVisible(Visible)
 		-- Lưu camera hiện tại
 		_savedCameraSubject = Camera.CameraSubject
 
-		-- Hiện Spectate GUI, ẩn NavigationButton
+		-- Hiện Spectate GUI, ẩn NavigationButtons
 		if SpectateGui then SpectateGui.Visible = true end
 		if NavGui then NavGui.Enabled = false end
 
-		-- Ẩn các Frame khác trong Menu (Inventory, Profile, Shop)
+		-- Ẩn các Frame khác trong Menu (Inventory, Profile, Shop, Quest)
 		if MenuGui then
-			for _, Child in ipairs(MenuGui:GetChildren()) do
-				if Child:IsA("Frame") or Child:IsA("ScreenGui") then
-					if Child ~= SpectateGui then
-						Child.Visible = false
-					end
-				end
-			end
+			GuiHelper.HideOtherMenuFrames(MenuGui, SpectateGui)
 		end
 
 		-- Focus vào target đầu tiên
@@ -329,7 +320,7 @@ function SpectateController.SetVisible(Visible)
 			RequestSpectateTargetEvent:FireServer(nil)
 		end
 
-		-- Ẩn Spectate GUI, hiện lại NavigationButton
+		-- Ẩn Spectate GUI, hiện lại NavigationButtons
 		if SpectateGui then SpectateGui.Visible = false end
 		if NavGui then NavGui.Enabled = true end
 
@@ -345,26 +336,24 @@ end
 -- =========================================================
 
 function SpectateController:Init()
-	-- Resolve toàn bộ GUI references không có timeout
-	-- Đảm bảo luôn tìm được element dù player join giữa trận
-	MenuGui     = PlayerGui:WaitForChild("Menu")
-	SpectateGui = MenuGui:WaitForChild("Spectate")
-	NavGui      = PlayerGui:WaitForChild("NavigationButton")
+	-- Resolve toàn bộ GUI references
+	MenuGui     = GuiHelper.GetScreenGui("Menu")
+	SpectateGui = MenuGui and MenuGui:WaitForChild("Spectate")
+	NavGui      = GuiHelper.GetNavigationGui()
 
-	CloseButton  = SpectateGui:WaitForChild("CloseButton")
-	NextButton   = SpectateGui:WaitForChild("NextButton")
-	BackButton   = SpectateGui:WaitForChild("BackButton")
-	local PlayerNameFrame = SpectateGui:WaitForChild("PlayerName")
-	PlayerNameText = PlayerNameFrame:WaitForChild("PlayerNameText")
+	if SpectateGui then
+		CloseButton  = SpectateGui:WaitForChild("CloseButton")
+		NextButton   = SpectateGui:WaitForChild("NextButton")
+		BackButton   = SpectateGui:WaitForChild("BackButton")
+		local PlayerNameFrame = SpectateGui:WaitForChild("PlayerName")
+		PlayerNameText = PlayerNameFrame:WaitForChild("PlayerNameText")
+		SpectateGui.Visible = false
+	end
 
-	local NavButtons = NavGui:WaitForChild("Button")
-	SpectateButton   = NavButtons:WaitForChild("Spectate")
+	SpectateButton = GuiHelper.GetNavButton("Spectate")
 
-	-- Đảm bảo Spectate GUI ẩn lúc khởi tạo
-	SpectateGui.Visible = false
-
-	-- Kết nối nút Spectate trong NavigationButton
-	if SpectateButton:IsA("GuiButton") then
+	-- Kết nối nút Spectate trong NavigationButtons
+	if SpectateButton and SpectateButton:IsA("GuiButton") then
 		SpectateButton.MouseButton1Click:Connect(function()
 			SpectateController.SetVisible(true)
 		end)

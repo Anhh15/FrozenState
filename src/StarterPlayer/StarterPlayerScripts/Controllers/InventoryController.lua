@@ -28,8 +28,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions     = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local ItemRegistry          = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig          = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local GuiConfig             = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController  = require(script.Parent.PlayerDataController)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
+local GuiHelper             = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -38,8 +40,8 @@ local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportMan
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui          = PlayerGui:WaitForChild("Menu", 10)
-local NavGui           = PlayerGui:WaitForChild("NavigationButton", 10)
+local MenuGui          = GuiHelper.GetScreenGui("Menu")
+local NavGui           = GuiHelper.GetNavigationGui()
 
 -- Inventory frame nằm bên trong Menu
 local Inventory        = MenuGui and MenuGui:FindFirstChild("Inventory", true)
@@ -60,11 +62,11 @@ local SelectionName    = ItemSelection and ItemSelection:FindFirstChild("NameTex
 local SelectionRarity  = ItemSelection and ItemSelection:FindFirstChild("RarityText")
 local EquipButton      = ItemSelection and ItemSelection:FindFirstChild("EquipButton")
 
--- NavigationButton mở Inventory
-local InventoryNavButton = NavGui and NavGui:FindFirstChild("Inventory", true)
+-- NavigationButtons mở Inventory
+local InventoryNavButton = GuiHelper.GetNavButton("Inventory")
 
--- Frame Button bên trong NavigationButton (ẩn khi Inventory mở, Stats vẫn hiện)
-local NavButton = NavGui and NavGui:FindFirstChild("Button")
+-- Frame Buttons bên trong NavigationButtons (ẩn khi Inventory mở, Stats vẫn hiện)
+local NavButton = GuiHelper.GetNavButtonsContainer()
 
 -- =========================================================
 -- STATE
@@ -83,12 +85,7 @@ local SFX_BUTTON_CLICK       = 7249903719
 local SFX_CLOSE_BUTTON_CLICK = 103307955424380
 
 local function PlayGuiSound(SoundId)
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = 1
-	S.Parent = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 3)
+	GuiHelper.PlayGuiSound(SoundId)
 end
 
 -- =========================================================
@@ -109,12 +106,7 @@ end
 
 --- Ẩn tất cả Frame con trong Menu ngoại trừ Inventory
 local function HideAllMenuFrames()
-	if not MenuGui then return end
-	for _, Child in ipairs(MenuGui:GetChildren()) do
-		if Child:IsA("Frame") and Child ~= Inventory then
-			Child.Visible = false
-		end
-	end
+	GuiHelper.HideOtherMenuFrames(MenuGui, Inventory)
 end
 
 --- Dọn dẹp toàn bộ nội dung ViewportFrame để tránh memory leak
@@ -459,11 +451,11 @@ function InventoryController:Init()
 	-- Đóng Inventory khi khởi tạo (đảm bảo trạng thái ban đầu là ẩn)
 	Inventory.Visible = false
 
-	-- Nút mở Inventory từ NavigationButton
+	-- Nút mở Inventory từ NavigationButtons
 	if InventoryNavButton then
 		InventoryNavButton.MouseButton1Click:Connect(OpenInventory)
 	else
-		warn("[InventoryController] Không tìm thấy nút Inventory trong NavigationButton.")
+		warn("[InventoryController] Không tìm thấy nút Inventory trong NavigationButtons.")
 	end
 
 	-- Nút đóng Inventory

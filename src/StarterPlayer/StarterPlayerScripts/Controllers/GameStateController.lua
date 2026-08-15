@@ -1,6 +1,6 @@
 -- GameStateController.lua (ModuleScript)
 -- Điều khiển GUI GameState: cập nhật tên phase và thời gian đếm ngược
--- Đồng thời quản lý visibility của các lobby GUI (Menu, NavigationButton)
+-- Đồng thời quản lý visibility của các lobby GUI (Menu, NavigationButtons)
 -- theo phase: ẩn khi Ready/InGame, hiện lại khi Intermission/GameOver
 -- GUI cần có: Frame/TimeText, Frame/StateText, Frame/TimeShadowText, Frame/StateShadowText
 
@@ -8,6 +8,8 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -17,7 +19,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 -- GameState HUD (luôn hiện)
-local GameStateGui    = PlayerGui:WaitForChild("GameState")
+local GameStateGui    = GuiHelper.GetScreenGui("GameState")
 local Frame           = GameStateGui:WaitForChild("Frame")
 local TimeText        = Frame:WaitForChild("TimeText")
 local StateText       = Frame:WaitForChild("StateText")
@@ -25,11 +27,11 @@ local TimeShadowText  = Frame:WaitForChild("TimeShadowText")
 local StateShadowText = Frame:WaitForChild("StateShadowText")
 
 -- Lobby GUIs (ẩn khi Ready/InGame)
-local MenuGui = PlayerGui:WaitForChild("Menu", 10)
-local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
+local MenuGui = GuiHelper.GetScreenGui("Menu")
+local NavGui  = GuiHelper.GetNavigationGui()
 
 -- InGameGui và các thành phần gameplay HUD (quản lý ẩn/hiện theo phase)
-local InGameGui        = PlayerGui:WaitForChild("InGameGui", 10)
+local InGameGui        = GuiHelper.GetScreenGui("InGameGui")
 local PlayerStatus     = InGameGui and InGameGui:WaitForChild("PlayerStatus", 10)
 local ScoreBoard       = InGameGui and InGameGui:WaitForChild("ScoreBoard", 10)
 local ScoreBoardButton = InGameGui and InGameGui:FindFirstChild("ScoreBoardButton")
@@ -258,23 +260,9 @@ function GameStateController:Init()
 	-- Ngăn GUI reset khi player chết (respawn)
 	GameStateGui.ResetOnSpawn = false
 
-	-- Bind SFX cho các Button con trong NavigationButton
-	-- Mỗi button con: MouseEnter → gui mouse enter | MouseButton1Click → gui button click
-	if NavGui then
-		local ButtonContainer = NavGui:FindFirstChild("Button")
-		if ButtonContainer then
-			for _, Child in ipairs(ButtonContainer:GetChildren()) do
-				if Child:IsA("GuiButton") then
-					Child.MouseEnter:Connect(function()
-						PlayGuiSound(SFX_MOUSE_ENTER)
-					end)
-					Child.MouseButton1Click:Connect(function()
-						PlayGuiSound(SFX_BUTTON_CLICK)
-					end)
-				end
-			end
-		end
-	end
+	-- Bind SFX cho các Button con/cháu trong NavigationButtons
+	-- Mỗi button con/cháu (kể cả trong Extra): MouseEnter → SFX_MOUSE_ENTER | MouseButton1Click → SFX_BUTTON_CLICK
+	GuiHelper.BindAllNavButtonsSound(SFX_BUTTON_CLICK, SFX_MOUSE_ENTER)
 
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	local SetGameModeEvent     = RemoteDefinitions.GetEvent("SetGameMode")

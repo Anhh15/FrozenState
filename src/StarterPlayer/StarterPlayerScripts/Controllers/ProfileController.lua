@@ -30,7 +30,9 @@ local PlayerDataController = require(script.Parent.PlayerDataController)
 local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local GameConfig           = require(ReplicatedStorage.Shared.Config.GameConfig)
+local GuiConfig            = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
+local GuiHelper            = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -39,8 +41,8 @@ local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportMan
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui = PlayerGui:WaitForChild("Menu", 10)
-local NavGui  = PlayerGui:WaitForChild("NavigationButton", 10)
+local MenuGui = GuiHelper.GetScreenGui("Menu")
+local NavGui  = GuiHelper.GetNavigationGui()
 
 -- Profile frame nằm trong Menu
 local Profile      = MenuGui and MenuGui:FindFirstChild("Profile", true)
@@ -66,12 +68,7 @@ local GameWinsFrame    = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("G
 local SFX_CLOSE_BUTTON_CLICK = 103307955424380
 
 local function PlayGuiSound(SoundId)
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = 1
-	S.Parent = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 3)
+	GuiHelper.PlayGuiSound(SoundId)
 end
 
 --- Lazy-require SpectateController để tránh circular dependency
@@ -88,12 +85,7 @@ end
 
 --- Ẩn tất cả Frame con trong Menu ngoại trừ Profile
 local function HideAllMenuFrames()
-	if not MenuGui then return end
-	for _, Child in ipairs(MenuGui:GetChildren()) do
-		if Child:IsA("Frame") and Child ~= Profile then
-			Child.Visible = false
-		end
-	end
+	GuiHelper.HideOtherMenuFrames(MenuGui, Profile)
 end
 
 local function GetStatValue(StatName)
@@ -107,11 +99,11 @@ local Assets       = ReplicatedStorage:FindFirstChild("Assets")
 local GuiFolder    = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
 local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
 
--- NavigationButton mở Profile
-local ProfileNavButton = NavGui and NavGui:FindFirstChild("Profile", true)
+-- NavigationButtons mở Profile
+local ProfileNavButton = GuiHelper.GetNavButton("Profile")
 
--- Frame Button bên trong NavigationButton (ẩn khi Profile mở, Stats vẫn hiện)
-local NavButton = NavGui and NavGui:FindFirstChild("Button")
+-- Frame Buttons bên trong NavigationButtons (ẩn khi Profile mở, Stats vẫn hiện)
+local NavButton = GuiHelper.GetNavButtonsContainer()
 
 -- =========================================================
 -- STATE
@@ -345,11 +337,11 @@ function ProfileController:Init()
 	-- Ẩn mặc định khi khởi tạo
 	Profile.Visible = false
 
-	-- Nút mở Profile từ NavigationButton
+	-- Nút mở Profile từ NavigationButtons
 	if ProfileNavButton then
 		ProfileNavButton.MouseButton1Click:Connect(OpenProfile)
 	else
-		warn("[ProfileController] Không tìm thấy nút Profile trong NavigationButton.")
+		warn("[ProfileController] Không tìm thấy nút Profile trong NavigationButtons.")
 	end
 
 	-- Nút đóng Profile
