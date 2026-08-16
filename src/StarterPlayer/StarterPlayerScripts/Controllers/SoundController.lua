@@ -2,13 +2,13 @@
 -- Quản lý pose animation phía client cho local player
 -- Lắng nghe PlayFreezeSFX → play pose animation khi bị đóng băng
 -- Lắng nghe PlayThawSFX   → dừng pose animation khi được giải cứu
--- Phase 8.2
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
-local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
+local AnimationHelper   = require(ReplicatedStorage.Shared.Tools.AnimationHelper)
 
 -- =========================================================
 -- STATE
@@ -24,39 +24,35 @@ local PlayThawSFXEvent
 -- PRIVATE
 -- =========================================================
 
---- Play pose animation trên Humanoid của local player
+--- Play pose animation trên Animator của local player
 --- Lưu track để có thể dừng khi Thaw
 --- @param BlockSkinId string — SkinId của Block gây ra Freeze (để lookup override)
 local function PlayPoseAnimation(BlockSkinId)
-	-- Dừng track cũ nếu còn đang chạy (phòng trường hợp double freeze edge case)
+	-- Dừng track cũ nếu còn đang chạy
 	if _PoseTrack then
-		_PoseTrack:Stop()
-		_PoseTrack:Destroy()
+		AnimationHelper.StopTrack(_PoseTrack)
 		_PoseTrack = nil
 	end
 
 	local Character = LocalPlayer.Character
 	if not Character then return end
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not Humanoid then return end
 
-	local AnimId = AudioConfig.GetPoseAnimation(BlockSkinId)
-	local Anim = Instance.new("Animation")
-	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
+	local AnimId = AnimationConfig.GetPoseAnimation(BlockSkinId)
+	local Track = AnimationHelper.LoadTrack(Character, AnimId, {
+		Looped   = true,
+		Priority = Enum.AnimationPriority.Action,
+	})
 
-	local Track = Humanoid:LoadAnimation(Anim)
-	Track.Looped = true   -- Giữ pose cho đến khi Thaw
-	Track:Play()
-
-	_PoseTrack = Track
-	Anim:Destroy()  -- Animation instance không cần giữ sau khi load
+	if Track then
+		AnimationHelper.PlayTrack(Track)
+		_PoseTrack = Track
+	end
 end
 
 --- Dừng pose animation hiện tại
 local function StopPoseAnimation()
 	if _PoseTrack then
-		_PoseTrack:Stop()
-		_PoseTrack:Destroy()
+		AnimationHelper.StopTrack(_PoseTrack)
 		_PoseTrack = nil
 	end
 end

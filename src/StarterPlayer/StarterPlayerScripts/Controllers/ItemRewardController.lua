@@ -21,6 +21,7 @@ local ItemRegistry    = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig    = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ChestConfig     = require(ReplicatedStorage.Shared.Config.ChestConfig)
 local AudioConfig     = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local AudioHelper     = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local ViewportManager = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 
 -- =========================================================
@@ -72,19 +73,11 @@ local _rotConn     = nil     -- RunService.Heartbeat connection xoay EffectImage
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Phát hiệu ứng âm thanh 2D qua SoundService
+--- Phát hiệu ứng âm thanh 2D qua AudioHelper
 --- @param SoundId number | string  -- ID âm thanh
 --- @param Volume number?           -- Âm lượng (mặc định 1 nếu nil)
 local function PlaySound(SoundId, Volume)
-	if not SoundId then return end
-	local Sound   = Instance.new("Sound")
-	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
-	Sound.Volume  = Volume or 1
-	Sound.Parent  = SoundService
-	Sound:Play()
-	Sound.Ended:Connect(function()
-		Sound:Destroy()
-	end)
+	AudioHelper.Play2DSound(SoundId, Volume, SoundService)
 end
 
 --- Hủy Tween đang chạy (nếu có), không ảnh hưởng state

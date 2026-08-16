@@ -1,10 +1,30 @@
 # CoreGameplay
-> Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu) trong dự án.
-> Cập nhật lần cuối: 14-08-2026
+> Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu, Audio/Animation, Map/Spawn, Tags và Kinh tế/Thưởng) trong dự án.
+> Cập nhật lần cuối: 17-08-2026
 
 ---
 
 ## Kiến trúc
+
+### Kiến trúc Tách biệt Audio (AudioConfig & AudioHelper) và Animation (AnimationConfig & AnimationHelper)
+- **Ngày:** 17-08-2026
+- **Chi tiết:** Tách bạch hoàn toàn giữa hệ thống âm thanh và chuyển động để tránh lai tạp cấu hình. `AudioConfig` chỉ lưu Sound IDs, BGM, SFX và âm lượng; `AudioHelper` cung cấp API phát 2D (GUI/Notification), 3D Spatial (gắn Part/HRP, tự dọn dẹp bằng `Sound.Ended:Once()`), tạo Sound Pool cho vũ khí và Preload assets. `AnimationConfig` lưu Animation IDs (Swing, Pose), timing cửa sổ Hitbox (`HitStartTime`, `HitEndTime`), Track priority; `AnimationHelper` chuẩn hóa nạp Track qua `Animator:LoadAnimation()` (loại bỏ `Humanoid:LoadAnimation` cũ), cache track và chống rò rỉ bộ nhớ khi nhân vật chết/respawn.
+- **File liên quan:** [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [AudioHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [AnimationConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AnimationConfig.lua), [AnimationHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua), [SoundController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua), [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+
+### Kiến trúc Tập trung hóa Kinh tế & Phần thưởng qua EconomyConfig & RewardHelper
+- **Ngày:** 17-08-2026
+- **Chi tiết:** Tách toàn bộ giá trị thưởng (Freeze, Thaw, Freezing/Thawing Spree, First Blood, Last Standing, Win, Lose) và mốc Spree Threshold khỏi `GameConfig` sang `EconomyConfig` độc lập. `RewardHelper` đóng gói các công thức tính thưởng (tính BaseReward + SpreeBonus theo chuỗi streak), kiểm tra First Blood, thưởng kết thúc trận và hàm đồng bộ tiền `RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent)`. Giúp `FreezeService`, `MatchService`, `GameStatisticController` đọc và trao thưởng thống nhất mà không duplicate logic.
+- **File liên quan:** [EconomyConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [RewardHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua)
+
+### Kiến trúc Quản lý Bản đồ & Spawn qua MapConfig & MapHelper
+- **Ngày:** 17-08-2026
+- **Chi tiết:** Loại bỏ hoàn toàn hardcoded string đường dẫn thư mục trong `MapService`. `MapConfig` quản lý tên folder (`Maps`, `CurrentMap`, `SpawnPoint`, `TeamBase`, `FFA`) và prefix spawn (`T1SpawnPoint`, `T2SpawnPoint`, `SpawnPoint`). `MapHelper` cung cấp các hàm tiện ích lọc danh sách Part spawn theo team/FFA, chọn ngẫu nhiên điểm spawn và tính CFrame spawn an toàn phía trên mặt sàn cho nhân vật.
+- **File liên quan:** [MapConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/MapConfig.lua), [MapHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/MapHelper.lua), [MapService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MapService.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Kiến trúc Quản lý Thực thể qua TagConfig & TagHelper (CollectionService)
+- **Ngày:** 17-08-2026
+- **Chi tiết:** Định nghĩa danh mục CollectionService Tags chuẩn toàn game trong `TagConfig` (`IceBlock`, `Hitbox`, `HighlightHelper`, `SpawnPoint`). `TagHelper` bọc các API `AddTag`, `RemoveTag`, `HasTag`, `GetTagged`, `ObserveTagAdded`, `ObserveTagRemoved`. `FreezeService` tự động gắn/gỡ tag khi tạo/xóa khối băng. `HighlightController` dùng `TagHelper.GetTagged(IceBlock)` để tìm nhanh Model khối băng của victim thay vì quét toàn bộ Workspace qua `GetChildren()` $O(n)$.
+- **File liên quan:** [TagConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/TagConfig.lua), [TagHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/TagHelper.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua)
 
 ### Highlight khối băng bị đóng băng qua Adornee HighlightHelper
 - **Ngày:** 23-07-2026
@@ -37,24 +57,24 @@
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
 
 ### Thiết kế va chạm Icicle Tool bằng Spatial Query với task.delay Window
-- **Ngày:** 03-07-2026
-- **Chi tiết:** Hit detection dùng `workspace:GetPartsInPart(Hitbox, OverlapParams)` (Spatial Query) thay vì Raycast. Hitbox chỉ active trong cửa sổ giai đoạn "vung" — xác định bằng `task.delay(HitStartTime)` và `task.delay(HitEndTime)`, timing được lưu trong `AudioConfig.Default` (per-skin) thay vì hardcode. Trong cửa sổ đó, `RunService.Heartbeat` poll liên tục; mỗi mục tiêu chỉ bị hit 1 lần (dedup bằng HitPlayers table), `FireServer` ngay khi phát hiện hit lần đầu. Audio được phát ngẫu nhiên từ danh sách `SwingAudios` (hỗ trợ cả 1 hoặc nhiều ID) tại `HitStartTime`. Guard `_CurrentSwingTrack ~= Track` bảo vệ trường hợp tool bị thu hồi trước khi delay fire. `PlaySwingAnimation()` trả về `Track` để caller gắn `Track.Stopped` fallback dừng poll khi Unequip.
-- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
+- **Ngày:** 03-07-2026 (cập nhật 17-08-2026)
+- **Chi tiết:** Hit detection dùng `workspace:GetPartsInPart(Hitbox, OverlapParams)` (Spatial Query) thay vì Raycast. Hitbox chỉ active trong cửa sổ giai đoạn "vung" — xác định bằng `task.delay(HitStartTime)` và `task.delay(HitEndTime)`, timing được lưu trong `AnimationConfig.Default` (per-skin) thay vì hardcode. Trong cửa sổ đó, `RunService.Heartbeat` poll liên tục; mỗi mục tiêu chỉ bị hit 1 lần (dedup bằng HitPlayers table), `FireServer` ngay khi phát hiện hit lần đầu. Audio được phát ngẫu nhiên từ danh sách `SwingAudios` (qua `AudioConfig` và `AudioHelper.PlayPooledSound`) tại `HitStartTime`. Guard `_CurrentSwingTrack ~= Track` bảo vệ trường hợp tool bị thu hồi trước khi delay fire.
+- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AnimationConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AnimationConfig.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [AudioHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/AudioHelper.lua)
 
 ### Hỗ trợ Va chạm Block Hitbox cho Thaw qua Spatial Query
 - **Ngày:** 30-06-2026
-- **Chi tiết:** Để hỗ trợ các skin khối băng (Ice Block) đa dạng nhưng vẫn đảm bảo công bằng, mỗi Model Block chứa một Part tên `Hitbox` có kích thước chuẩn. Khi đóng băng, server thiết lập `CanQuery = true` chỉ cho Hitbox của Block. Client khi kích hoạt Icicle Tool sẽ dùng `workspace:GetPartsInPart` để quét. Nếu chạm Block Hitbox, client đọc attribute `VictimUserId` trên Block Model để xác định người cần giải cứu (Thaw) thay vì tìm Character thông thường.
+- **Chi tiết:** Để hỗ trợ các skin khối băng (Ice Block) đa dạng nhưng vẫn đảm bảo công bằng, mỗi Model Block chứa một Part tên `Hitbox` có kích thước chuẩn. Khi đóng băng, server thiết lập `CanQuery = true` chỉ cho Hitbox của Block và gắn tag `TagConfig.Tags.Hitbox`. Client khi kích hoạt Icicle Tool sẽ dùng `workspace:GetPartsInPart` để quét. Nếu chạm Block Hitbox, client đọc attribute `VictimUserId` trên Block Model để xác định người cần giải cứu (Thaw) thay vì tìm Character thông thường.
 - **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
 
 ### Cơ chế Spree Streak độc lập để khuyến khích tinh thần đồng đội
-- **Ngày:** 10-06-2026
-- **Chi tiết:** Nhằm tối ưu hóa động lực của người chơi (incentive design), chuỗi Freeze Streak và Thaw Streak được quản lý hoàn toàn độc lập. Hành động đóng băng kẻ địch (Freeze) sẽ không làm reset chuỗi giải cứu (Thaw Streak) của người chơi đó, và ngược lại. Streak chỉ bị reset khi: (1) Bản thân đạt đủ điểm Spree để nhận thưởng, hoặc (2) Bản thân người chơi bị đóng băng (Victim). Thiết kế này khuyến khích người chơi thực hiện cả hai hành động đóng băng kẻ địch và giải cứu đồng đội mà không lo bị phạt mất chuỗi streak hiện có.
-- **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
+- **Ngày:** 10-06-2026 (cập nhật 17-08-2026)
+- **Chi tiết:** Nhằm tối ưu hóa động lực của người chơi, chuỗi Freeze Streak và Thaw Streak được quản lý hoàn toàn độc lập. Hành động đóng băng kẻ địch (Freeze) không làm reset chuỗi giải cứu (Thaw Streak) của người chơi đó, và ngược lại. Streak chỉ bị reset khi: (1) Bản thân đạt đủ mốc `EconomyConfig.Spree.Threshold` để nhận thưởng Spree Bonus (tính qua `RewardHelper`), hoặc (2) Bản thân người chơi bị đóng băng (Victim).
+- **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [RewardHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [EconomyConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/EconomyConfig.lua)
 
 ### Hiển thị chi tiết phần thưởng Spree trong GameStatistic
-- **Ngày:** 10-06-2026
-- **Chi tiết:** Đồng bộ cách hiển thị của các chỉ số Freezing Spree và Thawing Spree tương tự như chỉ số Freezes và Thaws theo công thức: "Số lượng (× Giá trị) = Tổng nhận được". Thay đổi này giúp hiển thị trực quan tổng tiền thưởng tích lũy qua nhiều lần đạt Spree của người chơi trong trận đấu, thay vì chỉ hiển thị một giá trị tiền thưởng trực tiếp.
-- **File liên quan:** [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua)
+- **Ngày:** 10-06-2026 (cập nhật 17-08-2026)
+- **Chi tiết:** Đồng bộ cách hiển thị của các chỉ số Freezing Spree và Thawing Spree tương tự như chỉ số Freezes và Thaws theo công thức: "Số lượng (× Giá trị) = Tổng nhận được". Giá trị tiền thưởng từng loại hành động được tra cứu từ `RewardHelper.GetRewardAmount()` thay vì hardcode hay đọc trực tiếp table cũ.
+- **File liên quan:** [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [RewardHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/RewardHelper.lua)
 
 ### Cache IceBlock để RemoveIceBlock chạy O(1) (thay vì scan workspace O(n))
 - **Ngày:** 12-08-2026
@@ -66,10 +86,10 @@
 - **Chi tiết:** `DEFAULT_WALK_SPEED`, `DEFAULT_JUMP_POWER`, `DEFAULT_JUMP_HEIGHT` từng được định nghĩa lặp lại ở cả `MatchService.lua` và `FreezeService.lua`. Quy tắc: tất cả thông số di chuyển mặc định của player phải khai báo **một lần duy nhất** trong `GameConfig.Player` (`DefaultWalkSpeed`, `DefaultJumpPower`, `DefaultJumpHeight`). Các service chỉ được đọc từ đó. Điều này đảm bảo chỉnh một nơi là áp dụng đồng bộ mọi nơi (SetMovementLocked, ThawPlayer, ThawAll, SpectateController.UnlockMovement).
 - **File liên quan:** [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
 
-### Dọn Sound instance bằng Sound.Ended:Once() thay vì task.delay cố định
-- **Ngày:** 12-08-2026
-- **Chi tiết:** `PlaySpatialSound()` tạo Sound instance động trong HRP để phát SFX spatial (Freeze/Thaw). Cũ dùng `task.delay(5)` để dọn — nếu Sound ngắn hơn 5s thì object sống thừa; nếu dài hơn 5s thì bị hủy khi đang phát. Pattern đúng: `Sound.Ended:Once(function() Sound:Destroy() end)` — Sound tự dọn **ngay khi** kết thúc, không sớm không muộn. Áp dụng cho mọi Sound object tạo động không cần replay.
-- **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
+### Dọn Sound instance bằng Sound.Ended:Once() qua AudioHelper
+- **Ngày:** 12-08-2026 (cập nhật 17-08-2026)
+- **Chi tiết:** `AudioHelper.PlaySpatialSound()` và `AudioHelper.Play2DSound()` tạo Sound instance động và kết nối `Sound.Ended:Once(function() Sound:Destroy() end)` kết hợp timeout fallback phòng thủ. Pattern này đảm bảo Sound tự dọn dẹp ngay khi phát xong, không sớm không muộn, loại bỏ hoàn toàn rò rỉ bộ nhớ âm thanh trên cả Server lẫn Client.
+- **File liên quan:** [AudioHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [ItemRewardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 
 ### Xử lý chuyển Spectator khi nhân vật chết hoặc thoát game giữa trận
 - **Ngày:** 14-08-2026
@@ -114,19 +134,18 @@
 - **File liên quan:** `ServerStorage/Icicles/Default` (Roblox Studio)
 
 ### `GetMarkerReachedSignal` không fire — Workaround: `task.delay`
-- **Ngày:** 02-07-2026
+- **Ngày:** 02-07-2026 (cập nhật 17-08-2026)
 - **Vấn đề:** Marker signal `HitStart`/`HitEnd` không bao giờ fire dù animation có marker đúng tên, đúng ID, đã publish. Print bên trong callback không xuất hiện. Animation vẫn chạy bình thường.
 - **Nguyên nhân:** Chưa xác định chính xác. Đã thử: (1) Animation Marker trong Studio, (2) `Animator:LoadAnimation()` thay `Humanoid:LoadAnimation()` (deprecated), (3) Tạo animation mới, (4) Reset Roblox. Tất cả đều không giải quyết được.
-- **Workaround hiện tại (Hướng B — đang dùng):** Dùng `task.delay(HitStartTime, ...)` và `task.delay(HitEndTime, ...)` với timing lưu trong `AudioConfig` (per-skin). Hoạt động ổn định nhưng cần sync timing thủ công với animation khi sửa.
-- **Hướng A (chưa giải quyết — cần quay lại):** Tiếp tục điều tra tại sao `GetMarkerReachedSignal` không fire. Có thể liên quan đến Roblox platform bug hoặc cấu hình LocalScript. Nếu giải quyết được, chuyển lại sang Marker để tiết kiệm công sức maintain.
-- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
+- **Workaround hiện tại (Hướng B — đang dùng):** Dùng `task.delay(HitStartTime, ...)` và `task.delay(HitEndTime, ...)` với timing lưu trong `AnimationConfig` (per-skin). Hoạt động ổn định nhưng cần sync timing thủ công với animation khi sửa.
+- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AnimationConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AnimationConfig.lua)
 
 ### Độ trễ kích hoạt Tool ở lần bấm chuột đầu tiên
-- **Ngày:** 14-08-2026
+- **Ngày:** 14-08-2026 (cập nhật 17-08-2026)
 - **Vấn đề:** Cú click chuột đầu tiên sau khi trang bị Tool không vung animation hoặc bị hoãn làm lỡ cửa sổ va chạm hit detection.
 - **Nguyên nhân:** Asset Animation và Audio chưa được nạp vào bộ nhớ client (chưa preload), `Animator:LoadAnimation` tốn thời gian nạp ở lần đầu.
-- **Fix:** Gọi `ContentProvider:PreloadAsync` nạp trước Animation/Audio và pre-load `AnimationTrack` lên `Animator` ngay khi script load và khi `Tool.Equipped`.
-- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+- **Fix:** Khởi tạo Sound Pool bằng `AudioHelper.CreateSoundPool()`, Preload audio và animation bằng `AudioHelper.PreloadAudios` & `AnimationHelper.PreloadAnimations`, kết hợp nạp sẵn `AnimationTrack` lên `Animator` qua `AnimationHelper.LoadTrack`.
+- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AudioHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [AnimationHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua)
 
 ### Biểu tượng FrozenStatus không hiện trên ScoreBoard/HUD khi player chết hoặc out game
 - **Ngày:** 14-08-2026

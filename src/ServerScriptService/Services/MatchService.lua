@@ -16,6 +16,8 @@ local DataService       = require(script.Parent.DataService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
+local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
+local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -184,8 +186,8 @@ end
 
 --- Xác định kết quả khi hết giờ (không ai kết thúc sớm)
 local function ResolveWinner()
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
-	if Mode.WinCondition == "FFA" then
+	local WinCondition = GameModeHelper.GetWinCondition(SessionService.GetCurrentModeKey())
+	if WinCondition == "FFA" then
 		return ResolveWinnerFFA()
 	else
 		return ResolveWinnerTeamBased()
@@ -198,10 +200,10 @@ end
 
 --- Tính top N player theo Freeze + Thaw (TeamBased) hoặc Freeze (FFA)
 local function GetTopPlayers(Result, MaxCount)
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local WinCondition = GameModeHelper.GetWinCondition(SessionService.GetCurrentModeKey())
 	local Pool = {}
 
-	if Mode.WinCondition == "FFA" then
+	if WinCondition == "FFA" then
 		-- FFA: tất cả participants
 		for _, P in ipairs(Players:GetPlayers()) do
 			if SessionService.GetStats(P) then
@@ -239,13 +241,14 @@ end
 
 --- Phát phần thưởng Win/Lose + LastStanding theo mode
 local function DistributeRewards(Result)
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local ModeKey = SessionService.GetCurrentModeKey()
+	local WinCondition = GameModeHelper.GetWinCondition(ModeKey)
 
-	if Mode.WinCondition == "TeamBased" then
+	if WinCondition == "TeamBased" then
 		local WinTeam = Result.WinTeam
 
 		-- LastStanding: người duy nhất còn Normal trong đội thắng
-		if Mode.AllowLastStanding then
+		if GameModeHelper.AllowLastStanding(ModeKey) then
 			local WinPlayers  = SessionService.GetTeamPlayers(WinTeam)
 			local NormalCount = 0
 			local LastAlive   = nil
@@ -258,8 +261,9 @@ local function DistributeRewards(Result)
 			if NormalCount == 1 and LastAlive then
 				SessionService.SetStat(LastAlive, "LastStanding", true)
 				DataService.IncrementStat(LastAlive, "TotalLastStanding")
-				DataService.AddMoney(LastAlive, GameConfig.Economy.RewardLastStanding)
-				SessionService.IncrementStat(LastAlive, "MoneyEarned", GameConfig.Economy.RewardLastStanding)
+				local LastReward = RewardHelper.GetLastStandingReward()
+				RewardHelper.RewardAndSync(LastAlive, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+				SessionService.IncrementStat(LastAlive, "MoneyEarned", LastReward)
 			end
 		end
 
@@ -268,34 +272,29 @@ local function DistributeRewards(Result)
 			local Team = SessionService.GetTeam(Player)
 			if not Team then continue end
 
-			local Reward = (Team == WinTeam)
-				and GameConfig.Economy.RewardWin
-				or  GameConfig.Economy.RewardLose
+			local IsWinner = (Team == WinTeam)
+			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			DataService.AddMoney(Player, Reward)
+			RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
 			SessionService.IncrementStat(Player, "MoneyEarned", Reward)
 
-			if Team == WinTeam then
+			if IsWinner then
 				DataService.IncrementStat(Player, "TotalWins")
-			end
-
-			local Data = DataService.GetData(Player)
-			if Data then
-				RemoteDefinitions.GetEvent("UpdateMoney"):FireClient(Player, Data.Money)
 			end
 		end
 
-	elseif Mode.WinCondition == "FFA" then
+	elseif WinCondition == "FFA" then
 		local WinPlayer = Result.WinPlayer
 
 		-- LastStanding: chỉ trao khi còn đúng 1 người Normal (thắng do last standing)
-		if Mode.AllowLastStanding and WinPlayer then
+		if GameModeHelper.AllowLastStanding(ModeKey) and WinPlayer then
 			local NormalCount = #SessionService.GetAllNormalPlayers()
 			if NormalCount <= 1 then
 				SessionService.SetStat(WinPlayer, "LastStanding", true)
 				DataService.IncrementStat(WinPlayer, "TotalLastStanding")
-				DataService.AddMoney(WinPlayer, GameConfig.Economy.RewardLastStanding)
-				SessionService.IncrementStat(WinPlayer, "MoneyEarned", GameConfig.Economy.RewardLastStanding)
+				local LastReward = RewardHelper.GetLastStandingReward()
+				RewardHelper.RewardAndSync(WinPlayer, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+				SessionService.IncrementStat(WinPlayer, "MoneyEarned", LastReward)
 			end
 		end
 
@@ -303,20 +302,14 @@ local function DistributeRewards(Result)
 		for _, Player in ipairs(Players:GetPlayers()) do
 			if not SessionService.GetStats(Player) then continue end
 
-			local Reward = (Player == WinPlayer)
-				and GameConfig.Economy.RewardWin
-				or  GameConfig.Economy.RewardLose
+			local IsWinner = (Player == WinPlayer)
+			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			DataService.AddMoney(Player, Reward)
+			RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
 			SessionService.IncrementStat(Player, "MoneyEarned", Reward)
 
-			if Player == WinPlayer then
+			if IsWinner then
 				DataService.IncrementStat(Player, "TotalWins")
-			end
-
-			local Data = DataService.GetData(Player)
-			if Data then
-				RemoteDefinitions.GetEvent("UpdateMoney"):FireClient(Player, Data.Money)
 			end
 		end
 	end
@@ -325,13 +318,14 @@ end
 --- Gửi GameStatistic data về từng client
 local function BroadcastGameOver(Result)
 	local TopPlayers = GetTopPlayers(Result, 3)
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local ModeKey = SessionService.GetCurrentModeKey()
+	local WinCondition = GameModeHelper.GetWinCondition(ModeKey)
 
 	for _, Player in ipairs(Players:GetPlayers()) do
 		local Stats = SessionService.GetStats(Player) or {}
 
 		local Won
-		if Mode.WinCondition == "FFA" then
+		if WinCondition == "FFA" then
 			Won = (Player == Result.WinPlayer)
 		else
 			local PlayerTeam = SessionService.GetTeam(Player)
@@ -417,9 +411,9 @@ local function RunSetup()
 	-- Broadcast GameMode TRƯỚC (client cần biết mode trước khi nhận team data)
 	SetGameModeEvent:FireAllClients({
 		ModeKey          = ModeKey,
-		HighlightMode    = Mode.HighlightMode,
-		ScoreboardType   = Mode.ScoreboardType,
-		PlayerStatusType = Mode.PlayerStatusType,
+		HighlightMode    = GameModeHelper.GetHighlightMode(ModeKey),
+		ScoreboardType   = GameModeHelper.GetScoreboardType(ModeKey),
+		PlayerStatusType = GameModeHelper.GetPlayerStatusType(ModeKey),
 	})
 
 	-- Broadcast team sau (HighlightController đã biết mode, sẽ xử lý đúng)
@@ -441,10 +435,10 @@ end
 local function RunReady()
 	_currentPhase = "Ready"
 	local Duration = GameConfig.Phase.ReadyDuration
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local ModeKey  = SessionService.GetCurrentModeKey()
 
 	-- Teleport theo SpawnType
-	if Mode.SpawnType == "FFA" then
+	if GameModeHelper.GetSpawnType(ModeKey) == "FFA" then
 		local AllSpawns = MapService.GetSpawnPoints(nil, "FFA")
 		for _, Player in ipairs(Players:GetPlayers()) do
 			if Player.Character then
@@ -485,9 +479,9 @@ end
 local function RunInGame()
 	_currentPhase    = "InGame"
 	_earlyResult     = nil
-	local Mode       = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
-	local Duration   = Mode.InGameDuration
-	local FSTThresh  = Mode.FrozenStateThreshold
+	local ModeKey    = SessionService.GetCurrentModeKey()
+	local Duration   = GameModeHelper.GetInGameDuration(ModeKey)
+	local FSTThresh  = GameModeHelper.GetFrozenStateThreshold(ModeKey)
 	local FrozenStateOn = false
 
 	-- Broadcast danh sách Spectate đầy đủ khi InGame bắt đầu
@@ -506,7 +500,7 @@ local function RunInGame()
 		if _earlyResult then break end
 
 		-- Kích hoạt FrozenState nếu mode cho phép
-		if Mode.AllowFrozenState and t <= FSTThresh and not FrozenStateOn then
+		if GameModeHelper.HasFrozenState(ModeKey) and t <= FSTThresh and not FrozenStateOn then
 			FrozenStateOn = true
 			SessionService.SetFrozenState(true)
 			TeamService.SetFrozenStateHighlights(true)
@@ -666,12 +660,11 @@ function MatchService:Init()
 
 			-- Gửi lại GameMode cho người mới join
 			local ModeKey = SessionService.GetCurrentModeKey()
-			local Mode = GameModeConfig.GetMode(ModeKey)
 			SetGameModeEvent:FireClient(NewPlayer, {
 				ModeKey          = ModeKey,
-				HighlightMode    = Mode.HighlightMode,
-				ScoreboardType   = Mode.ScoreboardType,
-				PlayerStatusType = Mode.PlayerStatusType,
+				HighlightMode    = GameModeHelper.GetHighlightMode(ModeKey),
+				ScoreboardType   = GameModeHelper.GetScoreboardType(ModeKey),
+				PlayerStatusType = GameModeHelper.GetPlayerStatusType(ModeKey),
 			})
 		end
 	end)

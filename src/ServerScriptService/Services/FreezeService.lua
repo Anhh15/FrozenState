@@ -15,8 +15,13 @@ local IcicleService     = require(script.Parent.IcicleService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
+local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
+local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
+local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -86,6 +91,7 @@ local function SpawnIceBlock(Attacker, Victim)
 	local BlockModel = Template:Clone()
 	-- Đánh dấu Model để RemoveIceBlock có thể tìm đúng theo victim
 	PlayerStateHelper.SetVictimUserId(BlockModel, Victim.UserId)
+	TagHelper.AddTag(BlockModel, TagConfig.Tags.IceBlock)
 
 	-- Tìm PrimaryPart hoặc Part đầu tiên làm gốc để weld vào HRP
 	local PrimaryPart = BlockModel.PrimaryPart or BlockModel:FindFirstChildOfClass("BasePart")
@@ -118,7 +124,11 @@ local function SpawnIceBlock(Attacker, Victim)
 			Part.CanCollide = false
 			Part.CastShadow = false
 			-- Hitbox phải CanQuery=true để GetPartsInPart() của Icicle có thể detect
-			Part.CanQuery   = (Part.Name == "Hitbox")
+			local IsHitbox = (Part.Name == "Hitbox")
+			Part.CanQuery = IsHitbox
+			if IsHitbox then
+				TagHelper.AddTag(Part, TagConfig.Tags.Hitbox)
+			end
 		end
 	end
 
@@ -134,6 +144,7 @@ end
 local function RemoveIceBlock(Victim)
 	local Block = _iceBlocks[Victim.UserId]
 	if Block then
+		TagHelper.RemoveTag(Block, TagConfig.Tags.IceBlock)
 		Block:Destroy()
 		_iceBlocks[Victim.UserId] = nil
 	end
@@ -143,30 +154,7 @@ end
 -- PRIVATE: Audio
 -- =========================================================
 
---- Phát âm thanh spatial trong HumanoidRootPart của Character
---- Roblox tự replication Sound instance đến tất cả client, đảm bảo spatial audio theo khoảng cách
---- Sound sẽ tự hủy sau khi phát xong (hoặc sau 5 giây để tránh leak)
---- @param Character Model
---- @param SoundId number
-local function PlaySpatialSound(Character, SoundId)
-	if not Character then return end
-	local HRP = Character:FindFirstChild("HumanoidRootPart")
-	if not HRP then return end
 
-	local Sound = Instance.new("Sound")
-	Sound.SoundId          = "rbxassetid://" .. tostring(SoundId)
-	Sound.RollOffMaxDistance = 60   -- studs — nghe được trong phạm vi hợp lý
-	Sound.Volume           = 1
-	Sound.Parent           = HRP
-	Sound:Play()
-
-	-- Tự dọn ngay khi phát xong (chính xác hơn task.delay(5) cố định)
-	Sound.Ended:Once(function()
-		if Sound and Sound.Parent then
-			Sound:Destroy()
-		end
-	end)
-end
 
 -- =========================================================
 -- PRIVATE: Helpers
@@ -174,13 +162,8 @@ end
 
 --- Thưởng tiền và đồng bộ về client
 local function RewardAndSync(Player, Amount)
-	DataService.AddMoney(Player, Amount)
+	RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent)
 	SessionService.IncrementStat(Player, "MoneyEarned", Amount)
-
-	local Data = DataService.GetData(Player)
-	if Data then
-		UpdateMoneyEvent:FireClient(Player, Data.Money)
-	end
 end
 
 --- Broadcast trạng thái player xuống tất cả client
@@ -204,15 +187,15 @@ end
 --- Kiểm tra điều kiện thắng trận sau mỗi freeze/eliminate
 --- Phân nhánh theo WinCondition của mode hiện tại
 local function CheckWinCondition(FrozenTeam)
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local WinCondition = GameModeHelper.GetWinCondition(SessionService.GetCurrentModeKey())
 
-	if Mode.WinCondition == "TeamBased" then
+	if WinCondition == "TeamBased" then
 		if FrozenTeam and SessionService.IsTeamWiped(FrozenTeam) then
 			local WinTeam = (FrozenTeam == "Team1") and "Team2" or "Team1"
 			SessionService.MatchEndSignal:Fire({ WinTeam = WinTeam })
 		end
 
-	elseif Mode.WinCondition == "FFA" then
+	elseif WinCondition == "FFA" then
 		local NormalPlayers = SessionService.GetAllNormalPlayers()
 		if #NormalPlayers == 1 then
 			-- Chỉ còn 1 người Normal → đó là người thắng
@@ -268,7 +251,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	end
 
 	-- Play freeze SFX spatial tại Character của victim
-	PlaySpatialSound(Victim.Character, AudioConfig.GetFreezeAudio(BlockSkinId))
+	AudioHelper.PlaySpatialSound(Victim.Character, AudioConfig.GetFreezeAudio(BlockSkinId))
 
 	-- Báo victim client kích hoạt pose animation
 	PlayFreezeSFXEvent:FireClient(Victim, { BlockSkinId = BlockSkinId })
@@ -284,16 +267,16 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	-- Broadcast state mới của Attacker để client cập nhật Freezes count trên ScoreBoard
 	BroadcastPlayerState(Attacker)
 
-	-- Thưởng cơ bản
-	RewardAndSync(Attacker, GameConfig.Economy.RewardPerFreeze)
-
-	-- Kiểm tra Freezing Spree
-	-- Spree đạt khi streak >= SpreeThreshold, sau đó reset streak về 0
+	-- Thưởng cơ bản & Spree
 	local FreezeStreak = SessionService.GetFreezeStreak(Attacker)
-	if FreezeStreak >= GameConfig.Match.SpreeThreshold then
+	local BaseReward, SpreeBonus, IsSpree = RewardHelper.CalculateFreezeReward(FreezeStreak)
+
+	RewardAndSync(Attacker, BaseReward)
+
+	if IsSpree then
 		SessionService.IncrementStat(Attacker, "FreezingSprees")
 		DataService.IncrementStat(Attacker, "TotalFreezingSpree")
-		RewardAndSync(Attacker, GameConfig.Economy.RewardPerFreezingSpree)
+		RewardAndSync(Attacker, SpreeBonus)
 		SessionService.ResetFreezeStreak(Attacker)
 		NotifyAccoladeEvent:FireClient(Attacker, { Type = "FreezingSpree" })
 		print(("[FreezeService] ❄ %s đạt Freezing Spree!"):format(Attacker.Name))
@@ -304,7 +287,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		_firstBloodClaimed = true
 		SessionService.SetStat(Attacker, "FirstBlood", true)
 		DataService.IncrementStat(Attacker, "TotalFirstBlood")
-		RewardAndSync(Attacker, GameConfig.Economy.RewardFirstBlood)
+		RewardAndSync(Attacker, RewardHelper.GetFirstBloodReward())
 		NotifyAccoladeEvent:FireClient(Attacker, { Type = "FirstBlood" })
 		print(("[FreezeService] 🩸 %s đạt First Blood!"):format(Attacker.Name))
 	end
@@ -322,10 +305,10 @@ end
 --- @param Rescuer Player
 --- @param Victim Player
 function FreezeService.ThawPlayer(Rescuer, Victim)
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local ModeKey = SessionService.GetCurrentModeKey()
 
 	-- Không thể thaw nếu mode không cho phép (EternalFreeze, Chaos)
-	if not Mode.AllowThaw then return end
+	if not GameModeHelper.CanThaw(ModeKey) then return end
 
 	-- Không thể thaw trong FrozenState
 	if SessionService.GetFrozenState() then
@@ -368,7 +351,7 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	end
 
 	-- Play thaw SFX spatial tại Character của victim
-	PlaySpatialSound(Victim.Character, AudioConfig.GetThawAudio(BlockSkinId))
+	AudioHelper.PlaySpatialSound(Victim.Character, AudioConfig.GetThawAudio(BlockSkinId))
 
 	-- Báo victim client dừng pose animation
 	PlayThawSFXEvent:FireClient(Victim)
@@ -380,15 +363,16 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	-- Broadcast state mới của Rescuer để client cập nhật Thaws count trên ScoreBoard
 	BroadcastPlayerState(Rescuer)
 
-	-- Thưởng
-	RewardAndSync(Rescuer, GameConfig.Economy.RewardPerThaw)
-
-	-- Kiểm tra Thawing Spree
+	-- Thưởng cơ bản & Spree
 	local ThawStreak = SessionService.GetThawStreak(Rescuer)
-	if ThawStreak >= GameConfig.Match.SpreeThreshold then
+	local BaseReward, SpreeBonus, IsSpree = RewardHelper.CalculateThawReward(ThawStreak)
+
+	RewardAndSync(Rescuer, BaseReward)
+
+	if IsSpree then
 		SessionService.IncrementStat(Rescuer, "ThawingSprees")
 		DataService.IncrementStat(Rescuer, "TotalThawingSpree")
-		RewardAndSync(Rescuer, GameConfig.Economy.RewardPerThawingSpree)
+		RewardAndSync(Rescuer, SpreeBonus)
 		SessionService.ResetThawStreak(Rescuer)
 		NotifyAccoladeEvent:FireClient(Rescuer, { Type = "ThawingSpree" })
 		print(("[FreezeService] 💧 %s đạt Thawing Spree!"):format(Rescuer.Name))
@@ -500,9 +484,9 @@ local function HandleToolHit(Attacker, Target)
 	local Distance = (AttackerHRP.Position - TargetHRP.Position).Magnitude
 	if Distance > GameConfig.Tool.HitboxRange * 1.5 then return end  -- 1.5x tolerance lag
 
-	local Mode = GameModeConfig.GetMode(SessionService.GetCurrentModeKey())
+	local ModeKey = SessionService.GetCurrentModeKey()
 
-	if Mode.HasTeams then
+	if GameModeHelper.IsTeamBased(ModeKey) then
 		-- TeamBased: cần cả 2 có team
 		local AttackerTeam = SessionService.GetTeam(Attacker)
 		local TargetTeam   = SessionService.GetTeam(Target)
@@ -515,7 +499,7 @@ local function HandleToolHit(Attacker, Target)
 			end
 		else
 			-- Đồng minh → Thaw (chỉ khi Frozen và AllowThaw)
-			if Mode.AllowThaw and SessionService.GetState(Target) == "Frozen" then
+			if GameModeHelper.CanThaw(ModeKey) and SessionService.GetState(Target) == "Frozen" then
 				FreezeService.ThawPlayer(Attacker, Target)
 			end
 		end

@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -141,7 +142,12 @@ end
 
 --- Điền thống kê cá nhân vào bảng PlayerStats
 local function FillPersonalStats(won, stats)
-	local eco = GameConfig.Economy
+	local RewardPerFreeze        = RewardHelper.GetRewardAmount("PerFreeze")
+	local RewardPerThaw          = RewardHelper.GetRewardAmount("PerThaw")
+	local RewardPerFreezingSpree = RewardHelper.GetRewardAmount("PerFreezingSpree")
+	local RewardPerThawingSpree  = RewardHelper.GetRewardAmount("PerThawingSpree")
+	local RewardFirstBlood       = RewardHelper.GetRewardAmount("FirstBlood")
+	local RewardLastStanding     = RewardHelper.GetRewardAmount("LastStanding")
 
 	GameResultText.Text  = won and "VICTORY" or "DEFEAT"
 	
@@ -150,22 +156,22 @@ local function FillPersonalStats(won, stats)
 
 	-- Format hiển thị chi tiết: "Số lượng (x Giá trị) = Tổng nhận được"
 	FreezeVal.Text = ("%d (×%d) = %d"):format(
-		stats.Freezes, eco.RewardPerFreeze, stats.Freezes * eco.RewardPerFreeze
+		stats.Freezes, RewardPerFreeze, stats.Freezes * RewardPerFreeze
 	)
 
 	ThawVal.Text = ("%d (×%d) = %d"):format(
-		stats.Thaws, eco.RewardPerThaw, stats.Thaws * eco.RewardPerThaw
+		stats.Thaws, RewardPerThaw, stats.Thaws * RewardPerThaw
 	)
 
 	-- Đối với First Blood và Last Standing hiển thị số tiền trực tiếp
 	FSpreeVal.Text = ("%d (×%d) = %d"):format(
-		stats.FreezingSprees, eco.RewardPerFreezingSpree, stats.FreezingSprees * eco.RewardPerFreezingSpree
+		stats.FreezingSprees, RewardPerFreezingSpree, stats.FreezingSprees * RewardPerFreezingSpree
 	)
 	TSpreeVal.Text = ("%d (×%d) = %d"):format(
-		stats.ThawingSprees, eco.RewardPerThawingSpree, stats.ThawingSprees * eco.RewardPerThawingSpree
+		stats.ThawingSprees, RewardPerThawingSpree, stats.ThawingSprees * RewardPerThawingSpree
 	)
-	FirstBloodVal.Text   = stats.FirstBlood and tostring(eco.RewardFirstBlood) or "0"
-	LastStandingVal.Text = stats.LastStanding and tostring(eco.RewardLastStanding) or "0"
+	FirstBloodVal.Text   = stats.FirstBlood and tostring(RewardFirstBlood) or "0"
+	LastStandingVal.Text = stats.LastStanding and tostring(RewardLastStanding) or "0"
 	
 	TotalMoneyVal.Text   = tostring(stats.MoneyEarned)
 end

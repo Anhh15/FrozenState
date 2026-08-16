@@ -5,43 +5,26 @@
 -- Cơ chế hit detection:
 --   Tool.Activated → PlaySwingAnimation() → task.delay(HitStartTime) → Heartbeat poll GetPartsInPart(Hitbox)
 --   → FireServer(OnToolHit, TargetPlayer) ngay khi phát hiện hit mới → task.delay(HitEndTime) → dừng poll
---   Không dùng Raycast. Hitbox là Part vô hình trong Tool template (tạo trong Studio).
---   Một lần swing có thể đóng băng/giải cứu nhiều người cùng lúc (AoE).
---   Mỗi mục tiêu chỉ bị hit 1 lần duy nhất per swing (dedup bằng HitPlayers table).
---   Timing cửa sổ Hitbox lấy từ AudioConfig.HitStartTime / HitEndTime (per skin).
---
--- Phase 3: phát hiện Block Model (VictimUserId attribute) → signal Thaw đồng đội
--- Phase 8.2: play swing audio (random 1/3) tại HitStartTime + swing animation phía client mỗi lần Activated
+--   Timing cửa sổ Hitbox lấy từ AnimationConfig.HitStartTime / HitEndTime (per skin).
 
-local Tool             = script.Parent
-local Player           = game.Players.LocalPlayer
+local Tool              = script.Parent
+local Player            = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService       = game:GetService("RunService")
-
-local ContentProvider  = game:GetService("ContentProvider")
+local RunService        = game:GetService("RunService")
 
 -- Chờ các dependency sẵn sàng
-local Remotes          = ReplicatedStorage:WaitForChild("Remotes")
-local OnToolHit        = Remotes:WaitForChild("OnToolHit")
-local GameConfig       = require(
-	ReplicatedStorage:WaitForChild("Shared")
-		:WaitForChild("Config")
-		:WaitForChild("GameConfig")
-)
-local AudioConfig      = require(
-	ReplicatedStorage:WaitForChild("Shared")
-		:WaitForChild("Config")
-		:WaitForChild("AudioConfig")
-)
-local PlayerStateHelper = require(
-	ReplicatedStorage:WaitForChild("Shared")
-		:WaitForChild("Tools")
-		:WaitForChild("PlayerStateHelper")
-)
+local Remotes           = ReplicatedStorage:WaitForChild("Remotes")
+local OnToolHit         = Remotes:WaitForChild("OnToolHit")
+local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local AnimationHelper   = require(ReplicatedStorage.Shared.Tools.AnimationHelper)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- Chờ Hitbox từ template
-local Hitbox           = Tool:WaitForChild("Hitbox")
-local COOLDOWN         = GameConfig.Tool.IcicleCooldown
+local Hitbox            = Tool:WaitForChild("Hitbox")
+local COOLDOWN          = GameConfig.Tool.IcicleCooldown
 
 local _IsOnCooldown       = false
 local _CurrentSwingTrack   = nil  -- Lưu Track đang chạy để dừng khi Unequip
@@ -56,50 +39,30 @@ local _cachedSwingTracks   = {}   -- { [AnimId] = AnimationTrack } cache track �
 --- Nạp trước Animation và Audio vào bộ nhớ để 100% phát ngay từ cú vung đầu tiên
 local function PreloadAssets()
 	local IcicleSkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player)
-	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
+	local AnimId = AnimationConfig.GetSwingAnimation(IcicleSkinId)
 	local Audios = AudioConfig.GetSwingAudios(IcicleSkinId)
 
-	local ItemsToPreload = {}
-
-	-- 1. Nạp và giữ sẵn các Sound instances trong Hitbox
+	-- 1. Nạp và giữ sẵn Sound instances trong Hitbox bằng AudioHelper
 	for _, AudioId in ipairs(Audios) do
 		if not _preloadedSounds[AudioId] or not _preloadedSounds[AudioId].Parent then
-			local Sound = Instance.new("Sound")
-			Sound.Name                = "SwingSFX_" .. tostring(AudioId)
-			Sound.SoundId             = "rbxassetid://" .. tostring(AudioId)
-			Sound.RollOffMaxDistance  = 60
-			Sound.Volume              = 1
-			Sound.Parent              = Hitbox
-			_preloadedSounds[AudioId] = Sound
-			table.insert(ItemsToPreload, Sound)
+			local Pool = AudioHelper.CreateSoundPool(Hitbox, { AudioId }, { Volume = 1, MaxDistance = 60 })
+			_preloadedSounds[AudioId] = Pool[AudioId]
 		end
 	end
+	AudioHelper.PreloadAudios(Audios)
 
-	-- 2. Nạp Animation
-	local Anim = Instance.new("Animation")
-	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
-	table.insert(ItemsToPreload, Anim)
-
-	pcall(function()
-		ContentProvider:PreloadAsync(ItemsToPreload)
-	end)
-
-	Anim:Destroy()
+	-- 2. Nạp Animation asset
+	AnimationHelper.PreloadAnimations({ AnimId })
 
 	-- 3. Pre-load AnimationTrack lên Animator nếu Character đã có sẵn
 	local Character = Player.Character
-	if Character then
-		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-		if Humanoid then
-			local Animator = Humanoid:FindFirstChildOfClass("Animator")
-			if Animator and not _cachedSwingTracks[AnimId] then
-				local PreloadAnim = Instance.new("Animation")
-				PreloadAnim.AnimationId = "rbxassetid://" .. tostring(AnimId)
-				local Track = Animator:LoadAnimation(PreloadAnim)
-				Track.Looped = false
-				_cachedSwingTracks[AnimId] = Track
-				PreloadAnim:Destroy()
-			end
+	if Character and not _cachedSwingTracks[AnimId] then
+		local Track = AnimationHelper.LoadTrack(Character, AnimId, {
+			Looped   = false,
+			Priority = Enum.AnimationPriority.Action,
+		})
+		if Track then
+			_cachedSwingTracks[AnimId] = Track
 		end
 	end
 end
@@ -130,44 +93,39 @@ local function PlaySwingAudio(IcicleSkinId)
 
 	-- Fallback nếu sound chưa được tạo trong pool
 	if not Sound or not Sound.Parent then
-		Sound = Instance.new("Sound")
-		Sound.Name                = "SwingSFX_" .. tostring(ChosenId)
-		Sound.SoundId             = "rbxassetid://" .. tostring(ChosenId)
-		Sound.RollOffMaxDistance  = 60
-		Sound.Volume              = 1
-		Sound.Parent              = Hitbox
+		local Pool = AudioHelper.CreateSoundPool(Hitbox, { ChosenId }, { Volume = 1, MaxDistance = 60 })
+		Sound = Pool[ChosenId]
 		_preloadedSounds[ChosenId] = Sound
 	end
 
-	Sound.TimePosition = 0
-	Sound:Play()
+	AudioHelper.PlayPooledSound(Sound)
 end
 
---- Play swing animation trên Humanoid của local player
+--- Play swing animation trên Animator của local player
 --- Tái sử dụng track đã pre-load để đảm bảo 0ms độ trễ
 local function PlaySwingAnimation(IcicleSkinId)
 	local Character = Player.Character
 	if not Character then return nil end
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not Humanoid then return nil end
-	local Animator = Humanoid:FindFirstChildOfClass("Animator")
-	if not Animator then return nil end
 
-	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
+	local AnimId = AnimationConfig.GetSwingAnimation(IcicleSkinId)
 	local Track = _cachedSwingTracks[AnimId]
+
+	local Animator = AnimationHelper.GetAnimator(Character)
+	if not Animator then return nil end
 
 	-- Nếu track chưa tồn tại hoặc Animator đã bị thay thế thì load lại
 	if not Track or not Track:IsDescendantOf(Animator) then
-		local Anim = Instance.new("Animation")
-		Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
-		Track = Animator:LoadAnimation(Anim)
-		Track.Looped = false
+		Track = AnimationHelper.LoadTrack(Character, AnimId, {
+			Looped   = false,
+			Priority = Enum.AnimationPriority.Action,
+		})
 		_cachedSwingTracks[AnimId] = Track
-		Anim:Destroy()
 	end
 
-	_CurrentSwingTrack = Track
-	Track:Play()
+	if Track then
+		_CurrentSwingTrack = Track
+		AnimationHelper.PlayTrack(Track)
+	end
 
 	return Track
 end
@@ -178,7 +136,7 @@ end
 
 Tool.Unequipped:Connect(function()
 	if _CurrentSwingTrack then
-		_CurrentSwingTrack:Stop()
+		AnimationHelper.StopTrack(_CurrentSwingTrack)
 		_CurrentSwingTrack = nil
 	end
 end)
@@ -196,7 +154,6 @@ end
 
 -- =========================================================
 -- PRIVATE: Bắt đầu Heartbeat poll trong cửa sổ HitStart→HitEnd
--- HitPlayers: table dedup tránh fire nhiều lần cùng 1 mục tiêu
 -- =========================================================
 
 local function StartHitboxPoll(HitPlayers)
@@ -208,15 +165,12 @@ local function StartHitboxPoll(HitPlayers)
 		local TouchingParts = workspace:GetPartsInPart(Hitbox, Params)
 
 		for _, Part in ipairs(TouchingParts) do
-			-- Tìm Model chứa Part
 			local TargetChar = Part:FindFirstAncestorOfClass("Model")
 			if not TargetChar then continue end
 
-			-- Thử resolve player từ character (thường dùng để Freeze)
 			local TargetPlayer = game.Players:GetPlayerFromCharacter(TargetChar)
 
 			-- Fallback: nếu không phải character, kiểm tra xem Model có phải Block Model không
-			-- Block Model được đánh dấu bằng attribute VictimUserId (set bởi FreezeService)
 			if not TargetPlayer then
 				local VictimUserId = PlayerStateHelper.GetVictimUserId(TargetChar)
 				if VictimUserId then
@@ -230,7 +184,7 @@ local function StartHitboxPoll(HitPlayers)
 			if HitPlayers[TargetPlayer] then continue end
 			HitPlayers[TargetPlayer] = true
 
-			-- Fire ngay khi phát hiện hit lần đầu (không đợi HitEnd)
+			-- Fire ngay khi phát hiện hit lần đầu
 			OnToolHit:FireServer(TargetPlayer)
 		end
 	end)
@@ -245,35 +199,29 @@ Tool.Activated:Connect(function()
 	if _IsOnCooldown then return end
 	_IsOnCooldown = true
 
-	-- Đọc SkinId của Icicle đang trang bị (gán bởi server qua Attribute)
 	local IcicleSkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player)
 
-	-- Bắt đầu animation (trả về Track để gắn marker signals)
+	-- Bắt đầu animation
 	local Track = PlaySwingAnimation(IcicleSkinId)
 
 	if Track then
-		-- Dedup table cho swing này
 		local HitPlayers = {}
 
-		-- Lấy timing cửa sổ Hitbox từ AudioConfig (per skin, không hardcode)
-		local HitStartTime = AudioConfig.GetHitStartTime(IcicleSkinId)
-		local HitEndTime   = AudioConfig.GetHitEndTime(IcicleSkinId)
+		-- Lấy timing cửa sổ Hitbox từ AnimationConfig (per skin)
+		local HitStartTime = AnimationConfig.GetHitStartTime(IcicleSkinId)
+		local HitEndTime   = AnimationConfig.GetHitEndTime(IcicleSkinId)
 
-		-- Sau HitStartTime: bắt đầu giai đoạn vung → phát audio + bắt đầu poll
 		task.delay(HitStartTime, function()
-			if _CurrentSwingTrack ~= Track then return end  -- Guard: tool đã bị thu hồi
+			if _CurrentSwingTrack ~= Track then return end
 			PlaySwingAudio(IcicleSkinId)
-			StopHitboxPoll()  -- Phòng trường hợp swing trước chưa kết thúc
+			StopHitboxPoll()
 			StartHitboxPoll(HitPlayers)
 		end)
 
-		-- Sau HitEndTime: kết thúc giai đoạn vung → dừng poll
 		task.delay(HitEndTime, function()
 			StopHitboxPoll()
 		end)
 
-		-- Fallback: nếu Unequip giữa chừng (Track.Stopped fire sớm)
-		-- → đảm bảo poll không bị leak
 		Track.Stopped:Connect(function()
 			StopHitboxPoll()
 		end)

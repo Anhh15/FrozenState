@@ -2,6 +2,7 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
 
 -- =========================================================
 -- SESSION STATE
@@ -287,10 +288,11 @@ function SessionService:Init()
 			SessionService.ClearTeam(Player)
 			PlayerStateHelper.SetInMatch(Player, false)
 
-			if Team and SessionService.IsTeamWiped(Team) then
+			local WinCondition = GameModeHelper.GetWinCondition(_currentModeKey)
+			if WinCondition == "TeamBased" and Team and SessionService.IsTeamWiped(Team) then
 				local WinTeam = (Team == "Team1") and "Team2" or "Team1"
 				MatchEndSignal:Fire({ WinTeam = WinTeam })
-			elseif not Team then
+			elseif WinCondition == "FFA" then
 				-- FFA: kiểm tra xem chỉ còn 1 hoặc 0 người Normal không
 				local NormalPlayers = SessionService.GetAllNormalPlayers()
 				if #NormalPlayers == 1 then

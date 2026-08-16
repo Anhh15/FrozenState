@@ -6,7 +6,8 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris            = game:GetService("Debris")
 
-local GuiConfig = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiConfig   = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local AudioHelper = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
@@ -116,14 +117,9 @@ end
 
 --- Phát âm thanh GUI cục bộ
 --- @param SoundId number | string
-function GuiHelper.PlayGuiSound(SoundId)
-	if not SoundId then return end
-	local Sound = Instance.new("Sound")
-	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
-	Sound.Volume = 1
-	Sound.Parent = PlayerGui
-	Sound:Play()
-	Debris:AddItem(Sound, 3)
+--- @param Volume number?
+function GuiHelper.PlayGuiSound(SoundId, Volume)
+	return AudioHelper.PlayGuiSound(SoundId, Volume)
 end
 
 --- Gắn hiệu ứng âm thanh (Hover/Click) cho một GuiButton

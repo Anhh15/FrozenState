@@ -9,6 +9,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
+local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -43,6 +45,14 @@ local function FindIceBlockForPlayer(Player)
 	if not Player then return nil end
 	local TargetUserId = Player.UserId
 
+	local IceBlocks = TagHelper.GetTagged(TagConfig.Tags.IceBlock)
+	for _, Block in ipairs(IceBlocks) do
+		if Block:IsA("Model") and PlayerStateHelper.GetVictimUserId(Block) == TargetUserId then
+			return Block
+		end
+	end
+
+	-- Fallback quét workspace nếu tag chưa replicate kịp
 	for _, Child in ipairs(Workspace:GetChildren()) do
 		if Child:IsA("Model") and PlayerStateHelper.GetVictimUserId(Child) == TargetUserId then
 			return Child

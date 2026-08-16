@@ -8,11 +8,10 @@ local GameConfig = {
 	-- THỜI GIAN CÁC PHASE (đơn vị: giây)
 	-- =========================================================
 	Phase = {
-		IntermissionDuration  = 6,   -- Thời gian nghỉ giữa các trận
-		ReadyDuration         = 3,   -- Đếm ngược trước khi bắt đầu
-		GameOverDuration      = 6,   -- Màn hình kết thúc
-		GameOverRevealDelay   = 2,   -- Delay trước khi hiện win/lose trong GameOver
-		-- InGameDuration và FrozenStateThreshold đã chuyển sang GameModeConfig (per-mode)
+		IntermissionDuration = 6,   -- Thời gian nghỉ giữa các trận
+		ReadyDuration        = 3,   -- Đếm ngược trước khi bắt đầu
+		GameOverDuration     = 6,   -- Màn hình kết thúc
+		GameOverRevealDelay  = 2,   -- Delay trước khi hiện win/lose trong GameOver
 	},
 
 	-- =========================================================
@@ -21,38 +20,22 @@ local GameConfig = {
 	Match = {
 		MinPlayers           = 2,   -- Số người tối thiểu để bắt đầu trận
 		MaxPlayers           = 16,  -- Số người tối đa mỗi trận
-		SpreeThreshold       = 3,   -- Số lần liên tiếp để tính một spree
 		SpecialRoundInterval = 1,   -- Cứ mỗi N vòng sẽ có 1 Special round (ví dụ: 3 = 2 Normal → 1 Special)
-	},
-
-	-- =========================================================
-	-- KINH TẾ: TIỀN THƯỞNG CHO MỖI HÀNH ĐỘNG
-	-- =========================================================
-	Economy = {
-		RewardPerFreeze        = 10,  -- Tiền thưởng khi đóng băng 1 kẻ địch
-		RewardPerThaw          = 10,  -- Tiền thưởng khi giải cứu 1 đồng minh
-		RewardPerFreezingSpree = 10,  -- Thưởng thêm khi đạt Freezing Spree
-		RewardPerThawingSpree  = 10,  -- Thưởng thêm khi đạt Thawing Spree
-		RewardFirstBlood       = 10,  -- Thưởng khi là người đóng băng đầu tiên
-		RewardLastStanding     = 10,  -- Thưởng khi là người cuối cùng còn đứng
-		RewardWin              = 10,  -- Thưởng khi đội thắng
-		RewardLose             = 10,  -- Thưởng an ủi khi thua
 	},
 
 	-- =========================================================
 	-- TOOL: ICICLE
 	-- =========================================================
 	Tool = {
-		IcicleCooldown = 1,  -- Thời gian hồi chiêu giữa 2 lần swing (giây)
-		HitboxRange    = 20,    -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
+		IcicleCooldown = 1,   -- Thời gian hồi chiêu giữa 2 lần swing (giây)
+		HitboxRange    = 20,  -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
 	},
 
 	-- =========================================================
-	-- GUI: VIEWPORT FRAME
+	-- GUI: VIEWPORT FRAME & TRANSITION
 	-- =========================================================
 	GUI = {
 		ViewportCameraDistance = 5,  -- Khoảng cách camera đến đầu nhân vật trong ViewportFrame (studs)
-		                               -- Tăng để zoom ra, giảm để zoom vào
 
 		-- RoundLoadingScreen transition timing (đơn vị: giây)
 		RoundLoadingScreen = {
