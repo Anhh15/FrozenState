@@ -8,9 +8,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
-local SessionService  = require(script.Parent.SessionService)
-local DataService     = require(script.Parent.DataService)
-local ItemRegistry    = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+local SessionService    = require(script.Parent.SessionService)
+local DataService       = require(script.Parent.DataService)
+local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- PRIVATE: Tool Creation
@@ -80,7 +81,7 @@ function IcicleService.GiveTool(Player)
 	Tool.Parent = Player.Backpack
 
 	-- Gán SkinId lên Player attribute để IcicleScript.client đọc khi play audio/animation
-	Player:SetAttribute("EquippedIcicleSkinId", SkinId)
+	PlayerStateHelper.SetEquippedIcicleSkinId(Player, SkinId)
 
 	print(("[IcicleService] Đã cấp Icicle '%s' cho %s"):format(SkinId, Player.Name))
 end
@@ -109,11 +110,11 @@ function IcicleService.RemoveTool(Player)
 	end
 end
 
---- Cấp Tool cho tất cả player đang trong trận (có Attribute InMatch = true)
---- Dùng InMatch thay vì GetTeam để hỗ trợ cả chế độ FFA (không có team)
+--- Cấp Tool cho tất cả player đang trong trận (IsInMatch = true)
+--- Hỗ trợ cả chế độ có team và FFA (không có team)
 function IcicleService.GiveToolToAll()
 	for _, Player in ipairs(Players:GetPlayers()) do
-		if Player:GetAttribute("InMatch") then
+		if PlayerStateHelper.IsInMatch(Player) then
 			IcicleService.GiveTool(Player)
 		end
 	end

@@ -16,6 +16,7 @@ local DataService       = require(script.Parent.DataService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- STATE
@@ -401,7 +402,7 @@ local function RunSetup()
 
 	-- Set Attribute "InMatch" để client biết player đang trong trận (dùng thay Team attribute ở FFA)
 	for _, Player in ipairs(ActivePlayers) do
-		Player:SetAttribute("InMatch", true)
+		PlayerStateHelper.SetInMatch(Player, true)
 	end
 
 	-- Phân đội và set state Normal
@@ -556,7 +557,7 @@ local function RunGameOver(Result)
 	-- Teleport tất cả player về SpawnLocation (lobby) và xóa InMatch attribute
 	local LobbySpawn = workspace:FindFirstChild("SpawnLocation")
 	for _, Player in ipairs(Players:GetPlayers()) do
-		Player:SetAttribute("InMatch", nil)
+		PlayerStateHelper.SetInMatch(Player, false)
 		local Character = Player.Character
 		if not Character then continue end
 		local HRP = Character:FindFirstChild("HumanoidRootPart")
@@ -678,8 +679,8 @@ function MatchService:Init()
 	-- Spectator yêu cầu focus vào target
 	RequestSpectateTargetEvent.OnServerEvent:Connect(function(SpectatorPlayer, TargetPlayer)
 		if _currentPhase ~= "InGame" then return end
-		-- Player đang trong trận (có InMatch hoặc Team) không được phép spectate
-		if SpectatorPlayer:GetAttribute("InMatch") or SpectatorPlayer:GetAttribute("Team") then return end
+		-- Player đang trong trận không được phép spectate
+		if PlayerStateHelper.IsInMatch(SpectatorPlayer) then return end
 
 		if TargetPlayer == nil then
 			local SpectatorCharacter = SpectatorPlayer.Character

@@ -17,6 +17,7 @@ local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- HẰNG SỐ (từ GameConfig để không hardcode)
@@ -84,7 +85,7 @@ local function SpawnIceBlock(Attacker, Victim)
 
 	local BlockModel = Template:Clone()
 	-- Đánh dấu Model để RemoveIceBlock có thể tìm đúng theo victim
-	BlockModel:SetAttribute("VictimUserId", Victim.UserId)
+	PlayerStateHelper.SetVictimUserId(BlockModel, Victim.UserId)
 
 	-- Tìm PrimaryPart hoặc Part đầu tiên làm gốc để weld vào HRP
 	local PrimaryPart = BlockModel.PrimaryPart or BlockModel:FindFirstChildOfClass("BasePart")
@@ -451,7 +452,7 @@ function FreezeService.EliminatePlayer(Player)
 	-- Chuyển trạng thái sang Dead, xóa Team assignment và gỡ InMatch attribute
 	SessionService.SetState(Player, "Dead")
 	SessionService.ClearTeam(Player)
-	Player:SetAttribute("InMatch", nil)
+	PlayerStateHelper.SetInMatch(Player, false)
 
 	-- Reset streaks
 	SessionService.ResetFreezeStreak(Player)

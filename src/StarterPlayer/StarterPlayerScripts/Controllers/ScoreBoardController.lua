@@ -8,6 +8,7 @@ local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- GUI REFERENCES (lazy-init trong Init)
@@ -56,7 +57,7 @@ local function SetScoreBoardVisible(Visible)
 
 	-- Ẩn với Spectator
 	if Visible then
-		local MyTeam = LocalPlayer:GetAttribute("Team")
+		local MyTeam = PlayerStateHelper.GetTeam(LocalPlayer)
 		if not MyTeam then return end
 	end
 

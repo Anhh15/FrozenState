@@ -11,6 +11,7 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- GUI REFERENCES (resolve lười trong Init để tránh lỗi timing)
@@ -264,8 +265,7 @@ end
 function SpectateController.SetVisible(Visible)
 	if Visible then
 		-- Kiểm tra điều kiện bật
-		local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
-		if IsInMatch then
+		if PlayerStateHelper.IsInMatch(LocalPlayer) then
 			-- Đang trong trận → không thể spectate
 			return
 		end
@@ -396,15 +396,11 @@ function SpectateController:Init()
 	end)
 
 	-- Tự động tắt spectate khi player được đưa vào trận
-	local function CheckMatchEntry()
-		local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
+	PlayerStateHelper.ObserveMatchState(LocalPlayer, function(IsInMatch)
 		if IsInMatch and _isSpectating then
 			SpectateController.SetVisible(false)
 		end
-	end
-
-	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(CheckMatchEntry)
-	LocalPlayer:GetAttributeChangedSignal("InMatch"):Connect(CheckMatchEntry)
+	end)
 
 	print("[SpectateController] Đã khởi tạo.")
 end

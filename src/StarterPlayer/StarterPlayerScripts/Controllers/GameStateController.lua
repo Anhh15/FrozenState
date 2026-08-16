@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -236,9 +237,8 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	TimeText.Text        = TimeStr
 	TimeShadowText.Text  = TimeStr
 
-	-- Kiểm tra xem LocalPlayer có đang trong trận không (Attribute InMatch = true)
-	-- Dùng InMatch thay vì Team vì chế độ FFA không có team
-	local IsInMatch = LocalPlayer:GetAttribute("InMatch") == true
+	-- Kiểm tra xem LocalPlayer có đang trong trận không (hỗ trợ cả mode có team và FFA)
+	local IsInMatch = PlayerStateHelper.IsInMatch(LocalPlayer)
 	if IsInMatch then
 		-- Player trong trận: ẩn/hiện theo phase
 		SetLobbyGuisVisible(not GAMEPLAY_PHASES[Phase])
@@ -306,11 +306,8 @@ function GameStateController:Init()
 		)
 	end)
 
-	-- Re-evaluate GUI ngay khi Attribute Team hoặc InMatch thay đổi
-	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(function()
-		UpdateDisplay(_lastPhase, _lastTimeRemaining, _lastIsFrozenState)
-	end)
-	LocalPlayer:GetAttributeChangedSignal("InMatch"):Connect(function()
+	-- Re-evaluate GUI ngay khi trạng thái tham gia trận thay đổi (InMatch hoặc Team)
+	PlayerStateHelper.ObserveMatchState(LocalPlayer, function()
 		UpdateDisplay(_lastPhase, _lastTimeRemaining, _lastIsFrozenState)
 	end)
 

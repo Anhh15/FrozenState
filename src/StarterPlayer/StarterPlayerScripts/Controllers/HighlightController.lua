@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- CONFIG
@@ -43,7 +44,7 @@ local function FindIceBlockForPlayer(Player)
 	local TargetUserId = Player.UserId
 
 	for _, Child in ipairs(Workspace:GetChildren()) do
-		if Child:IsA("Model") and Child:GetAttribute("VictimUserId") == TargetUserId then
+		if Child:IsA("Model") and PlayerStateHelper.GetVictimUserId(Child) == TargetUserId then
 			return Child
 		end
 	end
@@ -237,13 +238,13 @@ function HighlightController:Init()
 
 	-- Lắng nghe khi IceBlock Model thêm/xóa trong Workspace để cập nhật Highlight.Adornee
 	Workspace.ChildAdded:Connect(function(Child)
-		if Child:IsA("Model") and Child:GetAttribute("VictimUserId") ~= nil then
+		if Child:IsA("Model") and PlayerStateHelper.GetVictimUserId(Child) ~= nil then
 			RefreshAll()
 		end
 	end)
 
 	Workspace.ChildRemoved:Connect(function(Child)
-		if Child:IsA("Model") and Child:GetAttribute("VictimUserId") ~= nil then
+		if Child:IsA("Model") and PlayerStateHelper.GetVictimUserId(Child) ~= nil then
 			RefreshAll()
 		end
 	end)

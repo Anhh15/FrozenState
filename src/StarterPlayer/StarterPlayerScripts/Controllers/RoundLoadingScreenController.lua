@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- CONFIG
@@ -72,8 +73,8 @@ end
 local function StartFadeIn()
 	if not _RoundLoadingScreen then return end
 
-	-- Chi hien voi player tham gia tran (InMatch = true hoac co Team)
-	local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
+	-- Chi hien voi player tham gia tran
+	local IsInMatch = PlayerStateHelper.IsInMatch(LocalPlayer)
 	if not IsInMatch then return end
 
 	CancelPending()

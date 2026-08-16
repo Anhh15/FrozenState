@@ -1,8 +1,7 @@
--- SessionService.lua
--- Quản lý toàn bộ dữ liệu tạm thời trong trận (không lưu DataStore)
--- Là trung tâm trạng thái của một match: PlayerState, Team, Stats, Spree
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Players = game:GetService("Players")
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- SESSION STATE
@@ -41,8 +40,8 @@ local function InitPlayerSession(Player)
 		MoneyEarned    = 0,
 	}
 	-- Xóa Attribute team và InMatch để client biết player này là Spectator
-	Player:SetAttribute("Team", nil)
-	Player:SetAttribute("InMatch", nil)
+	PlayerStateHelper.SetTeam(Player, nil)
+	PlayerStateHelper.SetInMatch(Player, false)
 end
 
 -- =========================================================
@@ -114,7 +113,7 @@ end
 --- @param Player Player
 function SessionService.ClearTeam(Player)
 	_teamAssignment[Player] = nil
-	Player:SetAttribute("Team", nil)
+	PlayerStateHelper.SetTeam(Player, nil)
 end
 
 --- Chia đội ngẫu nhiên, lệch tối đa 1 người
@@ -137,11 +136,11 @@ function SessionService.AssignTeams(PlayerList)
 	for i, Player in ipairs(Shuffled) do
 		if i <= Half then
 			_teamAssignment[Player] = "Team1"
-			Player:SetAttribute("Team", "Team1")
+			PlayerStateHelper.SetTeam(Player, "Team1")
 			table.insert(Team1, Player)
 		else
 			_teamAssignment[Player] = "Team2"
-			Player:SetAttribute("Team", "Team2")
+			PlayerStateHelper.SetTeam(Player, "Team2")
 			table.insert(Team2, Player)
 		end
 	end
@@ -286,7 +285,7 @@ function SessionService:Init()
 			end
 
 			SessionService.ClearTeam(Player)
-			Player:SetAttribute("InMatch", nil)
+			PlayerStateHelper.SetInMatch(Player, false)
 
 			if Team and SessionService.IsTeamWiped(Team) then
 				local WinTeam = (Team == "Team1") and "Team2" or "Team1"
@@ -303,8 +302,8 @@ function SessionService:Init()
 		end
 
 		-- Xóa Attribute team và InMatch trước khi dọn entry
-		Player:SetAttribute("Team", nil)
-		Player:SetAttribute("InMatch", nil)
+		PlayerStateHelper.SetTeam(Player, nil)
+		PlayerStateHelper.SetInMatch(Player, false)
 
 		-- Dọn dẹp entry
 		_playerStates[Player]   = nil

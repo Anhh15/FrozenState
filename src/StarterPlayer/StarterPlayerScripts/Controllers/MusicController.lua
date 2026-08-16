@@ -19,6 +19,7 @@ local SoundService      = game:GetService("SoundService")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
 -- STATE
@@ -50,7 +51,7 @@ local UpdateGameStateEvent
 --- Xác định nhạc cần phát dựa trên trạng thái hiện tại
 --- @return number — SoundId cần phát
 local function ResolveMusicId()
-	local IsInMatch = (LocalPlayer:GetAttribute("InMatch") == true) or (LocalPlayer:GetAttribute("Team") ~= nil)
+	local IsInMatch = PlayerStateHelper.IsInMatch(LocalPlayer)
 
 	if IsInMatch then
 		-- Đang tham gia trận
@@ -103,11 +104,8 @@ function MusicController:Init()
 		UpdateMusic()
 	end)
 
-	-- Lắng nghe thay đổi team hoặc InMatch attribute (khi vào/ra trận)
-	LocalPlayer:GetAttributeChangedSignal("Team"):Connect(function()
-		UpdateMusic()
-	end)
-	LocalPlayer:GetAttributeChangedSignal("InMatch"):Connect(function()
+	-- Lắng nghe thay đổi trạng thái tham gia trận (InMatch hoặc Team)
+	PlayerStateHelper.ObserveMatchState(LocalPlayer, function()
 		UpdateMusic()
 	end)
 

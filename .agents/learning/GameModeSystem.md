@@ -1,6 +1,6 @@
 # GameModeSystem
 > Tổng hợp kiến thức về hệ thống chế độ chơi (GameMode System, Chaos FFA, chu kỳ Special Round, đồng bộ InMatch/Team) trong dự án.
-> Cập nhật lần cuối: 15-08-2026
+> Cập nhật lần cuối: 17-08-2026
 
 ---
 
@@ -31,10 +31,10 @@
 - **Chi tiết:** Cấu trúc map chuẩn hóa thành `SpawnPoint/TeamBase/T1SpawnPoint[1-8]`, `T2SpawnPoint[1-8]` và `SpawnPoint/FFA/SpawnPoint[1-16]`. `MapService.GetSpawnPoints(TeamName, SpawnType)` nhận `SpawnType` từ mode config để tự động truy xuất đúng thư mục spawn point tương ứng.
 - **File liên quan:** [MapService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MapService.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
 
-### Chuẩn hóa vòng đời và quy ước Attribute InMatch vs Team
-- **Ngày:** 15-08-2026
-- **Chi tiết:** Đồng bộ toàn diện quy ước trạng thái: Attribute `InMatch` (boolean) là nguồn chân lý duy nhất xác định người chơi đang trực tiếp tham chiến (cả Team-based và FFA), trong khi `Team` chỉ mang ý nghĩa phân chia phe phái. Vòng đời `InMatch` được quản lý chặt chẽ: thiết lập khi vào trận (`RunSetup`), và bắt buộc thu hồi (`nil`) khi bị loại (`EliminatePlayer`), khi hết trận (`RunGameOver` / `ResetSession`), hoặc khi rời game (`PlayerRemoving`).
-- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
+### Chuẩn hóa Player State với Single Source of Truth (PlayerStateConfig & PlayerStateHelper)
+- **Ngày:** 17-08-2026
+- **Chi tiết:** Đóng gói toàn bộ logic đọc/ghi và quan sát trạng thái Player (`InMatch`, `Team`, `VictimUserId`, `EquippedIcicleSkinId`) vào bộ đôi `PlayerStateConfig` & `PlayerStateHelper` tại `ReplicatedStorage/Shared`. Client và Server dùng hàm chuẩn `PlayerStateHelper.IsInMatch(Player)`, `PlayerStateHelper.GetTeam(Player)`, `PlayerStateHelper.ObserveMatchState(Player, callback)` thay vì tự query trực tiếp Attribute string rời rạc. Giúp tự động hỗ trợ cả chế độ có Team và FFA mà không cần sửa hàng loạt script khi thay đổi cấu trúc trạng thái.
+- **File liên quan:** [PlayerStateConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/PlayerStateConfig.lua), [PlayerStateHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
 ### Đồng bộ phân phối HUD và điều phối GameMode xuống Client
 - **Ngày:** 15-08-2026
@@ -100,3 +100,10 @@
 - **Nguyên nhân:** Hàm `ShowPlayerStats` truy xuất biến cũ `TeamWonStats` đã bị đổi tên thành `TopPlayersStats`.
 - **Fix:** Sửa `TeamWonStats.Visible = false` thành `TopPlayersStats.Visible = false`.
 - **File liên quan:** [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua)
+
+### Lỗi mất âm thanh Swing ở cú vung vũ khí đầu tiên do khởi tạo Sound động
+- **Ngày:** 17-08-2026
+- **Vấn đề:** Khi vào trận, lần vung chuột đầu tiên của người chơi không phát ra âm thanh vung Icicle.
+- **Nguyên nhân:** Hàm `PreloadAssets` tạo `Sound` tạm rồi `:Destroy()` ngay. Mỗi lần vung chuột, script tạo mới `Instance.new("Sound")` và gọi `:Play()` ngay khi buffer audio chưa nạp vào sound stream của client.
+- **Fix:** Khởi tạo sẵn một Sound Pool (các instance `Sound` gắn cố định trong `Hitbox`), nạp trước bằng `ContentProvider:PreloadAsync` và giữ nguyên trong bộ nhớ. Khi vung chỉ cần reset `TimePosition = 0` và gọi `:Play()`, kết hợp cache `AnimationTrack` trên `Animator`.
+- **File liên quan:** [IcicleScript.client.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua)

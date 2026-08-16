@@ -33,55 +33,71 @@ local AudioConfig      = require(
 		:WaitForChild("Config")
 		:WaitForChild("AudioConfig")
 )
+local PlayerStateHelper = require(
+	ReplicatedStorage:WaitForChild("Shared")
+		:WaitForChild("Tools")
+		:WaitForChild("PlayerStateHelper")
+)
 
 -- Chờ Hitbox từ template
 local Hitbox           = Tool:WaitForChild("Hitbox")
 local COOLDOWN         = GameConfig.Tool.IcicleCooldown
 
-local _IsOnCooldown      = false
-local _CurrentSwingTrack = nil  -- Lưu Track đang chạy để dừng khi Unequip
-local _HitboxConnection  = nil  -- Heartbeat connection trong cửa sổ HitStart→HitEnd
+local _IsOnCooldown       = false
+local _CurrentSwingTrack   = nil  -- Lưu Track đang chạy để dừng khi Unequip
+local _HitboxConnection    = nil  -- Heartbeat connection trong cửa sổ HitStart→HitEnd
+local _preloadedSounds     = {}   -- { [AudioId] = Sound instance } lưu trữ sound đã nạp sẵn
+local _cachedSwingTracks   = {}   -- { [AnimId] = AnimationTrack } cache track đã load
 
 -- =========================================================
 -- PRIVATE: Preload Assets
 -- =========================================================
 
---- Nạp trước Animation và Audio để tránh trễ trong lần bấm Activated đầu tiên
+--- Nạp trước Animation và Audio vào bộ nhớ để 100% phát ngay từ cú vung đầu tiên
 local function PreloadAssets()
-	local IcicleSkinId = Player:GetAttribute("EquippedIcicleSkinId") or "Default"
+	local IcicleSkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player)
 	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
 	local Audios = AudioConfig.GetSwingAudios(IcicleSkinId)
 
 	local ItemsToPreload = {}
 
+	-- 1. Nạp và giữ sẵn các Sound instances trong Hitbox
+	for _, AudioId in ipairs(Audios) do
+		if not _preloadedSounds[AudioId] or not _preloadedSounds[AudioId].Parent then
+			local Sound = Instance.new("Sound")
+			Sound.Name                = "SwingSFX_" .. tostring(AudioId)
+			Sound.SoundId             = "rbxassetid://" .. tostring(AudioId)
+			Sound.RollOffMaxDistance  = 60
+			Sound.Volume              = 1
+			Sound.Parent              = Hitbox
+			_preloadedSounds[AudioId] = Sound
+			table.insert(ItemsToPreload, Sound)
+		end
+	end
+
+	-- 2. Nạp Animation
 	local Anim = Instance.new("Animation")
 	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
 	table.insert(ItemsToPreload, Anim)
-
-	for _, AudioId in ipairs(Audios) do
-		local Sound = Instance.new("Sound")
-		Sound.SoundId = "rbxassetid://" .. tostring(AudioId)
-		table.insert(ItemsToPreload, Sound)
-	end
 
 	pcall(function()
 		ContentProvider:PreloadAsync(ItemsToPreload)
 	end)
 
-	for _, Item in ipairs(ItemsToPreload) do
-		Item:Destroy()
-	end
+	Anim:Destroy()
 
-	-- Pre-load AnimationTrack lên Animator nếu Character đã có sẵn
+	-- 3. Pre-load AnimationTrack lên Animator nếu Character đã có sẵn
 	local Character = Player.Character
 	if Character then
 		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
 		if Humanoid then
 			local Animator = Humanoid:FindFirstChildOfClass("Animator")
-			if Animator then
+			if Animator and not _cachedSwingTracks[AnimId] then
 				local PreloadAnim = Instance.new("Animation")
 				PreloadAnim.AnimationId = "rbxassetid://" .. tostring(AnimId)
 				local Track = Animator:LoadAnimation(PreloadAnim)
+				Track.Looped = false
+				_cachedSwingTracks[AnimId] = Track
 				PreloadAnim:Destroy()
 			end
 		end
@@ -95,40 +111,40 @@ Tool.Equipped:Connect(function()
 	task.spawn(PreloadAssets)
 end)
 
+-- Khi Character thay đổi (respawn), dọn dẹp cache AnimationTrack cũ
+Player.CharacterAdded:Connect(function()
+	_cachedSwingTracks = {}
+end)
+
 -- =========================================================
 -- PRIVATE: Audio & Animation
 -- =========================================================
 
---- Phát swing audio ngẫu nhiên tại Character của local player (spatial)
---- Các player xung quanh sẽ nghe được nhờ Roblox replication Sound trong Character
+--- Phát swing audio ngẫu nhiên từ Sound Pool đã nạp sẵn
 local function PlaySwingAudio(IcicleSkinId)
-	local Character = Player.Character
-	if not Character then return end
-	local HRP = Character:FindFirstChild("HumanoidRootPart")
-	if not HRP then return end
-
 	local Audios = AudioConfig.GetSwingAudios(IcicleSkinId)
+	if not Audios or #Audios == 0 then return end
+
 	local ChosenId = Audios[math.random(1, #Audios)]
+	local Sound = _preloadedSounds[ChosenId]
 
-	local Sound = Instance.new("Sound")
-	Sound.SoundId            = "rbxassetid://" .. tostring(ChosenId)
-	Sound.RollOffMaxDistance = 60
-	Sound.Volume             = 1
-	Sound.Parent             = HRP
+	-- Fallback nếu sound chưa được tạo trong pool
+	if not Sound or not Sound.Parent then
+		Sound = Instance.new("Sound")
+		Sound.Name                = "SwingSFX_" .. tostring(ChosenId)
+		Sound.SoundId             = "rbxassetid://" .. tostring(ChosenId)
+		Sound.RollOffMaxDistance  = 60
+		Sound.Volume              = 1
+		Sound.Parent              = Hitbox
+		_preloadedSounds[ChosenId] = Sound
+	end
+
+	Sound.TimePosition = 0
 	Sound:Play()
-
-	-- Tự dọn sau khi phát xong (tối đa 5 giây)
-	task.delay(5, function()
-		if Sound and Sound.Parent then
-			Sound:Destroy()
-		end
-	end)
 end
 
 --- Play swing animation trên Humanoid của local player
---- Override Looped = false tại client để chặn loop vô hạn dù Studio set Loop
---- Trả về Track để caller gắn Track.Stopped fallback (dừng poll nếu Unequip giữa chừng)
---- CurrentSwingTrack được lưu ra ngoài scope để Unequipped handler có thể dừng
+--- Tái sử dụng track đã pre-load để đảm bảo 0ms độ trễ
 local function PlaySwingAnimation(IcicleSkinId)
 	local Character = Player.Character
 	if not Character then return nil end
@@ -138,33 +154,20 @@ local function PlaySwingAnimation(IcicleSkinId)
 	if not Animator then return nil end
 
 	local AnimId = AudioConfig.GetSwingAnimation(IcicleSkinId)
-	local Anim = Instance.new("Animation")
-	Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
+	local Track = _cachedSwingTracks[AnimId]
 
-	local Track = Animator:LoadAnimation(Anim)
-	Track.Looped = false  -- Override: chắc chắn không loop dù Studio có set Loop
-	_CurrentSwingTrack = Track
-	Track:Play()
-
-	-- Helper dọn dẹp Track và Anim
-	local function Cleanup()
-		if _CurrentSwingTrack == Track then
-			_CurrentSwingTrack = nil
-		end
-		Track:Stop()
-		Track:Destroy()
+	-- Nếu track chưa tồn tại hoặc Animator đã bị thay thế thì load lại
+	if not Track or not Track:IsDescendantOf(Animator) then
+		local Anim = Instance.new("Animation")
+		Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
+		Track = Animator:LoadAnimation(Anim)
+		Track.Looped = false
+		_cachedSwingTracks[AnimId] = Track
 		Anim:Destroy()
 	end
 
-	-- Dọn dẹp khi animation kết thúc tự nhiên
-	Track.Stopped:Connect(Cleanup)
-
-	-- Fallback: dọn dẹp sau tối đa 5 giây phòng Stopped không fire
-	task.delay(5, function()
-		if _CurrentSwingTrack == Track then
-			Cleanup()
-		end
-	end)
+	_CurrentSwingTrack = Track
+	Track:Play()
 
 	return Track
 end
@@ -215,7 +218,7 @@ local function StartHitboxPoll(HitPlayers)
 			-- Fallback: nếu không phải character, kiểm tra xem Model có phải Block Model không
 			-- Block Model được đánh dấu bằng attribute VictimUserId (set bởi FreezeService)
 			if not TargetPlayer then
-				local VictimUserId = TargetChar:GetAttribute("VictimUserId")
+				local VictimUserId = PlayerStateHelper.GetVictimUserId(TargetChar)
 				if VictimUserId then
 					TargetPlayer = game.Players:GetPlayerByUserId(VictimUserId)
 				end
@@ -243,7 +246,7 @@ Tool.Activated:Connect(function()
 	_IsOnCooldown = true
 
 	-- Đọc SkinId của Icicle đang trang bị (gán bởi server qua Attribute)
-	local IcicleSkinId = Player:GetAttribute("EquippedIcicleSkinId") or "Default"
+	local IcicleSkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player)
 
 	-- Bắt đầu animation (trả về Track để gắn marker signals)
 	local Track = PlaySwingAnimation(IcicleSkinId)
