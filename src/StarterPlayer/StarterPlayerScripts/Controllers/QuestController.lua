@@ -37,8 +37,6 @@ local _rewardAmount      = nil  -- RewardAnnouncement/AmountText (TextLabel)
 local _rewardOriginalSize = nil -- Kích thước ban đầu từ GUI (UDim2)
 local _templates         = nil  -- Templates (Folder)
 local _menuFrame         = nil  -- StarterGui/Menu (Frame — parent của Quest)
-local _navGui            = nil  -- NavigationButtons ScreenGui
-local _navButton         = nil  -- NavigationButtons/Buttons (Frame — ẩn khi Quest mở)
 
 -- Tab đang active: "Daily" hoặc "Milestone"
 local _currentTab = "Daily"
@@ -76,31 +74,17 @@ local function GetPlayerDataController()
 	return _playerDataController
 end
 
---- Lazy-require GameStateController để kiểm tra spectate
-local _gameStateController = nil
-local function GetGameStateController()
-	if not _gameStateController then
-		_gameStateController = require(script.Parent.GameStateController)
-	end
-	return _gameStateController
-end
-
---- Lazy-require SpectateController để tránh circular dependency
-local _spectateController = nil
-local function GetSpectateController()
-	if not _spectateController then
-		local Module = script.Parent:FindFirstChild("SpectateController")
+--- Lazy-require MenuController để điều phối mở/đóng cửa sổ
+local _menuController = nil
+local function GetMenuController()
+	if not _menuController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_spectateController = require(Module)
+			_menuController = require(Module)
 		end
 	end
-	return _spectateController
-end
-
---- Ẩn tất cả Frame con trong Menu (trừ frame đang mở)
---- @param ExceptFrame Instance | nil
-local function HideAllMenuFrames(ExceptFrame)
-	GuiHelper.HideOtherMenuFrames(_menuFrame, ExceptFrame)
+	return _menuController
 end
 
 --- Highlight tab button đang active
@@ -459,20 +443,11 @@ local function CloseQuest()
 	StopCountdownLoop()
 	StopAutoRefreshLoop()
 	_questGui.Visible = false
-	-- Khôi phục NavButton trừ khi đang spectate
-	if _navButton then
-		local SpecCtrl = GetSpectateController()
-		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
-		_navButton.Visible = not IsSpectating
-	end
 end
 
 local function OpenQuest()
 	if not _questGui then return end
 
-	-- Ẩn các frame khác trong Menu và NavButton
-	HideAllMenuFrames(_questGui)
-	if _navButton then _navButton.Visible = false end
 	_questGui.Visible = true
 
 	-- Reset tab về Daily khi mở mới
@@ -526,16 +501,27 @@ function QuestController:Init()
 	_rewardOriginalSize = _rewardAnnouncement.Size
 	_rewardAnnouncement.Visible = false
 
-	-- NavigationButtons
-	_navGui    = GuiHelper.GetNavigationGui()
-	_navButton = GuiHelper.GetNavButtonsContainer()
+	-- Đăng ký tab với MenuController
+	local MenuCtrl = GetMenuController()
+	if MenuCtrl then
+		MenuCtrl.RegisterTab("Quest", {
+			Open  = OpenQuest,
+			Close = CloseQuest,
+			Frame = _questGui,
+		})
+	end
 
 	-- ── Kết nối sự kiện ──
 
 	-- CloseButton
 	_closeButton.MouseButton1Click:Connect(function()
 		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-		CloseQuest()
+		local MenuC = GetMenuController()
+		if MenuC then
+			MenuC.CloseCurrentTab()
+		else
+			CloseQuest()
+		end
 	end)
 
 	-- Tab buttons
@@ -547,14 +533,6 @@ function QuestController:Init()
 		PlayGuiSound(AudioConfig.Gui.ButtonClick)
 		SwitchTab("Milestone")
 	end)
-
-	-- Navigation button mở Quest
-	local NavQuestBtn = GuiHelper.GetNavButton("Quest")
-	if NavQuestBtn then
-		NavQuestBtn.MouseButton1Click:Connect(OpenQuest)
-	else
-		warn("[QuestController] Không tìm thấy nút Quest trong NavigationButtons.")
-	end
 
 	-- Highlight tab mặc định
 	UpdateTabHighlight("Daily")

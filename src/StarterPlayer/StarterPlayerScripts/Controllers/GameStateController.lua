@@ -1,17 +1,12 @@
 -- GameStateController.lua (ModuleScript)
--- Điều khiển GUI GameState: cập nhật tên phase và thời gian đếm ngược
--- Đồng thời quản lý visibility của các lobby GUI (Menu, NavigationButtons)
--- theo phase: ẩn khi Ready/InGame, hiện lại khi Intermission/GameOver
--- GUI cần có: Frame/TimeText, Frame/StateText, Frame/TimeShadowText, Frame/StateShadowText
+-- Điều khiển GUI GameState HUD: cập nhật tên phase, thời gian đếm ngược và Frozen State indicator
+-- Đồng bộ trạng thái vào trận / về sảnh với MenuController, NavigationController và InGameGui
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
-local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
-local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
-local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -29,109 +24,36 @@ local StateText       = Frame:WaitForChild("StateText")
 local TimeShadowText  = Frame:WaitForChild("TimeShadowText")
 local StateShadowText = Frame:WaitForChild("StateShadowText")
 
--- Lobby GUIs (ẩn khi Ready/InGame)
-local MenuGui = GuiHelper.GetScreenGui("Menu")
-local NavGui  = GuiHelper.GetNavigationGui()
-
--- InGameGui và các thành phần gameplay HUD (quản lý ẩn/hiện theo phase)
+-- InGameGui (chỉ bật khi Ready, InGame, GameOver)
 local InGameGui        = GuiHelper.GetScreenGui("InGameGui")
 local PlayerStatus     = InGameGui and InGameGui:WaitForChild("PlayerStatus", 10)
 local ScoreBoard       = InGameGui and InGameGui:WaitForChild("ScoreBoard", 10)
 local ScoreBoardButton = InGameGui and InGameGui:FindFirstChild("ScoreBoardButton")
 
--- Inventory nằm bên trong Menu — lazy-require để tránh circular load
--- InventoryController được load sau bởi Main.client.lua
-local _inventoryController = nil
-local function GetInventoryController()
-	if not _inventoryController then
+-- Lazy-require MenuController để điều phối đóng/mở menu khi chuyển phase
+local _menuController = nil
+local function GetMenuController()
+	if not _menuController then
 		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("InventoryController")
+		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_inventoryController = require(Module)
+			_menuController = require(Module)
 		end
 	end
-	return _inventoryController
+	return _menuController
 end
 
--- Profile nằm bên trong Menu — lazy-require để tránh circular load
--- ProfileController được load sau bởi Main.client.lua
-local _profileController = nil
-local function GetProfileController()
-	if not _profileController then
+-- Lazy-require NavigationController để quản lý thanh nút điều hướng khi chuyển phase
+local _navigationController = nil
+local function GetNavigationController()
+	if not _navigationController then
 		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("ProfileController")
+		local Module = Controllers:FindFirstChild("NavigationController")
 		if Module then
-			_profileController = require(Module)
+			_navigationController = require(Module)
 		end
 	end
-	return _profileController
-end
-
--- Shop nằm bên trong Menu — lazy-require để tránh circular load
--- ShopController được load sau bởi Main.client.lua
-local _shopController = nil
-local function GetShopController()
-	if not _shopController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("ShopController")
-		if Module then
-			_shopController = require(Module)
-		end
-	end
-	return _shopController
-end
-
--- ItemRewardController — lazy-require để tránh circular load
-local _itemRewardController = nil
-local function GetItemRewardController()
-	if not _itemRewardController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("ItemRewardController")
-		if Module then
-			_itemRewardController = require(Module)
-		end
-	end
-	return _itemRewardController
-end
-
--- Spectate nằm bên trong Menu — lazy-require để tránh circular load
--- SpectateController được load sau bởi Main.client.lua
-local _spectateController = nil
-local function GetSpectateController()
-	if not _spectateController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("SpectateController")
-		if Module then
-			_spectateController = require(Module)
-		end
-	end
-	return _spectateController
-end
-
--- Quest nằm bên trong Menu — lazy-require để tránh circular load
-local _questController = nil
-local function GetQuestController()
-	if not _questController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("QuestController")
-		if Module then
-			_questController = require(Module)
-		end
-	end
-	return _questController
-end
-
--- PlayerDataController — lazy-require để làm mới hiển thị tiền khi cần
-local _playerDataController = nil
-local function GetPlayerDataController()
-	if not _playerDataController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("PlayerDataController")
-		if Module then
-			_playerDataController = require(Module)
-		end
-	end
-	return _playerDataController
+	return _navigationController
 end
 
 -- =========================================================
@@ -147,14 +69,14 @@ local PHASE_DISPLAY = {
 	GameOver     = "GAME OVER",
 }
 
--- Phase mà lobby GUI phải bị ẩn (chỉ áp dụng khi player đang trong trận, tức là có Team)
+-- Phase mà lobby GUI phải bị ẩn (chỉ áp dụng khi player đang trong trận, tức là có Team hoặc InMatch)
 local GAMEPLAY_PHASES = {
 	Ready    = true,
 	InGame   = true,
 	GameOver = true,  -- Ẩn GUI trong 6s đếm ngược sau trận, trước khi về Lobby
 }
 
--- Cache phase hiện tại để re-evaluate GUI khi Attribute Team thay đổi
+-- Cache phase hiện tại để re-evaluate GUI khi trạng thái player thay đổi
 local _lastPhase          = "Intermission"
 local _lastTimeRemaining  = 0
 local _lastIsFrozenState  = false
@@ -165,12 +87,6 @@ local _scoreboardType     = "TwoTeams"
 -- HELPERS
 -- =========================================================
 
---- Phát âm thanh GUI bất đồng bộ qua AudioHelper
---- @param SoundId number
-local function PlayGuiSound(SoundId)
-	AudioHelper.PlayGuiSound(SoundId)
-end
-
 local function FormatTime(Seconds)
 	local M = math.floor(Seconds / 60)
 	local S = Seconds % 60
@@ -178,59 +94,21 @@ local function FormatTime(Seconds)
 end
 
 --- Ẩn/hiện các lobby GUI theo phase và trạng thái team của LocalPlayer
---- Spectator (chưa có team) luôn thấy GUI dù ở phase nào
-local function SetLobbyGuisVisible(Visible)
-	if MenuGui then MenuGui.Enabled = Visible end
-
-	-- NavGui: chỉ hiện khi Visible = true VÀ spectator không đang trong chế độ spectate
-	-- Tránh conflict với SpectateController (SpectateController tự quản lý NavGui.Enabled)
-	if NavGui then
-		local IsSpectating = false
-		local SpecCtrl = GetSpectateController()
-		if SpecCtrl and SpecCtrl.IsSpectating then
-			IsSpectating = SpecCtrl.IsSpectating()
-		end
-		NavGui.Enabled = Visible and not IsSpectating
+--- Spectator (chưa có team / không trong trận) luôn thấy GUI dù ở phase nào
+local function UpdateLobbyGuisVisibility(IsLobbyVisible)
+	local MenuCtrl = GetMenuController()
+	if MenuCtrl and MenuCtrl.SetVisible then
+		MenuCtrl.SetVisible(IsLobbyVisible)
 	end
 
-	if Visible then
-		-- Làm mới số tiền hiển thị khi bật lại Lobby GUI
-		local PlayerDataCtrl = GetPlayerDataController()
-		if PlayerDataCtrl and PlayerDataCtrl.UpdateMoneyDisplay then
-			PlayerDataCtrl.UpdateMoneyDisplay()
-		end
-	else
-		-- Khi vào trận: buộc đóng Inventory, Profile, Shop, Spectate và hiệu ứng ItemReward nếu đang mở
-		local InvCtrl = GetInventoryController()
-		if InvCtrl then
-			InvCtrl.SetVisible(false)
-		end
-		local ProfCtrl = GetProfileController()
-		if ProfCtrl then
-			ProfCtrl.SetVisible(false)
-		end
-		local ShopCtrl = GetShopController()
-		if ShopCtrl then
-			ShopCtrl.SetVisible(false)
-		end
-		local SpecCtrl = GetSpectateController()
-		if SpecCtrl then
-			SpecCtrl.SetVisible(false)
-		end
-		local QuestCtrl = GetQuestController()
-		if QuestCtrl then
-			QuestCtrl.SetVisible(false)
-		end
-		-- Reset hiệu ứng mở rương nếu đang chạy (phần thưởng vẫn an toàn vì đã được trao trước đó)
-		local RewardCtrl = GetItemRewardController()
-		if RewardCtrl then
-			RewardCtrl.Reset()
-		end
+	local NavCtrl = GetNavigationController()
+	if NavCtrl and NavCtrl.SetVisible then
+		NavCtrl.SetVisible(IsLobbyVisible)
 	end
 end
 
 local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
-	-- Cập nhật cache để re-evaluate khi Attribute Team thay đổi
+	-- Cập nhật cache để re-evaluate khi Attribute thay đổi
 	_lastPhase         = Phase
 	_lastTimeRemaining = TimeRemaining
 	_lastIsFrozenState = IsFrozenState
@@ -252,11 +130,11 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	-- Kiểm tra xem LocalPlayer có đang trong trận không (hỗ trợ cả mode có team và FFA)
 	local IsInMatch = PlayerStateHelper.IsInMatch(LocalPlayer)
 	if IsInMatch then
-		-- Player trong trận: ẩn/hiện theo phase
-		SetLobbyGuisVisible(not GAMEPLAY_PHASES[Phase])
+		-- Player trong trận: ẩn khi vào gameplay phases (Ready, InGame, GameOver)
+		UpdateLobbyGuisVisibility(not GAMEPLAY_PHASES[Phase])
 	else
-		-- Spectator (chưa trong trận): luôn hiện GUI để đổi skin
-		SetLobbyGuisVisible(true)
+		-- Spectator (chưa trong trận): luôn hiện GUI để đổi skin / xem shop
+		UpdateLobbyGuisVisibility(true)
 	end
 
 	-- Quản lý hiển thị InGameGui và các gameplay HUD con
@@ -288,16 +166,6 @@ local GameStateController = {}
 function GameStateController:Init()
 	-- Ngăn GUI reset khi player chết (respawn)
 	GameStateGui.ResetOnSpawn = false
-	if NavGui then
-		NavGui.ResetOnSpawn = false
-	end
-
-	-- Bind SFX cho các Button con/cháu trong NavigationButtons
-	-- Mỗi button con/cháu (kể cả trong Extra): MouseEnter → MouseEnter | MouseButton1Click → ButtonClick
-	GuiHelper.BindAllNavButtonsSound(AudioConfig.Gui.ButtonClick, AudioConfig.Gui.MouseEnter)
-
-	-- Bind Scale Animation (Hover / Press) cho tất cả các nút trong NavigationButtons
-	GuiHelper.BindAllNavButtonsAnimation()
 
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	local SetGameModeEvent     = RemoteDefinitions.GetEvent("SetGameMode")

@@ -25,12 +25,36 @@ local Camera      = workspace.CurrentCamera
 -- Biến sẽ được gán trong Init() sau khi GUI đã load xong
 local MenuGui
 local SpectateGui
-local NavGui
 local CloseButton
 local NextButton
 local BackButton
 local PlayerNameText
-local SpectateButton
+
+-- Lazy-require MenuController để đóng menu khi bắt đầu Spectate
+local _menuController = nil
+local function GetMenuController()
+	if not _menuController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("MenuController")
+		if Module then
+			_menuController = require(Module)
+		end
+	end
+	return _menuController
+end
+
+-- Lazy-require NavigationController để ẩn/hiện thanh nút điều hướng
+local _navigationController = nil
+local function GetNavigationController()
+	if not _navigationController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("NavigationController")
+		if Module then
+			_navigationController = require(Module)
+		end
+	end
+	return _navigationController
+end
 
 -- =========================================================
 -- STATE
@@ -285,13 +309,17 @@ function SpectateController.SetVisible(Visible)
 		-- Lưu camera hiện tại
 		_savedCameraSubject = Camera.CameraSubject
 
-		-- Hiện Spectate GUI, ẩn NavigationButtons
+		-- Hiện Spectate GUI, ẩn NavigationButtons và đóng các menu khác
 		if SpectateGui then SpectateGui.Visible = true end
-		if NavGui then NavGui.Enabled = false end
+		
+		local MenuCtrl = GetMenuController()
+		if MenuCtrl then
+			MenuCtrl.CloseAll()
+		end
 
-		-- Ẩn các Frame khác trong Menu (Inventory, Profile, Shop, Quest)
-		if MenuGui then
-			GuiHelper.HideOtherMenuFrames(MenuGui, SpectateGui)
+		local NavCtrl = GetNavigationController()
+		if NavCtrl then
+			NavCtrl.SetVisible(false)
 		end
 
 		-- Focus vào target đầu tiên
@@ -317,7 +345,11 @@ function SpectateController.SetVisible(Visible)
 
 		-- Ẩn Spectate GUI, hiện lại NavigationButtons
 		if SpectateGui then SpectateGui.Visible = false end
-		if NavGui then NavGui.Enabled = true end
+
+		local NavCtrl = GetNavigationController()
+		if NavCtrl then
+			NavCtrl.SetVisible(true)
+		end
 
 		-- Khôi phục camera
 		RestoreCamera()
@@ -334,7 +366,6 @@ function SpectateController:Init()
 	-- Resolve toàn bộ GUI references
 	MenuGui     = GuiHelper.GetScreenGui("Menu")
 	SpectateGui = MenuGui and MenuGui:WaitForChild("Spectate")
-	NavGui      = GuiHelper.GetNavigationGui()
 
 	if SpectateGui then
 		CloseButton  = SpectateGui:WaitForChild("CloseButton")
@@ -343,15 +374,6 @@ function SpectateController:Init()
 		local PlayerNameFrame = SpectateGui:WaitForChild("PlayerName")
 		PlayerNameText = PlayerNameFrame:WaitForChild("PlayerNameText")
 		SpectateGui.Visible = false
-	end
-
-	SpectateButton = GuiHelper.GetNavButton("Spectate")
-
-	-- Kết nối nút Spectate trong NavigationButtons
-	if SpectateButton and SpectateButton:IsA("GuiButton") then
-		SpectateButton.MouseButton1Click:Connect(function()
-			SpectateController.SetVisible(true)
-		end)
 	end
 
 	-- Kết nối các nút điều khiển

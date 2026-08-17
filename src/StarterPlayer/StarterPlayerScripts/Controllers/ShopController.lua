@@ -42,7 +42,6 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local MenuGui = GuiHelper.GetScreenGui("Menu")
-local NavGui  = GuiHelper.GetNavigationGui()
 
 -- Shop frame nằm bên trong Menu
 local Shop = MenuGui and MenuGui:FindFirstChild("Shop", true)	
@@ -66,12 +65,6 @@ local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
 
 -- Folder chứa model 3D rương
 local ChestsFolder = Assets and Assets:FindFirstChild("Chests")
-
--- Nút mở Shop trong NavigationButtons
-local ShopNavButton = GuiHelper.GetNavButton("Shop")
-
--- Frame Buttons bên trong NavigationButtons (ẩn khi Shop mở, Stats vẫn hiện)
-local NavButton = GuiHelper.GetNavButtonsContainer()
 
 -- =========================================================
 -- STATE
@@ -104,21 +97,17 @@ local function GetItemRewardController()
 	return _itemRewardController
 end
 
---- Lazy-require SpectateController để tránh circular dependency
-local _spectateController = nil
-local function GetSpectateController()
-	if not _spectateController then
-		local Module = script.Parent:FindFirstChild("SpectateController")
+--- Lazy-require MenuController để điều phối mở/đóng cửa sổ
+local _menuController = nil
+local function GetMenuController()
+	if not _menuController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_spectateController = require(Module)
+			_menuController = require(Module)
 		end
 	end
-	return _spectateController
-end
-
---- Ẩn tất cả Frame con trong Menu ngoại trừ Shop
-local function HideAllMenuFrames()
-	GuiHelper.HideOtherMenuFrames(MenuGui, Shop)
+	return _menuController
 end
 
 --- Dọn dẹp ViewportFrame tránh memory leak (cả Camera lẫn Model)
@@ -427,6 +416,20 @@ local function RenderChestList(Type)
 	task.defer(CheckLazyQueue)
 end
 
+local function OpenShop()
+	if not Shop then return end
+	Shop.Visible = true
+	_currentTab = "Icicle"
+	UpdateTabHighlight("Icicle")
+	RenderChestList("Icicle")
+end
+
+local function CloseShop()
+	if not Shop then return end
+	Shop.Visible = false
+	ClearChestList()
+end
+
 -- =========================================================
 -- PUBLIC API
 -- =========================================================
@@ -438,20 +441,10 @@ local ShopController = {}
 function ShopController.SetVisible(Visible)
 	if not Shop then return end
 	if Visible then
-		-- Ẩn các Frame Menu anh em và NavButton trước khi mở Shop
-		HideAllMenuFrames()
-		if NavButton then NavButton.Visible = false end
+		OpenShop()
 	else
-		-- Dọn dẹp lazy render khi đóng
-		ClearChestList()
-		-- Khôi phục NavButton trừ khi đang spectate
-		if NavButton then
-			local SpecCtrl = GetSpectateController()
-			local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
-			NavButton.Visible = not IsSpectating
-		end
+		CloseShop()
 	end
-	Shop.Visible = Visible
 end
 
 function ShopController:Init()
@@ -460,19 +453,29 @@ function ShopController:Init()
 		return
 	end
 
-	-- Ngăn GUI reset khi player chết
-	if MenuGui then
-		MenuGui.ResetOnSpawn = false
-	end
-
 	-- Shop bắt đầu ẩn
 	Shop.Visible = false
+
+	-- Đăng ký tab với MenuController
+	local MenuCtrl = GetMenuController()
+	if MenuCtrl then
+		MenuCtrl.RegisterTab("Shop", {
+			Open  = OpenShop,
+			Close = CloseShop,
+			Frame = Shop,
+		})
+	end
 
 	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ──────────────────────────
 	if ShopClose then
 		ShopClose.MouseButton1Click:Connect(function()
 			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-			ShopController.SetVisible(false)
+			local MenuC = GetMenuController()
+			if MenuC then
+				MenuC.CloseCurrentTab()
+			else
+				CloseShop()
+			end
 		end)
 	end
 
@@ -495,36 +498,6 @@ function ShopController:Init()
 			UpdateTabHighlight("Block")
 			RenderChestList("Block")
 		end)
-	end
-
-	-- ─── NAVIGATION BUTTON MỞ SHOP ───────────────────────────
-	if not ShopNavButton then
-		ShopNavButton = GuiHelper.GetNavButton("Shop")
-	end
-	if not NavButton then
-		NavButton = GuiHelper.GetNavButtonsContainer()
-	end
-
-	if ShopNavButton then
-		local NavBtn = ShopNavButton:IsA("GuiButton")
-			and ShopNavButton
-			or ShopNavButton:FindFirstChildOfClass("ImageButton")
-			or ShopNavButton:FindFirstChildOfClass("TextButton")
-		if NavBtn then
-			NavBtn.MouseButton1Click:Connect(function()
-				-- Toggle: nếu đang mở thì đóng, ngược lại mở
-				local IsOpen = Shop.Visible
-				ShopController.SetVisible(not IsOpen)
-				if not IsOpen then
-					-- Mở Shop: reset về tab mặc định và render
-					_currentTab = "Icicle"
-					UpdateTabHighlight("Icicle")
-					RenderChestList("Icicle")
-				end
-			end)
-		end
-	else
-		warn("[ShopController] Không tìm thấy nút Shop trong NavigationButtons.")
 	end
 
 	-- Highlight tab mặc định

@@ -155,39 +155,6 @@ function GuiHelper.BindButtonSound(Button, ClickSoundId, HoverSoundId)
 	end
 end
 
---- Gắn âm thanh Hover/Click cho tất cả các nút con/cháu trong container Buttons (kể cả trong Extra)
---- Đồng thời tự động lắng nghe các nút con xuất hiện sau qua DescendantAdded
---- @param ClickSoundId number?
---- @param HoverSoundId number?
-function GuiHelper.BindAllNavButtonsSound(ClickSoundId, HoverSoundId)
-	local Container = GuiHelper.GetNavButtonsContainer(GuiConfig.Timeouts.ShortWait)
-	if not Container then return end
-
-	for _, Descendant in ipairs(Container:GetDescendants()) do
-		if Descendant:IsA("GuiButton") then
-			GuiHelper.BindButtonSound(Descendant, ClickSoundId, HoverSoundId)
-		end
-	end
-
-	-- Lắng nghe các element xuất hiện sau (do streaming hoặc clone)
-	Container.DescendantAdded:Connect(function(Descendant)
-		if Descendant:IsA("GuiButton") then
-			GuiHelper.BindButtonSound(Descendant, ClickSoundId, HoverSoundId)
-		end
-	end)
-end
-
---- Ẩn tất cả các Frame con trong MenuGui ngoại trừ Frame được chỉ định
---- @param MenuGui Instance
---- @param ExceptFrame Frame? Frame cần giữ hiển thị (hoặc nil để ẩn tất cả)
-function GuiHelper.HideOtherMenuFrames(MenuGui, ExceptFrame)
-	if not MenuGui then return end
-	for _, Child in ipairs(MenuGui:GetChildren()) do
-		if Child:IsA("Frame") and Child ~= ExceptFrame then
-			Child.Visible = false
-		end
-	end
-end
 
 -- =========================================================
 -- ANIMATION / TWEEN UTILITIES (UIScale BASED)
@@ -420,63 +387,5 @@ function GuiHelper.BindButtonScale(Button, TargetElement, CustomScaleConfig)
 	end)
 end
 
---- Gắn hiệu ứng Hover/Press Animation cho tất cả các nút trong NavigationButtons
---- Tự động nhận diện cấu trúc từng nút (Background + Icon + Text) để scale toàn bộ nút
---- @param CustomScaleConfig table?
-function GuiHelper.BindAllNavButtonsAnimation(CustomScaleConfig)
-	local NavGui = GuiHelper.GetNavigationGui(GuiConfig.Timeouts.ShortWait)
-	if not NavGui then return end
-
-	local BoundRoots = {}
-
-	local function BindNavItem(ItemRoot)
-		if not ItemRoot or not ItemRoot:IsA("GuiObject") or BoundRoots[ItemRoot] then return end
-		if ItemRoot.Name == "Buttons" or ItemRoot.Name == "Extra" or ItemRoot.Name == "Stats" then return end
-
-		BoundRoots[ItemRoot] = true
-
-		if ItemRoot:IsA("GuiButton") then
-			GuiHelper.BindButtonScale(ItemRoot, ItemRoot, CustomScaleConfig)
-		end
-
-		for _, Descendant in ipairs(ItemRoot:GetDescendants()) do
-			if Descendant:IsA("GuiButton") then
-				GuiHelper.BindButtonScale(Descendant, ItemRoot, CustomScaleConfig)
-			end
-		end
-	end
-
-	-- Quét các Container chính trong NavigationButtons (Buttons, Extra...)
-	local ButtonsContainer = GuiHelper.GetNavButtonsContainer(GuiConfig.Timeouts.ShortWait)
-	if ButtonsContainer then
-		for _, Child in ipairs(ButtonsContainer:GetChildren()) do
-			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
-				BindNavItem(Child)
-			end
-		end
-
-		ButtonsContainer.ChildAdded:Connect(function(Child)
-			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
-				BindNavItem(Child)
-			end
-		end)
-	end
-
-	local ExtraContainerName = GuiConfig.NavContainers.Extra
-	local ExtraContainer = NavGui:FindFirstChild(ExtraContainerName, true)
-	if ExtraContainer then
-		for _, Child in ipairs(ExtraContainer:GetChildren()) do
-			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
-				BindNavItem(Child)
-			end
-		end
-
-		ExtraContainer.ChildAdded:Connect(function(Child)
-			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
-				BindNavItem(Child)
-			end
-		end)
-	end
-end
 
 return GuiHelper

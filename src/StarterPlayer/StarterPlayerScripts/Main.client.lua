@@ -12,6 +12,8 @@ require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 -- Bước 2: Load tất cả controller theo thứ tự
 local Controllers = script.Parent:WaitForChild("Controllers")
 
+local MenuController          = require(Controllers:WaitForChild("MenuController"))
+local NavigationController    = require(Controllers:WaitForChild("NavigationController"))
 local GameStateController      = require(Controllers:WaitForChild("GameStateController"))
 local GameStatisticController  = require(Controllers:WaitForChild("GameStatisticController"))
 local HighlightController      = require(Controllers:WaitForChild("HighlightController"))
@@ -30,13 +32,13 @@ local AccoladesController      = require(Controllers:WaitForChild("AccoladesCont
 local RoundLoadingScreenController  = require(Controllers:WaitForChild("RoundLoadingScreenController"))
 
 -- Bước 3: Init tất cả controller
--- (Init theo thứ tự — GameState trước để UI sẵn sàng ngay khi data đến)
--- PlayerDataController phải Init trước InventoryController, ProfileController và ShopController để cache data sẵn sàng
--- MusicController sau SpectateController để lazy-require hoạt động đúng
+-- MenuController & NavigationController khởi tạo trước để sẵn sàng đăng ký tab và bind sự kiện
+MenuController:Init()
+NavigationController:Init()
+PlayerDataController:Init()
 GameStateController:Init()
 GameStatisticController:Init()
 HighlightController:Init()
-PlayerDataController:Init()
 InventoryController:Init()
 ProfileController:Init()
 ShopController:Init()

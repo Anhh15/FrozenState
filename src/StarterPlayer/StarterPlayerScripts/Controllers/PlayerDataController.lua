@@ -17,17 +17,18 @@ local LocalPlayer = Players.LocalPlayer
 local _localData  = {}    -- Cache dữ liệu player
 
 -- =========================================================
--- GUI REFERENCES (NavigationButtons — Money label)
--- =========================================================
-
-local PlayerGui = GuiHelper.GetPlayerGui()
-
--- Tìm Money label trong NavigationButtons GUI
-local function FindMoneyLabel()
-	return GuiHelper.GetMoneyLabel(GuiConfig.Timeouts.ShortWait)
+-- Lazy-require NavigationController để cập nhật GUI hiển thị tiền
+local _navigationController = nil
+local function GetNavigationController()
+	if not _navigationController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("NavigationController")
+		if Module then
+			_navigationController = require(Module)
+		end
+	end
+	return _navigationController
 end
-
-local MoneyLabel = nil
 
 local function UpdateMoneyDisplay(Amount)
 	local DisplayAmount = Amount
@@ -35,13 +36,9 @@ local function UpdateMoneyDisplay(Amount)
 		DisplayAmount = (_localData and _localData.Money) or 0
 	end
 
-	-- Kiểm tra tham chiếu: nếu chưa có hoặc không còn nằm trong PlayerGui, tìm lại
-	if not MoneyLabel or not MoneyLabel:IsDescendantOf(PlayerGui) then
-		MoneyLabel = FindMoneyLabel()
-	end
-
-	if MoneyLabel then
-		MoneyLabel.Text = tostring(DisplayAmount)
+	local NavCtrl = GetNavigationController()
+	if NavCtrl and NavCtrl.UpdateMoneyDisplay then
+		NavCtrl.UpdateMoneyDisplay(DisplayAmount)
 	end
 end
 

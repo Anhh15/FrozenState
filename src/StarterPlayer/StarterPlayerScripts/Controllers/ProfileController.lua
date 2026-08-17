@@ -44,7 +44,6 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local MenuGui = GuiHelper.GetScreenGui("Menu")
-local NavGui  = GuiHelper.GetNavigationGui()
 
 -- Profile frame nằm trong Menu
 local Profile      = MenuGui and MenuGui:FindFirstChild("Profile", true)
@@ -68,21 +67,17 @@ local function PlayGuiSound(SoundId)
 	GuiHelper.PlayGuiSound(SoundId)
 end
 
---- Lazy-require SpectateController để tránh circular dependency
-local _spectateController = nil
-local function GetSpectateController()
-	if not _spectateController then
-		local Module = script.Parent:FindFirstChild("SpectateController")
+--- Lazy-require MenuController để điều phối mở/đóng cửa sổ
+local _menuController = nil
+local function GetMenuController()
+	if not _menuController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_spectateController = require(Module)
+			_menuController = require(Module)
 		end
 	end
-	return _spectateController
-end
-
---- Ẩn tất cả Frame con trong Menu ngoại trừ Profile
-local function HideAllMenuFrames()
-	GuiHelper.HideOtherMenuFrames(MenuGui, Profile)
+	return _menuController
 end
 
 local function GetStatValue(StatName)
@@ -95,12 +90,6 @@ end
 local Assets       = ReplicatedStorage:FindFirstChild("Assets")
 local GuiFolder    = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
 local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
-
--- NavigationButtons mở Profile
-local ProfileNavButton = GuiHelper.GetNavButton("Profile")
-
--- Frame Buttons bên trong NavigationButtons (ẩn khi Profile mở, Stats vẫn hiện)
-local NavButton = GuiHelper.GetNavButtonsContainer()
 
 -- =========================================================
 -- STATE
@@ -286,10 +275,6 @@ end
 local function OpenProfile()
 	if not Profile then return end
 
-	-- Ẩn các Frame Menu anh em và NavButton trước khi mở Profile
-	HideAllMenuFrames()
-	if NavButton then NavButton.Visible = false end
-
 	Profile.Visible = true
 
 	-- Hiển thị dữ liệu cũ trước từ cache để tránh giao diện trống/trễ
@@ -310,13 +295,6 @@ local function CloseProfile()
 	if not Profile then return end
 	Profile.Visible = false
 	ClearItemList()
-	-- Khôi phục NavButton trừ khi đang spectate
-	-- Khôi phục NavButton trừ khi đang spectate
-	if NavButton then
-		local SpecCtrl = GetSpectateController()
-		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
-		NavButton.Visible = not IsSpectating
-	end
 end
 
 -- =========================================================
@@ -334,25 +312,26 @@ function ProfileController:Init()
 	-- Ẩn mặc định khi khởi tạo
 	Profile.Visible = false
 
-	if not ProfileNavButton then
-		ProfileNavButton = GuiHelper.GetNavButton("Profile")
-	end
-	if not NavButton then
-		NavButton = GuiHelper.GetNavButtonsContainer()
-	end
-
-	-- Nút mở Profile từ NavigationButtons
-	if ProfileNavButton then
-		ProfileNavButton.MouseButton1Click:Connect(OpenProfile)
-	else
-		warn("[ProfileController] Không tìm thấy nút Profile trong NavigationButtons.")
+	-- Đăng ký tab với MenuController
+	local MenuCtrl = GetMenuController()
+	if MenuCtrl then
+		MenuCtrl.RegisterTab("Profile", {
+			Open  = OpenProfile,
+			Close = CloseProfile,
+			Frame = Profile,
+		})
 	end
 
 	-- Nút đóng Profile
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
 			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-			CloseProfile()
+			local MenuC = GetMenuController()
+			if MenuC then
+				MenuC.CloseCurrentTab()
+			else
+				CloseProfile()
+			end
 		end)
 	end
 

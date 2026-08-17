@@ -41,8 +41,7 @@ local GuiHelper             = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui          = GuiHelper.GetScreenGui("Menu")
-local NavGui           = GuiHelper.GetNavigationGui()
+local MenuGui = GuiHelper.GetScreenGui("Menu")
 
 -- Inventory frame nằm bên trong Menu
 local Inventory        = MenuGui and MenuGui:FindFirstChild("Inventory", true)
@@ -63,12 +62,6 @@ local SelectionName    = ItemSelection and ItemSelection:FindFirstChild("NameTex
 local SelectionRarity  = ItemSelection and ItemSelection:FindFirstChild("RarityText")
 local EquipButton      = ItemSelection and ItemSelection:FindFirstChild("EquipButton")
 
--- NavigationButtons mở Inventory
-local InventoryNavButton = GuiHelper.GetNavButton("Inventory")
-
--- Frame Buttons bên trong NavigationButtons (ẩn khi Inventory mở, Stats vẫn hiện)
-local NavButton = GuiHelper.GetNavButtonsContainer()
-
 -- =========================================================
 -- STATE
 -- =========================================================
@@ -87,21 +80,17 @@ end
 -- HELPERS
 -- =========================================================
 
---- Lazy-require SpectateController để tránh circular dependency
-local _spectateController = nil
-local function GetSpectateController()
-	if not _spectateController then
-		local Module = script.Parent:FindFirstChild("SpectateController")
+--- Lazy-require MenuController để điều phối mở/đóng cửa sổ
+local _menuController = nil
+local function GetMenuController()
+	if not _menuController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_spectateController = require(Module)
+			_menuController = require(Module)
 		end
 	end
-	return _spectateController
-end
-
---- Ẩn tất cả Frame con trong Menu ngoại trừ Inventory
-local function HideAllMenuFrames()
-	GuiHelper.HideOtherMenuFrames(MenuGui, Inventory)
+	return _menuController
 end
 
 --- Dọn dẹp toàn bộ nội dung ViewportFrame để tránh memory leak
@@ -402,10 +391,6 @@ end
 local function OpenInventory()
 	if not Inventory then return end
 
-	-- Ẩn các Frame Menu anh em và NavButton trước khi mở Inventory
-	HideAllMenuFrames()
-	if NavButton then NavButton.Visible = false end
-
 	Inventory.Visible = true
 	SwitchTab(_currentTab)
 
@@ -423,12 +408,6 @@ local function CloseInventory()
 	Inventory.Visible = false
 	ClearItemList()
 	CleanViewport(SelectionViewport)
-	-- Khôi phục NavButton trừ khi đang spectate
-	if NavButton then
-		local SpecCtrl = GetSpectateController()
-		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
-		NavButton.Visible = not IsSpectating
-	end
 end
 
 -- =========================================================
@@ -446,25 +425,26 @@ function InventoryController:Init()
 	-- Đóng Inventory khi khởi tạo (đảm bảo trạng thái ban đầu là ẩn)
 	Inventory.Visible = false
 
-	if not InventoryNavButton then
-		InventoryNavButton = GuiHelper.GetNavButton("Inventory")
-	end
-	if not NavButton then
-		NavButton = GuiHelper.GetNavButtonsContainer()
-	end
-
-	-- Nút mở Inventory từ NavigationButtons
-	if InventoryNavButton then
-		InventoryNavButton.MouseButton1Click:Connect(OpenInventory)
-	else
-		warn("[InventoryController] Không tìm thấy nút Inventory trong NavigationButtons.")
+	-- Đăng ký tab với MenuController
+	local MenuCtrl = GetMenuController()
+	if MenuCtrl then
+		MenuCtrl.RegisterTab("Inventory", {
+			Open  = OpenInventory,
+			Close = CloseInventory,
+			Frame = Inventory,
+		})
 	end
 
 	-- Nút đóng Inventory
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
 			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-			CloseInventory()
+			local MenuC = GetMenuController()
+			if MenuC then
+				MenuC.CloseCurrentTab()
+			else
+				CloseInventory()
+			end
 		end)
 	end
 
