@@ -46,6 +46,22 @@ local function BroadcastGameState(Phase, TimeRemaining, IsFrozenState)
 	})
 end
 
+--- Lấy danh sách các người chơi đang thực sự còn sống (có Character, HRP và Health > 0)
+local function GetAlivePlayers()
+	local Alive = {}
+	for _, Player in ipairs(Players:GetPlayers()) do
+		local Character = Player.Character
+		if Character and Character.Parent then
+			local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+			local HRP = Character:FindFirstChild("HumanoidRootPart")
+			if Humanoid and Humanoid.Health > 0 and HRP then
+				table.insert(Alive, Player)
+			end
+		end
+	end
+	return Alive
+end
+
 --- Teleport player đến một trong các spawn point (ngẫu nhiên)
 local function TeleportToSpawn(Player, SpawnPoints)
 	if #SpawnPoints == 0 then return end
@@ -381,18 +397,25 @@ local function RunIntermission()
 end
 
 --- Setup: chọn mode, phân đội (nếu có), load map
+--- @return boolean -- Trả về true nếu setup thành công, false nếu không đủ người sống
 local function RunSetup()
 	_currentPhase = "Setup"
+	_earlyResult  = nil
 
 	-- Reset session
 	SessionService.ResetSession()
 	FreezeService.ResetRound()
 
+	-- Danh sách player còn sống thực sự tham gia trận này
+	local ActivePlayers = GetAlivePlayers()
+
+	if #ActivePlayers < GameConfig.Match.MinPlayers then
+		print(("[MatchService] ⚠️ Không đủ người chơi còn sống để bắt đầu trận (%d/%d)."):format(#ActivePlayers, GameConfig.Match.MinPlayers))
+		return false
+	end
+
 	-- Chọn mode cho vòng này
 	local ModeKey, Mode = PickMode()
-
-	-- Danh sách player tham gia trận này
-	local ActivePlayers = Players:GetPlayers()
 
 	-- Set Attribute "InMatch" để client biết player đang trong trận (dùng thay Team attribute ở FFA)
 	for _, Player in ipairs(ActivePlayers) do
@@ -429,6 +452,8 @@ local function RunSetup()
 
 	task.wait(GameConfig.GUI.RoundLoadingScreen.FadeInDuration)
 	task.wait(0.5)  -- buffer nhỏ để map load xong
+
+	return true
 end
 
 --- Ready: teleport + khóa di chuyển
@@ -437,11 +462,11 @@ local function RunReady()
 	local Duration = GameConfig.Phase.ReadyDuration
 	local ModeKey  = SessionService.GetCurrentModeKey()
 
-	-- Teleport theo SpawnType
+	-- Teleport theo SpawnType (chỉ teleport người chơi đang Normal và Character còn sống)
 	if GameModeHelper.GetSpawnType(ModeKey) == "FFA" then
 		local AllSpawns = MapService.GetSpawnPoints(nil, "FFA")
 		for _, Player in ipairs(Players:GetPlayers()) do
-			if Player.Character then
+			if SessionService.GetState(Player) == "Normal" and Player.Character then
 				TeleportToSpawn(Player, AllSpawns)
 			end
 			SetMovementLocked(Player, true)
@@ -452,7 +477,7 @@ local function RunReady()
 		for _, Player in ipairs(Players:GetPlayers()) do
 			local Team = SessionService.GetTeam(Player)
 			if not Team then continue end
-			if Player.Character then
+			if SessionService.GetState(Player) == "Normal" and Player.Character then
 				local Spawns = (Team == "Team1") and Team1Spawns or Team2Spawns
 				TeleportToSpawn(Player, Spawns)
 			end
@@ -460,8 +485,9 @@ local function RunReady()
 		end
 	end
 
-	-- Đếm ngược Ready
+	-- Đếm ngược Ready (kiểm tra ngắt sớm nếu đã có kết quả trận đấu do out/reset)
 	for t = Duration, 0, -1 do
+		if _earlyResult then break end
 		BroadcastGameState("Ready", t, false)
 		if t == 0 then break end
 		task.wait(1)
@@ -478,7 +504,12 @@ end
 --- InGame: tối đa InGameDuration giây, có thể kết thúc sớm
 local function RunInGame()
 	_currentPhase    = "InGame"
-	_earlyResult     = nil
+
+	-- Nếu đã có kết quả sớm từ Setup/Ready (ví dụ đối thủ out/reset sạch)
+	if _earlyResult then
+		return _earlyResult
+	end
+
 	local ModeKey    = SessionService.GetCurrentModeKey()
 	local Duration   = GameModeHelper.GetInGameDuration(ModeKey)
 	local FSTThresh  = GameModeHelper.GetFrozenStateThreshold(ModeKey)
@@ -490,11 +521,6 @@ local function RunInGame()
 
 	-- Cấp tool
 	IcicleService.GiveToolToAll()
-
-	-- Lắng nghe MatchEndSignal
-	local EndConn = SessionService.MatchEndSignal.Event:Connect(function(Result)
-		_earlyResult = Result
-	end)
 
 	for t = Duration, 0, -1 do
 		if _earlyResult then break end
@@ -511,8 +537,6 @@ local function RunInGame()
 		if t == 0 then break end
 		task.wait(1)
 	end
-
-	EndConn:Disconnect()
 
 	-- Tắt FrozenState nếu đã bật
 	if FrozenStateOn then
@@ -563,6 +587,9 @@ local function RunGameOver(Result)
 		end
 	end
 
+	-- Khoảng đệm nhỏ đảm bảo physics tọa độ lobby được đồng bộ trước khi xóa map
+	task.wait(0.2)
+
 	-- Dọn sạch IceBlock tàn dư
 	for _, Child in ipairs(workspace:GetChildren()) do
 		if Child.Name == "IceBlock" then
@@ -583,18 +610,18 @@ end
 
 local function GameLoop()
 	while true do
-		while #Players:GetPlayers() < GameConfig.Match.MinPlayers do
+		while #GetAlivePlayers() < GameConfig.Match.MinPlayers do
 			BroadcastGameState("Intermission", GameConfig.Phase.IntermissionDuration, false)
 			task.wait(1)
 		end
 
 		RunIntermission()
 
-		if #Players:GetPlayers() < GameConfig.Match.MinPlayers then
+		local SetupOk = RunSetup()
+		if not SetupOk then
 			continue
 		end
 
-		RunSetup()
 		RunReady()
 		local Result = RunInGame()
 		RunGameOver(Result)
@@ -622,6 +649,11 @@ function MatchService:Init()
 	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
 	SetGameModeEvent           = RemoteDefinitions.GetEvent("SetGameMode")
 
+	-- Đăng ký lắng nghe MatchEndSignal xuyên suốt vòng đời Service
+	SessionService.MatchEndSignal.Event:Connect(function(Result)
+		_earlyResult = Result
+	end)
+
 	-- Đăng ký lắng nghe Humanoid.Died
 	local function BindCharacterDeath(Player, Character)
 		if not Character then return end
@@ -629,7 +661,7 @@ function MatchService:Init()
 		if not Humanoid then return end
 
 		Humanoid.Died:Connect(function()
-			if (_currentPhase == "InGame" or _currentPhase == "Ready") and SessionService.IsMatchActive() then
+			if SessionService.IsMatchActive() then
 				FreezeService.EliminatePlayer(Player)
 			end
 		end)

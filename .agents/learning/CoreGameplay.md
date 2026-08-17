@@ -96,6 +96,16 @@
 - **Chi tiết:** Khi người chơi chết (Reset Character / Rơi khỏi map) hoặc thoát game (`PlayerRemoving`) trong phase InGame/Ready: Server gọi `FreezeService.EliminatePlayer` đặt trạng thái `"Dead"`, thu hồi Tool, xóa IceBlock, xóa `Team` attribute và kích hoạt `MatchEndSignal` nếu đội bị wipe. Người chơi chết được chuyển sang màn hình Spectator.
 - **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua)
 
+### Chuẩn hóa Xử lý Chết & Thoát game Xuyên suốt Vòng đời Trận đấu (Unified Death & Disconnect Lifecycle)
+- **Ngày:** 17-08-2026
+- **Chi tiết:** Quy về một mối xử lý: Bất kỳ người chơi nào chết hoặc thoát game trong lúc trận đang active (`Setup`, `Ready`, `InGame`) đều gọi chung `FreezeService.EliminatePlayer(Player)` để chuyển sang `Dead`, xóa `Team`, gỡ `InMatch = false`, thu tool và kích hoạt `CheckWinCondition()`. Khi respawn, họ chỉ xuất hiện ở Lobby làm Spectator. Tại `RunSetup()`, chỉ lọc những player thực sự còn sống (`Humanoid.Health > 0` và có HRP) qua `GetAlivePlayers()`, loại bỏ player đang chờ respawn khỏi `ActivePlayers`.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua)
+
+### Cơ chế Ngắt sớm Trận đấu (Early Termination) trong Ready & InGame
+- **Ngày:** 17-08-2026
+- **Chi tiết:** Lắng nghe `SessionService.MatchEndSignal` cố định ngay từ `MatchService:Init()` để không bỏ lọt signal thắng/thua xảy ra trong `Setup` hoặc `Ready` (do team bị wipe sớm hoặc out game). `RunReady()` kiểm tra `_earlyResult` trong vòng lặp countdown để ngắt sớm (`break`), và `RunInGame()` kiểm tra nếu đã có `_earlyResult` thì trả về ngay lập tức (không cấp tool, không đếm ngược 60s), giúp chuyển thẳng sang `GameOver` liền mạch.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua)
+
 ### Khóa cứng vị trí nhân vật bị đóng băng (Anchored HRP)
 - **Ngày:** 14-08-2026
 - **Chi tiết:** Đặt `HumanoidRootPart.Anchored = true` khi `FreezePlayer` để người chơi hoàn toàn đứng yên tại vị trí bị hit (kể cả trên không), ngăn nhân vật bị các player khác tông/đẩy đi do vật lý Roblox. Khôi phục `Anchored = false` khi `ThawPlayer` hoặc `ThawAll`.
@@ -153,3 +163,10 @@
 - **Nguyên nhân:** Client check `(Data.State == "Frozen")` nên bỏ qua trạng thái `"Dead"`. Ngoài ra `PlayerRemoving` thiếu broadcast `UpdatePlayerState`.
 - **Fix:** Đổi check thành `(Data.State == "Frozen" or Data.State == "Dead")` trên client và broadcast `UpdatePlayerState` với `State = "Dead"` khi `PlayerRemoving` trên server.
 - **File liên quan:** [ScoreBoardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStatusController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua)
+
+### Người chơi Kẹt ở Lobby nhưng vẫn có InMatch và Nhận Vũ khí khi Chết cận Chuyển Phase
+- **Ngày:** 17-08-2026
+- **Vấn đề:** Khi người chơi reset/chết ở giây cuối của Intermission, khi vào Setup họ vẫn được gán `InMatch = true`, nhưng khi sang Ready họ không được teleport vào map mà lại đứng ở Lobby, đến InGame vẫn nhận tool và đi lại tự do ở Lobby.
+- **Nguyên nhân:** (1) `Humanoid.Died` không gọi `EliminatePlayer` trong Intermission/Setup, (2) `RunSetup` đưa toàn bộ `Players:GetPlayers()` vào `InMatch` dù character đang chết, (3) `RunReady` chỉ teleport 1 lần duy nhất lúc đầu nên bỏ lỡ nhân vật mới respawn sau đó tại `SpawnLocation` của Lobby.
+- **Fix:** (1) Thêm `GetAlivePlayers()` trong `MatchService` để chỉ cho người có `Health > 0` tham gia `RunSetup()`, (2) Mở rộng `BindCharacterDeath` bắt chết trong toàn bộ thời gian `IsMatchActive = true`, (3) Lắng nghe `MatchEndSignal` xuyên suốt để ngắt sớm Ready/InGame, (4) Thêm đệm `task.wait(0.2)` trước khi `UnloadMap()` ở `RunGameOver` để tránh rơi void gây chết dây chuyền sang Intermission.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
