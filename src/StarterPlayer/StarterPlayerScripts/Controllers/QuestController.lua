@@ -9,6 +9,7 @@ local Debris            = game:GetService("Debris")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local QuestConfig       = require(ReplicatedStorage.Shared.Config.QuestConfig)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
@@ -57,14 +58,7 @@ local COLOR_INACTIVE = Color3.fromRGB(47, 47, 47)
 local TWEEN_INFO_IN  = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local TWEEN_INFO_OUT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
--- =========================================================
--- SFX
--- =========================================================
-
-local SFX_BUTTON_CLICK       = 7249903719
-local SFX_CLOSE_BUTTON_CLICK = 103307955424380
-local SFX_QUEST_REWARD       = 116439187028468
-
+--- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId)
 	GuiHelper.PlayGuiSound(SoundId)
 end
@@ -389,7 +383,7 @@ local function RenderQuestList(QuestList)
 					)
 
 					if Result and Result.Success then
-						PlayGuiSound(SFX_QUEST_REWARD)
+						PlayGuiSound(AudioConfig.Quest.RewardClaim)
 						ShowRewardAnnouncement(Result.RewardType, Result.RewardAmount)
 
 						task.spawn(function()
@@ -540,17 +534,17 @@ function QuestController:Init()
 
 	-- CloseButton
 	_closeButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 		CloseQuest()
 	end)
 
 	-- Tab buttons
 	_tabDaily.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.ButtonClick)
 		SwitchTab("Daily")
 	end)
 	_tabMilestone.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.ButtonClick)
 		SwitchTab("Milestone")
 	end)
 

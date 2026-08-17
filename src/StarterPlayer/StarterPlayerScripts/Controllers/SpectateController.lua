@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
@@ -48,13 +49,7 @@ local RequestSpectateTargetEvent
 local STREAM_WAIT_TIMEOUT  = 5    -- giây
 local STREAM_POLL_INTERVAL = 0.1  -- giây
 
--- =========================================================
--- SFX
--- =========================================================
-
-local SFX_BUTTON_CLICK       = 7249903719
-local SFX_CLOSE_BUTTON_CLICK = 103307955424380
-
+--- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId)
 	GuiHelper.PlayGuiSound(SoundId)
 end
@@ -361,17 +356,17 @@ function SpectateController:Init()
 
 	-- Kết nối các nút điều khiển
 	CloseButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 		SpectateController.SetVisible(false)
 	end)
 
 	NextButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.ButtonClick)
 		CycleNext()
 	end)
 
 	BackButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.ButtonClick)
 		CycleBack()
 	end)
 

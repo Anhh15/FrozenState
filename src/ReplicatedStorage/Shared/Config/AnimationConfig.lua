@@ -92,4 +92,36 @@ function AnimationConfig.GetPoseAnimation(BlockSkinId)
 	return AnimationConfig.Default.PoseAnimation
 end
 
+--- Thu thập tất cả Animation ID trong config để preload vào RAM
+--- @return table -- { number, ... }
+function AnimationConfig.GetAllAnimationIds()
+	local AnimIdSet = {}
+	local AnimIdList = {}
+
+	local function AddId(Id)
+		if type(Id) == "number" and not AnimIdSet[Id] then
+			AnimIdSet[Id] = true
+			table.insert(AnimIdList, Id)
+		end
+	end
+
+	if AnimationConfig.Default.SwingAnimation then
+		AddId(AnimationConfig.Default.SwingAnimation)
+	end
+	if AnimationConfig.Default.PoseAnimation then
+		AddId(AnimationConfig.Default.PoseAnimation)
+	end
+
+	for _, Override in pairs(AnimationConfig.Overrides) do
+		if Override.SwingAnimation then
+			AddId(Override.SwingAnimation)
+		end
+		if Override.PoseAnimation then
+			AddId(Override.PoseAnimation)
+		end
+	end
+
+	return AnimIdList
+end
+
 return AnimationConfig

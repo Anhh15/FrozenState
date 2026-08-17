@@ -24,6 +24,44 @@ local AudioConfig = {
 	},
 
 	-- =========================================================
+	-- ÂM THANH GIAO DIỆN (GUI)
+	-- =========================================================
+	Gui = {
+		ButtonClick      = 7249903719,       -- Âm thanh khi nhấn nút thông thường
+		MouseEnter       = 137872392480008,  -- Âm thanh khi hover chuột vào nút
+		CloseButtonClick = 103307955424380,  -- Âm thanh khi nhấn nút đóng giao diện (X)
+	},
+
+	-- =========================================================
+	-- ÂM THANH DANH HIỆU (ACCOLADES)
+	-- =========================================================
+	Accolades = {
+		Announcement     = 96102213526905,   -- Âm thanh khi đạt First Blood, Spree
+	},
+
+	-- =========================================================
+	-- ÂM THANH CỬA HÀNG (SHOP)
+	-- =========================================================
+	Shop = {
+		ChestBuy         = 113890702074571,  -- Âm thanh khi mua rương thành công
+		BuyFail          = 128827503277042,  -- Âm thanh khi mua thất bại (thiếu tiền)
+	},
+
+	-- =========================================================
+	-- ÂM THANH NHIỆM VỤ (QUEST)
+	-- =========================================================
+	Quest = {
+		RewardClaim      = 116439187028468,  -- Âm thanh khi nhận thưởng hoàn thành quest
+	},
+
+	-- =========================================================
+	-- ÂM THANH THỐNG KÊ (STATS & MATCH END)
+	-- =========================================================
+	Stats = {
+		Overall          = 119804136935260,  -- Âm thanh khi hiển thị bảng PlayerStats sau trận
+	},
+
+	-- =========================================================
 	-- ÂM THANH MẶC ĐỊNH
 	-- Dùng khi item trang bị không có override riêng
 	-- =========================================================
@@ -46,7 +84,7 @@ local AudioConfig = {
 }
 
 -- =========================================================
--- PUBLIC GETTERS
+-- PUBLIC GETTERS & UTILITIES
 -- =========================================================
 
 --- Lấy âm thanh swing theo SkinId (Icicle)
@@ -80,6 +118,38 @@ function AudioConfig.GetThawAudio(BlockSkinId)
 		return Override.ThawAudio
 	end
 	return AudioConfig.Default.ThawAudio
+end
+
+--- Thu thập tất cả Audio ID trong config để preload vào RAM
+--- @return table -- { number, ... }
+function AudioConfig.GetAllAudioIds()
+	local AudioIdSet = {}
+	local AudioIdList = {}
+
+	local function Collect(Value)
+		if type(Value) == "number" then
+			if not AudioIdSet[Value] then
+				AudioIdSet[Value] = true
+				table.insert(AudioIdList, Value)
+			end
+		elseif type(Value) == "table" then
+			for _, SubValue in pairs(Value) do
+				Collect(SubValue)
+			end
+		end
+	end
+
+	Collect(AudioConfig.Music)
+	Collect(AudioConfig.ItemReward)
+	Collect(AudioConfig.Gui)
+	Collect(AudioConfig.Accolades)
+	Collect(AudioConfig.Shop)
+	Collect(AudioConfig.Quest)
+	Collect(AudioConfig.Stats)
+	Collect(AudioConfig.Default)
+	Collect(AudioConfig.Overrides)
+
+	return AudioIdList
 end
 
 return AudioConfig

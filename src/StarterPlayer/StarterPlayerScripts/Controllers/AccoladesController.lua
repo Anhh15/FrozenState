@@ -8,6 +8,8 @@ local TweenService  = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 
 -- =========================================================
 -- CONFIG
@@ -19,8 +21,6 @@ local ACCOLADE_TEXT = {
 	FreezingSpree = "FREEZING SPREE!",
 	ThawingSpree  = "THAWING SPREE!",
 }
-
-local SFX_ACCOLADE = 96102213526905
 
 -- Thời lượng animation (giây)
 local ANIM_REAL_DURATION    = 0.5   -- Thực: zoom vào kích thước mặc định
@@ -49,14 +49,9 @@ local _HideThread       = nil
 -- PRIVATE
 -- =========================================================
 
---- Phát SFX Accolade (tự hủy sau khi phát)
+--- Phát SFX Accolade qua AudioHelper
 local function PlayAccoladeSound()
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SFX_ACCOLADE)
-	S.Volume  = 1
-	S.Parent  = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 5)
+	AudioHelper.Play2DSound(AudioConfig.Accolades.Announcement, 3, PlayerGui)
 end
 
 --- Hiển thị Announcement với animation zoom-in

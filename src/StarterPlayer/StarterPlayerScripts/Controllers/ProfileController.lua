@@ -26,13 +26,15 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlayerDataController = require(script.Parent.PlayerDataController)
-local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
-local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
-local GameConfig           = require(ReplicatedStorage.Shared.Config.GameConfig)
-local GuiConfig            = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local RemoteDefinitions     = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local PlayerDataController  = require(script.Parent.PlayerDataController)
+local ItemRegistry          = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+local RarityConfig          = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local AudioConfig           = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local GameConfig            = require(ReplicatedStorage.Shared.Config.GameConfig)
+local GuiConfig             = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
-local GuiHelper            = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local GuiHelper             = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -61,12 +63,7 @@ local GameWinsFrame    = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("G
 
 -- Tham chiếu nhanh các ValueText trong Stats
 
--- =========================================================
--- SFX
--- =========================================================
-
-local SFX_CLOSE_BUTTON_CLICK = 103307955424380
-
+--- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId)
 	GuiHelper.PlayGuiSound(SoundId)
 end
@@ -354,7 +351,7 @@ function ProfileController:Init()
 	-- Nút đóng Profile
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			CloseProfile()
 		end)
 	end

@@ -28,6 +28,7 @@ local ChestConfig          = require(ReplicatedStorage.Shared.Config.ChestConfig
 local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ShopConfig           = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local AudioConfig          = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig            = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController = require(script.Parent.PlayerDataController)
 local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportManager)
@@ -82,17 +83,9 @@ local _previewStates   = {}        -- [Frame] = { Amount: number } — trạng t
 local _lazyRenderQueue = {}        -- { Frame, ChestEntry } — cards chờ render viewport
 local _scrollConn      = nil       -- Connection theo dõi ChestScroll.CanvasPosition
 
--- =========================================================
--- SFX
--- =========================================================
-
-local SFX_BUTTON_CLICK       = 7249903719
-local SFX_CLOSE_BUTTON_CLICK = 103307955424380
-local SFX_CHEST_BUY          = 113890702074571
-local SFX_BUY_FAIL           = 128827503277042
-
+--- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId, Volume)
-	GuiHelper.PlayGuiSound(SoundId)
+	GuiHelper.PlayGuiSound(SoundId, Volume)
 end
 
 -- =========================================================
@@ -300,7 +293,7 @@ local function ExecuteBuy(ChestEntry, Amount)
 	local Result = BuyChestFn:InvokeServer(ChestEntry.Id, Amount)
 
 	if Result and Result.Success then
-		PlayGuiSound(SFX_CHEST_BUY, 10)
+		PlayGuiSound(AudioConfig.Shop.ChestBuy, 5)
 		-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
 		local RewardCtrl = GetItemRewardController()
 		if RewardCtrl and Result.ReceivedItems then
@@ -310,7 +303,7 @@ local function ExecuteBuy(ChestEntry, Amount)
 			PlayerDataController.RefreshData()
 		end)
 	else
-		PlayGuiSound(SFX_BUY_FAIL)
+		PlayGuiSound(AudioConfig.Shop.BuyFail)
 	end
 end
 
@@ -400,7 +393,7 @@ local function RenderChestList(Type)
 		-- Kết nối AmountAlterButton: vòng lặp MinAmount → MaxAmount → MinAmount
 		if AmountAlterButton then
 			local Conn = AmountAlterButton.MouseButton1Click:Connect(function()
-				PlayGuiSound(SFX_BUTTON_CLICK)
+				PlayGuiSound(AudioConfig.Gui.ButtonClick)
 				State.Amount = (State.Amount % MaxAmount) + 1
 				local AlterLabel = AmountAlterButton:FindFirstChild("Text")
 				if AlterLabel then
@@ -478,7 +471,7 @@ function ShopController:Init()
 	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ──────────────────────────
 	if ShopClose then
 		ShopClose.MouseButton1Click:Connect(function()
-			PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			ShopController.SetVisible(false)
 		end)
 	end
@@ -487,7 +480,7 @@ function ShopController:Init()
 	if IciclesTab then
 		IciclesTab.MouseButton1Click:Connect(function()
 			if _currentTab == "Icicle" then return end
-			PlayGuiSound(SFX_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			_currentTab = "Icicle"
 			UpdateTabHighlight("Icicle")
 			RenderChestList("Icicle")
@@ -497,7 +490,7 @@ function ShopController:Init()
 	if BlocksTab then
 		BlocksTab.MouseButton1Click:Connect(function()
 			if _currentTab == "Block" then return end
-			PlayGuiSound(SFX_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			_currentTab = "Block"
 			UpdateTabHighlight("Block")
 			RenderChestList("Block")

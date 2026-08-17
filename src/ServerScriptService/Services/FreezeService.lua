@@ -250,11 +250,13 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		BlockSkinId = Entry and Entry.Id or "Default"
 	end
 
-	-- Play freeze SFX spatial tại Character của victim
-	AudioHelper.PlaySpatialSound(Victim.Character, AudioConfig.GetFreezeAudio(BlockSkinId))
-
-	-- Báo victim client kích hoạt pose animation
-	PlayFreezeSFXEvent:FireClient(Victim, { BlockSkinId = BlockSkinId })
+	-- Broadcast đến tất cả Client để tự phát 3D SFX và kích hoạt pose animation phía Client
+	PlayFreezeSFXEvent:FireAllClients({
+		VictimPlayer    = Victim,
+		VictimCharacter = Victim.Character,
+		BlockSkinId     = BlockSkinId,
+		Attacker        = Attacker,
+	})
 
 	-- Victim bị đóng băng → reset cả 2 streak của victim
 	SessionService.ResetFreezeStreak(Victim)
@@ -350,11 +352,13 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 		BlockSkinId = Entry and Entry.Id or "Default"
 	end
 
-	-- Play thaw SFX spatial tại Character của victim
-	AudioHelper.PlaySpatialSound(Victim.Character, AudioConfig.GetThawAudio(BlockSkinId))
-
-	-- Báo victim client dừng pose animation
-	PlayThawSFXEvent:FireClient(Victim)
+	-- Broadcast đến tất cả Client để tự phát 3D SFX và dừng pose animation phía Client
+	PlayThawSFXEvent:FireAllClients({
+		VictimPlayer    = Victim,
+		VictimCharacter = Victim.Character,
+		BlockSkinId     = BlockSkinId,
+		Rescuer         = Rescuer,
+	})
 
 	-- Rescuer: tăng thaw stat + streak
 	SessionService.IncrementStat(Rescuer, "Thaws")
@@ -405,8 +409,12 @@ function FreezeService.ThawAll()
 			SessionService.SetState(Player, "Normal")
 			BroadcastPlayerState(Player)
 
-			-- Báo victim client dừng pose animation (cuối trận)
-			PlayThawSFXEvent:FireClient(Player)
+			-- Báo client dừng pose animation và phát âm thanh giải cứu (cuối trận)
+			PlayThawSFXEvent:FireAllClients({
+				VictimPlayer    = Player,
+				VictimCharacter = Char,
+				BlockSkinId     = "Default",
+			})
 		end
 	end
 end

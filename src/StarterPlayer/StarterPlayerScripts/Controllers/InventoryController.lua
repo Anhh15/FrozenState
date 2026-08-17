@@ -28,6 +28,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions     = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local ItemRegistry          = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig          = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local AudioConfig           = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig             = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController  = require(script.Parent.PlayerDataController)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
@@ -77,13 +78,7 @@ local _selectedEntry  = nil        -- Entry item đang được chọn trong Ite
 local _selectionModel = nil        -- Model đang render trong ItemSelection ViewportFrame
 local _listConnections = {}        -- Kết nối RenderItem (dọn dẹp khi re-render)
 
--- =========================================================
--- SFX
--- =========================================================
-
-local SFX_BUTTON_CLICK       = 7249903719
-local SFX_CLOSE_BUTTON_CLICK = 103307955424380
-
+--- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId)
 	GuiHelper.PlayGuiSound(SoundId)
 end
@@ -468,7 +463,7 @@ function InventoryController:Init()
 	-- Nút đóng Inventory
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			CloseInventory()
 		end)
 	end
@@ -476,13 +471,13 @@ function InventoryController:Init()
 	-- Tab switching
 	if IciclesTab then
 		IciclesTab.MouseButton1Click:Connect(function()
-			PlayGuiSound(SFX_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			SwitchTab("Icicle")
 		end)
 	end
 	if BlocksTab then
 		BlocksTab.MouseButton1Click:Connect(function()
-			PlayGuiSound(SFX_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			SwitchTab("Block")
 		end)
 	end
@@ -490,7 +485,7 @@ function InventoryController:Init()
 	-- Nút Equip
 	if EquipButton then
 		EquipButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(SFX_BUTTON_CLICK)
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			EquipCurrentItem()
 		end)
 	end

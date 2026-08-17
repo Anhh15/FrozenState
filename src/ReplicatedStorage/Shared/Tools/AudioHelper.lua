@@ -4,9 +4,15 @@
 
 local SoundService    = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players         = game:GetService("Players")
 
+local AudioConfig     = require(ReplicatedStorage.Shared.Config.AudioConfig)
+
 local AudioHelper = {}
+
+-- Sound Pool tĩnh dùng lại cho các âm thanh 2D / GUI thường phát nhiều lần
+local _guiSoundPool = {}
 
 -- =========================================================
 -- 2D AUDIO (GUI / MUSIC / NOTIFICATION)
@@ -48,12 +54,26 @@ function AudioHelper.Play2DSound(SoundId, Volume, Parent)
 	return Sound
 end
 
---- Alias tương thích cho Gui Sound
+--- Phát âm thanh GUI bằng cơ chế Sound Pool tái sử dụng để triệt tiêu độ trễ và không tạo rác bộ nhớ
 --- @param SoundId number | string
 --- @param Volume number?
 --- @return Sound?
 function AudioHelper.PlayGuiSound(SoundId, Volume)
-	return AudioHelper.Play2DSound(SoundId, Volume)
+	if not SoundId then return nil end
+
+	local Sound = _guiSoundPool[SoundId]
+	if not Sound or not Sound.Parent then
+		Sound = Instance.new("Sound")
+		Sound.Name = "SFX_GuiPool_" .. tostring(SoundId)
+		Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
+		Sound.Parent = SoundService
+		_guiSoundPool[SoundId] = Sound
+	end
+
+	Sound.Volume = Volume or 1
+	Sound.TimePosition = 0
+	Sound:Play()
+	return Sound
 end
 
 -- =========================================================
@@ -161,6 +181,15 @@ function AudioHelper.PreloadAudios(AudioIds)
 	for _, Sound in ipairs(InstancesToPreload) do
 		Sound:Destroy()
 	end
+end
+
+--- Nạp trước toàn bộ Audio trong game vào bộ nhớ Client để đảm bảo 0ms độ trễ
+function AudioHelper.PreloadAllGameAudios()
+	task.spawn(function()
+		local AllAudioIds = AudioConfig.GetAllAudioIds()
+		AudioHelper.PreloadAudios(AllAudioIds)
+		print(string.format("[AudioHelper] Đã preload thành công %d asset âm thanh.", #AllAudioIds))
+	end)
 end
 
 return AudioHelper

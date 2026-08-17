@@ -3,7 +3,9 @@
 -- Luôn sử dụng Animator:LoadAnimation thay vì Humanoid:LoadAnimation (deprecated)
 -- Đảm bảo quản lý Track an toàn và tránh rò rỉ bộ nhớ (Memory Leaks)
 
-local ContentProvider = game:GetService("ContentProvider")
+local ContentProvider   = game:GetService("ContentProvider")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
 
 local AnimationHelper = {}
 
@@ -124,6 +126,15 @@ function AnimationHelper.PreloadAnimations(AnimIds)
 	for _, Anim in ipairs(InstancesToPreload) do
 		Anim:Destroy()
 	end
+end
+
+--- Nạp trước toàn bộ Animation trong game vào bộ nhớ Client
+function AnimationHelper.PreloadAllGameAnimations()
+	task.spawn(function()
+		local AllAnimIds = AnimationConfig.GetAllAnimationIds()
+		AnimationHelper.PreloadAnimations(AllAnimIds)
+		print(string.format("[AnimationHelper] Đã preload thành công %d asset animation.", #AllAnimIds))
+	end)
 end
 
 return AnimationHelper

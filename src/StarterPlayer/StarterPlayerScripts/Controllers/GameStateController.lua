@@ -9,7 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -163,19 +165,10 @@ local _scoreboardType     = "TwoTeams"
 -- HELPERS
 -- =========================================================
 
--- SFX IDs
-local SFX_BUTTON_CLICK  = 7249903719
-local SFX_MOUSE_ENTER   = 137872392480008
-
---- Phát âm thanh GUI bất đồng bộ (Sound object tự hủy sau khi phát xong)
+--- Phát âm thanh GUI bất đồng bộ qua AudioHelper
 --- @param SoundId number
 local function PlayGuiSound(SoundId)
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = 1
-	S.Parent = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 3)
+	AudioHelper.PlayGuiSound(SoundId)
 end
 
 local function FormatTime(Seconds)
@@ -300,8 +293,8 @@ function GameStateController:Init()
 	end
 
 	-- Bind SFX cho các Button con/cháu trong NavigationButtons
-	-- Mỗi button con/cháu (kể cả trong Extra): MouseEnter → SFX_MOUSE_ENTER | MouseButton1Click → SFX_BUTTON_CLICK
-	GuiHelper.BindAllNavButtonsSound(SFX_BUTTON_CLICK, SFX_MOUSE_ENTER)
+	-- Mỗi button con/cháu (kể cả trong Extra): MouseEnter → MouseEnter | MouseButton1Click → ButtonClick
+	GuiHelper.BindAllNavButtonsSound(AudioConfig.Gui.ButtonClick, AudioConfig.Gui.MouseEnter)
 
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	local SetGameModeEvent     = RemoteDefinitions.GetEvent("SetGameMode")

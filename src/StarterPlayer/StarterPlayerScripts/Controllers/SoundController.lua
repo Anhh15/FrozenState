@@ -1,13 +1,14 @@
 -- SoundController.lua (ModuleScript)
--- Quản lý pose animation phía client cho local player
--- Lắng nghe PlayFreezeSFX → play pose animation khi bị đóng băng
--- Lắng nghe PlayThawSFX   → dừng pose animation khi được giải cứu
+-- Quản lý âm thanh SFX 3D (Freeze/Thaw) và pose animation phía client
+-- Nạp trước toàn bộ Asset âm thanh & hoạt ảnh khi khởi động game (0ms delay)
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local AnimationHelper   = require(ReplicatedStorage.Shared.Tools.AnimationHelper)
 
 -- =========================================================
@@ -21,7 +22,7 @@ local PlayFreezeSFXEvent
 local PlayThawSFXEvent
 
 -- =========================================================
--- PRIVATE
+-- PRIVATE: Animation
 -- =========================================================
 
 --- Play pose animation trên Animator của local player
@@ -64,18 +65,46 @@ end
 local SoundController = {}
 
 function SoundController:Init()
+	-- 1. Preload toàn bộ Audio & Animation vào RAM của Client ngay khi vào game
+	AudioHelper.PreloadAllGameAudios()
+	AnimationHelper.PreloadAllGameAnimations()
+
 	PlayFreezeSFXEvent = RemoteDefinitions.GetEvent("PlayFreezeSFX")
 	PlayThawSFXEvent   = RemoteDefinitions.GetEvent("PlayThawSFX")
 
-	-- Server báo bị đóng băng → play pose animation
+	-- 2. Lắng nghe Freeze SFX từ Server (Broadcast đến toàn bộ Client)
 	PlayFreezeSFXEvent.OnClientEvent:Connect(function(Payload)
-		local BlockSkinId = (Payload and Payload.BlockSkinId) or "Default"
-		PlayPoseAnimation(BlockSkinId)
+		if not Payload then return end
+		local BlockSkinId = Payload.BlockSkinId or "Default"
+		local FreezeSoundId = AudioConfig.GetFreezeAudio(BlockSkinId)
+
+		-- Tìm Character của nạn nhân để phát Spatial Sound 3D
+		local TargetChar = Payload.VictimCharacter or (Payload.VictimPlayer and Payload.VictimPlayer.Character)
+		if TargetChar then
+			AudioHelper.PlaySpatialSound(TargetChar, FreezeSoundId)
+		end
+
+		-- Nếu chính LocalPlayer là nạn nhân → Kích hoạt pose animation
+		if Payload.VictimPlayer == LocalPlayer then
+			PlayPoseAnimation(BlockSkinId)
+		end
 	end)
 
-	-- Server báo được giải cứu → dừng pose animation
-	PlayThawSFXEvent.OnClientEvent:Connect(function()
-		StopPoseAnimation()
+	-- 3. Lắng nghe Thaw SFX từ Server (Broadcast đến toàn bộ Client)
+	PlayThawSFXEvent.OnClientEvent:Connect(function(Payload)
+		local BlockSkinId = (Payload and Payload.BlockSkinId) or "Default"
+		local ThawSoundId = AudioConfig.GetThawAudio(BlockSkinId)
+
+		-- Tìm Character của nạn nhân để phát Spatial Sound 3D
+		local TargetChar = Payload and (Payload.VictimCharacter or (Payload.VictimPlayer and Payload.VictimPlayer.Character))
+		if TargetChar then
+			AudioHelper.PlaySpatialSound(TargetChar, ThawSoundId)
+		end
+
+		-- Nếu chính LocalPlayer được giải cứu → Dừng pose animation
+		if not Payload or Payload.VictimPlayer == LocalPlayer or (TargetChar and TargetChar == LocalPlayer.Character) then
+			StopPoseAnimation()
+		end
 	end)
 
 	-- Dừng animation khi character respawn (tránh animation ghost)
@@ -83,7 +112,7 @@ function SoundController:Init()
 		_PoseTrack = nil
 	end)
 
-	print("[SoundController] Đã khởi tạo.")
+	print("[SoundController] Đã khởi tạo và nạp trước toàn bộ SFX & Animation.")
 end
 
 return SoundController

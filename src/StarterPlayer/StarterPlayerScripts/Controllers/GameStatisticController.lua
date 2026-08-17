@@ -7,7 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -49,21 +51,10 @@ local LastStandingVal = TotalStats:WaitForChild("LastStanding"):WaitForChild("Va
 
 local TotalMoneyVal   = StatsPanel:WaitForChild("TotalMoney"):WaitForChild("ValueText")
 
--- =========================================================
--- SFX
--- =========================================================
-
-local SFX_BUTTON_CLICK       = 7249903719
-local SFX_CLOSE_BUTTON_CLICK = 103307955424380
-local SFX_OVERALL            = 119804136935260
-
+--- Phát âm thanh GUI qua AudioHelper
+--- @param SoundId number
 local function PlayGuiSound(SoundId)
-	local S = Instance.new("Sound")
-	S.SoundId = "rbxassetid://" .. tostring(SoundId)
-	S.Volume = 1
-	S.Parent = PlayerGui
-	S:Play()
-	game:GetService("Debris"):AddItem(S, 3)
+	AudioHelper.PlayGuiSound(SoundId)
 end
 
 -- =========================================================
@@ -87,7 +78,7 @@ local function ShowPlayerStats()
 	TopPlayersStats.Visible = false
 	PlayerStats.Visible     = true
 	-- Phase 8.3: Phát 'overall' khi PlayerStats hiện ra
-	PlayGuiSound(SFX_OVERALL)
+	PlayGuiSound(AudioConfig.Stats.Overall)
 end
 
 --- Hiển thị ảnh đại diện 2D của người chơi qua rbxthumb CDN
@@ -219,15 +210,15 @@ function GameStatisticController:Init()
 
 	-- Cài đặt sự kiện nút bấm chuyển tiếp và đóng
 	NextButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.ButtonClick)
 		ShowPlayerStats()
 	end)
 	CloseButton1.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 		HideAll()
 	end)
 	CloseButton2.MouseButton1Click:Connect(function()
-		PlayGuiSound(SFX_CLOSE_BUTTON_CLICK)
+		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 		HideAll()
 	end)
 

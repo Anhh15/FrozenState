@@ -20,7 +20,7 @@ local GameConfig = {
 	Match = {
 		MinPlayers           = 2,   -- Số người tối thiểu để bắt đầu trận
 		MaxPlayers           = 16,  -- Số người tối đa mỗi trận
-		SpecialRoundInterval = 1,   -- Cứ mỗi N vòng sẽ có 1 Special round (ví dụ: 3 = 2 Normal → 1 Special)
+		SpecialRoundInterval = 2,   -- Cứ mỗi N vòng sẽ có 1 Special round (ví dụ: 3 = 2 Normal → 1 Special)
 	},
 
 	-- =========================================================
