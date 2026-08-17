@@ -80,7 +80,7 @@ function GuiHelper.GetNavButton(ButtonName, Timeout)
 	return Button
 end
 
---- Lấy TextLabel hiển thị tiền (Cash) trong NavigationButtons/Stats/MoneyStats/MoneyText
+--- Lấy TextLabel hiển thị tiền (Cash) trong NavigationButtons
 --- @param Timeout number?
 --- @return TextLabel?
 function GuiHelper.GetMoneyLabel(Timeout)
@@ -91,25 +91,35 @@ function GuiHelper.GetMoneyLabel(Timeout)
 		return nil
 	end
 
+	local MoneyTextName      = GuiConfig.Stats.MoneyText
 	local StatsContainerName = GuiConfig.NavContainers.Stats
 	local MoneyStatsName     = GuiConfig.Stats.MoneyStats
-	local MoneyTextName      = GuiConfig.Stats.MoneyText
 
-	local Stats = NavGui:FindFirstChild(StatsContainerName, true)
-		or (WaitTime > 0 and NavGui:WaitForChild(StatsContainerName, WaitTime))
+	-- 1. Tìm đệ quy trực tiếp theo tên MoneyText trong toàn bộ cây NavigationButtons
+	local MoneyText = NavGui:FindFirstChild(MoneyTextName, true)
 
-	local MoneyStats = Stats and (
-		Stats:FindFirstChild(MoneyStatsName)
-		or (WaitTime > 0 and Stats:WaitForChild(MoneyStatsName, WaitTime))
-	)
+	-- 2. Nếu chưa tìm thấy và có Timeout, tìm kiếm có chờ đợi
+	if not MoneyText and WaitTime and WaitTime > 0 then
+		local Stats = NavGui:FindFirstChild(StatsContainerName, true)
+			or NavGui:WaitForChild(StatsContainerName, WaitTime)
 
-	local MoneyText = MoneyStats and (
-		MoneyStats:FindFirstChild(MoneyTextName)
-		or (WaitTime > 0 and MoneyStats:WaitForChild(MoneyTextName, WaitTime))
-	)
+		local MoneyStats = Stats and (
+			Stats:FindFirstChild(MoneyStatsName, true)
+			or Stats:WaitForChild(MoneyStatsName, WaitTime)
+		)
+
+		MoneyText = MoneyStats and (
+			MoneyStats:FindFirstChild(MoneyTextName, true)
+			or MoneyStats:WaitForChild(MoneyTextName, WaitTime)
+		)
+
+		if not MoneyText then
+			MoneyText = NavGui:WaitForChild(MoneyTextName, WaitTime)
+		end
+	end
 
 	if not MoneyText then
-		warn(string.format("[GuiHelper] Không tìm thấy %s trong NavigationButtons/%s/%s/.", MoneyTextName, StatsContainerName, MoneyStatsName))
+		warn(string.format("[GuiHelper] Không tìm thấy TextLabel '%s' trong NavigationButtons.", tostring(MoneyTextName)))
 	end
 
 	return MoneyText

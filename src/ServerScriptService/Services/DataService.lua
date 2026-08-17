@@ -129,6 +129,7 @@ function DataService.AddMoney(Player, Amount)
 		return
 	end
 	Profile.Data.Money = math.max(0, Profile.Data.Money + Amount)
+	return Profile.Data.Money
 end
 
 --- Tăng một stat của player lên Amount (mặc định 1)

@@ -119,6 +119,19 @@ local function GetQuestController()
 	return _questController
 end
 
+-- PlayerDataController — lazy-require để làm mới hiển thị tiền khi cần
+local _playerDataController = nil
+local function GetPlayerDataController()
+	if not _playerDataController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("PlayerDataController")
+		if Module then
+			_playerDataController = require(Module)
+		end
+	end
+	return _playerDataController
+end
+
 -- =========================================================
 -- CONFIG
 -- =========================================================
@@ -187,8 +200,14 @@ local function SetLobbyGuisVisible(Visible)
 		NavGui.Enabled = Visible and not IsSpectating
 	end
 
-	-- Kếi vào trận: buộc đóng Inventory, Profile, Shop, Spectate và hiệu ứng ItemReward nếu đang mở
-	if not Visible then
+	if Visible then
+		-- Làm mới số tiền hiển thị khi bật lại Lobby GUI
+		local PlayerDataCtrl = GetPlayerDataController()
+		if PlayerDataCtrl and PlayerDataCtrl.UpdateMoneyDisplay then
+			PlayerDataCtrl.UpdateMoneyDisplay()
+		end
+	else
+		-- Khi vào trận: buộc đóng Inventory, Profile, Shop, Spectate và hiệu ứng ItemReward nếu đang mở
 		local InvCtrl = GetInventoryController()
 		if InvCtrl then
 			InvCtrl.SetVisible(false)
@@ -276,6 +295,9 @@ local GameStateController = {}
 function GameStateController:Init()
 	-- Ngăn GUI reset khi player chết (respawn)
 	GameStateGui.ResetOnSpawn = false
+	if NavGui then
+		NavGui.ResetOnSpawn = false
+	end
 
 	-- Bind SFX cho các Button con/cháu trong NavigationButtons
 	-- Mỗi button con/cháu (kể cả trong Extra): MouseEnter → SFX_MOUSE_ENTER | MouseButton1Click → SFX_BUTTON_CLICK
