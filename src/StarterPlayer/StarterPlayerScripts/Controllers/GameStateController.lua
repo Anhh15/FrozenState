@@ -296,6 +296,9 @@ function GameStateController:Init()
 	-- Mỗi button con/cháu (kể cả trong Extra): MouseEnter → MouseEnter | MouseButton1Click → ButtonClick
 	GuiHelper.BindAllNavButtonsSound(AudioConfig.Gui.ButtonClick, AudioConfig.Gui.MouseEnter)
 
+	-- Bind Scale Animation (Hover / Press) cho tất cả các nút trong NavigationButtons
+	GuiHelper.BindAllNavButtonsAnimation()
+
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	local SetGameModeEvent     = RemoteDefinitions.GetEvent("SetGameMode")
 

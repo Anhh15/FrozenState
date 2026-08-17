@@ -4,6 +4,7 @@
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
 local Debris            = game:GetService("Debris")
 
 local GuiConfig   = require(ReplicatedStorage.Shared.Config.GuiConfig)
@@ -11,6 +12,8 @@ local AudioHelper = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+
+local _activeTweens = {}
 
 local GuiHelper = {}
 
@@ -183,6 +186,296 @@ function GuiHelper.HideOtherMenuFrames(MenuGui, ExceptFrame)
 		if Child:IsA("Frame") and Child ~= ExceptFrame then
 			Child.Visible = false
 		end
+	end
+end
+
+-- =========================================================
+-- ANIMATION / TWEEN UTILITIES (UIScale BASED)
+-- =========================================================
+
+--- Lấy hoặc khởi tạo instance UIScale bên trong GuiObject
+--- @param GuiObject GuiObject
+--- @return UIScale?
+function GuiHelper.GetOrCreateScale(GuiObject)
+	if not GuiObject or not GuiObject:IsA("GuiObject") then return nil end
+
+	local Scale = GuiObject:FindFirstChildOfClass("UIScale")
+	if not Scale then
+		Scale = Instance.new("UIScale")
+		Scale.Scale = 1
+		Scale.Parent = GuiObject
+	end
+	return Scale
+end
+
+--- Hủy bỏ Tween đang chạy trên một Instance (nếu có)
+--- @param Target Instance
+function GuiHelper.CancelTween(Target)
+	if not Target then return end
+	local CurrentTween = _activeTweens[Target]
+	if CurrentTween then
+		CurrentTween:Cancel()
+		_activeTweens[Target] = nil
+	end
+end
+
+--- Lấy cấu hình Scale của Button dựa theo tên nút (kết hợp Default và Overrides)
+--- @param ButtonName string?
+--- @return table
+function GuiHelper.GetButtonScaleConfig(ButtonName)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.ButtonScale
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
+	local OverrideCfg = (ButtonName and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ButtonName]) or {}
+
+	return {
+		Duration     = OverrideCfg.Duration     or DefaultCfg.Duration     or 0.15,
+		EasingStyle  = OverrideCfg.EasingStyle  or DefaultCfg.EasingStyle  or Enum.EasingStyle.Back,
+		EasingDir    = OverrideCfg.EasingDir    or DefaultCfg.EasingDir    or Enum.EasingDirection.Out,
+		DefaultScale = OverrideCfg.DefaultScale or DefaultCfg.DefaultScale or 1.0,
+		HoverScale   = OverrideCfg.HoverScale   or DefaultCfg.HoverScale   or 1.15,
+		PressScale   = OverrideCfg.PressScale   or DefaultCfg.PressScale   or 0.92,
+	}
+end
+
+--- Tween thuộc tính UIScale của một GuiObject đến giá trị chỉ định
+--- @param TargetObject GuiObject
+--- @param TargetScale number
+--- @param Duration number?
+--- @param Style Enum.EasingStyle?
+--- @param Direction Enum.EasingDirection?
+--- @param OnComplete ( () -> () )?
+--- @return Tween?
+function GuiHelper.TweenScale(TargetObject, TargetScale, Duration, Style, Direction, OnComplete)
+	if not TargetObject or not TargetObject:IsA("GuiObject") then return nil end
+
+	local UiScale = GuiHelper.GetOrCreateScale(TargetObject)
+	if not UiScale then return nil end
+
+	GuiHelper.CancelTween(UiScale)
+
+	local Cfg           = GuiHelper.GetButtonScaleConfig(TargetObject.Name)
+	local TweenDuration = Duration  or Cfg.Duration
+	local EasingStyle   = Style     or Cfg.EasingStyle
+	local EasingDir     = Direction or Cfg.EasingDir
+
+	local TweenInfoObj = TweenInfo.new(TweenDuration, EasingStyle, EasingDir)
+	local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetScale })
+	_activeTweens[UiScale] = Tween
+
+	Tween.Completed:Connect(function(PlaybackState)
+		if _activeTweens[UiScale] == Tween then
+			_activeTweens[UiScale] = nil
+		end
+		if PlaybackState == Enum.PlaybackState.Completed and OnComplete then
+			OnComplete()
+		end
+	end)
+
+	Tween:Play()
+	return Tween
+end
+
+--- Mở một cửa sổ GUI kèm hiệu ứng Zoom Pop nảy nhẹ
+--- @param GuiObject GuiObject Frame hoặc container cần mở
+--- @param CustomConfig table? { Duration: number?, EasingStyle: Enum.EasingStyle?, EasingDir: Enum.EasingDirection?, TargetScale: number?, InitialScale: number? }
+--- @param OnComplete ( () -> () )? Callback chạy khi animation mở hoàn tất
+--- @return Tween?
+function GuiHelper.PopOpen(GuiObject, CustomConfig, OnComplete)
+	if not GuiObject or not GuiObject:IsA("GuiObject") then return nil end
+
+	local PopConfig = GuiConfig.Animations and GuiConfig.Animations.Pop
+	local Duration  = (CustomConfig and CustomConfig.Duration) or (PopConfig and PopConfig.OpenDuration) or 0.25
+	local Style     = (CustomConfig and CustomConfig.EasingStyle) or (PopConfig and PopConfig.OpenEasingStyle) or Enum.EasingStyle.Back
+	local Direction = (CustomConfig and CustomConfig.EasingDir) or (PopConfig and PopConfig.OpenEasingDir) or Enum.EasingDirection.Out
+	local TargetVal = (CustomConfig and CustomConfig.TargetScale) or (PopConfig and PopConfig.TargetScale) or 1
+	local InitVal   = (CustomConfig and CustomConfig.InitialScale) or (PopConfig and PopConfig.InitialScale) or 0
+
+	local UiScale = GuiHelper.GetOrCreateScale(GuiObject)
+	if not UiScale then return nil end
+
+	GuiHelper.CancelTween(UiScale)
+
+	-- Nếu GUI đang bị ẩn, reset về scale ban đầu trước khi bung ra
+	if not GuiObject.Visible then
+		UiScale.Scale = InitVal
+		GuiObject.Visible = true
+	end
+
+	local TweenInfoObj = TweenInfo.new(Duration, Style, Direction)
+	local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetVal })
+	_activeTweens[UiScale] = Tween
+
+	Tween.Completed:Connect(function(PlaybackState)
+		if _activeTweens[UiScale] == Tween then
+			_activeTweens[UiScale] = nil
+		end
+		if PlaybackState == Enum.PlaybackState.Completed and OnComplete then
+			OnComplete()
+		end
+	end)
+
+	Tween:Play()
+	return Tween
+end
+
+--- Đóng một cửa sổ GUI kèm hiệu ứng thu nhỏ về 0
+--- @param GuiObject GuiObject Frame hoặc container cần đóng
+--- @param CustomConfig table? { Duration: number?, EasingStyle: Enum.EasingStyle?, EasingDir: Enum.EasingDirection?, TargetScale: number? }
+--- @param OnComplete ( () -> () )? Callback chạy khi animation đóng hoàn tất
+--- @return Tween?
+function GuiHelper.PopClose(GuiObject, CustomConfig, OnComplete)
+	if not GuiObject or not GuiObject:IsA("GuiObject") then return nil end
+	if not GuiObject.Visible then
+		if OnComplete then OnComplete() end
+		return nil
+	end
+
+	local PopConfig = GuiConfig.Animations and GuiConfig.Animations.Pop
+	local Duration  = (CustomConfig and CustomConfig.Duration) or (PopConfig and PopConfig.CloseDuration) or 0.2
+	local Style     = (CustomConfig and CustomConfig.EasingStyle) or (PopConfig and PopConfig.CloseEasingStyle) or Enum.EasingStyle.Quad
+	local Direction = (CustomConfig and CustomConfig.EasingDir) or (PopConfig and PopConfig.CloseEasingDir) or Enum.EasingDirection.In
+	local TargetVal = (CustomConfig and CustomConfig.TargetScale) or (PopConfig and PopConfig.InitialScale) or 0
+
+	local UiScale = GuiHelper.GetOrCreateScale(GuiObject)
+	if not UiScale then
+		GuiObject.Visible = false
+		if OnComplete then OnComplete() end
+		return nil
+	end
+
+	GuiHelper.CancelTween(UiScale)
+
+	local TweenInfoObj = TweenInfo.new(Duration, Style, Direction)
+	local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetVal })
+	_activeTweens[UiScale] = Tween
+
+	Tween.Completed:Connect(function(PlaybackState)
+		if _activeTweens[UiScale] == Tween then
+			_activeTweens[UiScale] = nil
+		end
+		if PlaybackState == Enum.PlaybackState.Completed then
+			GuiObject.Visible = false
+			-- Đặt lại scale về 1 cho trường hợp mở trực tiếp không qua animation
+			UiScale.Scale = 1
+			if OnComplete then
+				OnComplete()
+			end
+		end
+	end)
+
+	Tween:Play()
+	return Tween
+end
+
+--- Gắn hiệu ứng phóng to/thu nhỏ (Hover & Press) cho toàn bộ Button hoặc phần tử chỉ định
+--- @param Button GuiButton Nút nhận sự kiện chuột/bấm
+--- @param TargetElement GuiObject? Phần tử sẽ được scale (mặc định là chính Button)
+--- @param CustomScaleConfig table? { Duration: number?, HoverScale: number?, PressScale: number?, DefaultScale: number? }
+function GuiHelper.BindButtonScale(Button, TargetElement, CustomScaleConfig)
+	if not Button or not Button:IsA("GuiButton") then return end
+
+	local Target = TargetElement or Button
+	if not Target or not Target:IsA("GuiObject") then return end
+
+	local ButtonName   = (Target.Name ~= "" and Target.Name) or Button.Name
+	local ButtonConfig = GuiHelper.GetButtonScaleConfig(ButtonName)
+
+	local Duration     = (CustomScaleConfig and CustomScaleConfig.Duration) or ButtonConfig.Duration
+	local Style        = (CustomScaleConfig and CustomScaleConfig.EasingStyle) or ButtonConfig.EasingStyle
+	local Direction    = (CustomScaleConfig and CustomScaleConfig.EasingDir) or ButtonConfig.EasingDir
+	local DefaultScale = (CustomScaleConfig and CustomScaleConfig.DefaultScale) or ButtonConfig.DefaultScale
+	local HoverScale   = (CustomScaleConfig and CustomScaleConfig.HoverScale) or ButtonConfig.HoverScale
+	local PressScale   = (CustomScaleConfig and CustomScaleConfig.PressScale) or ButtonConfig.PressScale
+
+	local IsHovered = false
+
+	Button.MouseEnter:Connect(function()
+		IsHovered = true
+		GuiHelper.TweenScale(Target, HoverScale, Duration, Style, Direction)
+	end)
+
+	Button.MouseLeave:Connect(function()
+		IsHovered = false
+		GuiHelper.TweenScale(Target, DefaultScale, Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	end)
+
+	Button.MouseButton1Down:Connect(function()
+		GuiHelper.TweenScale(Target, PressScale, Duration * 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	end)
+
+	Button.MouseButton1Up:Connect(function()
+		local NextScale = IsHovered and HoverScale or DefaultScale
+		GuiHelper.TweenScale(Target, NextScale, Duration, Style, Direction)
+	end)
+
+	-- Hỗ trợ cho Gamepad / Keyboard selection
+	Button.SelectionGained:Connect(function()
+		IsHovered = true
+		GuiHelper.TweenScale(Target, HoverScale, Duration, Style, Direction)
+	end)
+
+	Button.SelectionLost:Connect(function()
+		IsHovered = false
+		GuiHelper.TweenScale(Target, DefaultScale, Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	end)
+end
+
+--- Gắn hiệu ứng Hover/Press Animation cho tất cả các nút trong NavigationButtons
+--- Tự động nhận diện cấu trúc từng nút (Background + Icon + Text) để scale toàn bộ nút
+--- @param CustomScaleConfig table?
+function GuiHelper.BindAllNavButtonsAnimation(CustomScaleConfig)
+	local NavGui = GuiHelper.GetNavigationGui(GuiConfig.Timeouts.ShortWait)
+	if not NavGui then return end
+
+	local BoundRoots = {}
+
+	local function BindNavItem(ItemRoot)
+		if not ItemRoot or not ItemRoot:IsA("GuiObject") or BoundRoots[ItemRoot] then return end
+		if ItemRoot.Name == "Buttons" or ItemRoot.Name == "Extra" or ItemRoot.Name == "Stats" then return end
+
+		BoundRoots[ItemRoot] = true
+
+		if ItemRoot:IsA("GuiButton") then
+			GuiHelper.BindButtonScale(ItemRoot, ItemRoot, CustomScaleConfig)
+		end
+
+		for _, Descendant in ipairs(ItemRoot:GetDescendants()) do
+			if Descendant:IsA("GuiButton") then
+				GuiHelper.BindButtonScale(Descendant, ItemRoot, CustomScaleConfig)
+			end
+		end
+	end
+
+	-- Quét các Container chính trong NavigationButtons (Buttons, Extra...)
+	local ButtonsContainer = GuiHelper.GetNavButtonsContainer(GuiConfig.Timeouts.ShortWait)
+	if ButtonsContainer then
+		for _, Child in ipairs(ButtonsContainer:GetChildren()) do
+			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
+				BindNavItem(Child)
+			end
+		end
+
+		ButtonsContainer.ChildAdded:Connect(function(Child)
+			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
+				BindNavItem(Child)
+			end
+		end)
+	end
+
+	local ExtraContainerName = GuiConfig.NavContainers.Extra
+	local ExtraContainer = NavGui:FindFirstChild(ExtraContainerName, true)
+	if ExtraContainer then
+		for _, Child in ipairs(ExtraContainer:GetChildren()) do
+			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
+				BindNavItem(Child)
+			end
+		end
+
+		ExtraContainer.ChildAdded:Connect(function(Child)
+			if Child:IsA("GuiObject") and not Child:IsA("UIListLayout") and not Child:IsA("UIGridLayout") and not Child:IsA("UIPadding") then
+				BindNavItem(Child)
+			end
+		end)
 	end
 end
 

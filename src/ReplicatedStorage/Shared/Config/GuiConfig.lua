@@ -64,6 +64,46 @@ local GuiConfig = {
 		ShortWait         = 5,
 	},
 
+	-- =========================================================
+	-- CẤU HÌNH ANIMATION GUI (TWEEN / SCALE / TIMING)
+	-- =========================================================
+	Animations = {
+		-- Cấu hình popup mở/đóng cửa sổ Menu (Inventory, Shop, Quest, Profile...)
+		Pop = {
+			OpenDuration     = 0.25,
+			CloseDuration    = 0.2,
+			OpenEasingStyle  = Enum.EasingStyle.Back,
+			OpenEasingDir    = Enum.EasingDirection.Out,
+			CloseEasingStyle = Enum.EasingStyle.Quad,
+			CloseEasingDir   = Enum.EasingDirection.In,
+			InitialScale     = 0,
+			TargetScale      = 1,
+		},
+
+		-- Cấu hình hiệu ứng phóng to nút bấm điều hướng khi Hover & Click
+		ButtonScale = {
+			-- Thông số mặc định dùng chung cho tất cả các nút
+			Default = {
+				Duration         = 0.15,
+				EasingStyle      = Enum.EasingStyle.Back,
+				EasingDir        = Enum.EasingDirection.Out,
+				DefaultScale     = 1.0,
+				HoverScale       = 1.15,
+				PressScale       = 0.92,
+			},
+
+			-- Ghi đè riêng cho từng nút cụ thể nếu cần (mẫu comment)
+			Overrides = {
+				-- ["Shop"] = {
+				-- 	HoverScale = 1.12,
+				-- },
+				-- ["Inventory"] = {
+				-- 	HoverScale = 1.18,
+				-- },
+			},
+		},
+	},
+
 }
 
 return GuiConfig

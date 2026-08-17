@@ -1,10 +1,15 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 16-08-2026
+> Cập nhật lần cuối: 18-08-2026
 
 ---
 
 ## Kiến trúc
+
+### Kiến trúc hệ thống Animation GUI tập trung dựa trên UIScale và TweenService
+- **Ngày:** 18-08-2026
+- **Chi tiết:** Thay vì tween trực tiếp `Size` (dễ vỡ layout, kẹt kích thước khi spam click), sử dụng `UIScale` làm cốt lõi cho mọi animation GUI. `UIScale` giữ nguyên kích thước gốc trong Studio và scale đồng bộ toàn bộ UI con. Cấu hình phân tầng `Default` + `Overrides` per-button tại `GuiConfig.Animations` (`Pop`, `ButtonScale`) với `EasingStyle.Back` tạo độ nảy nhẹ. Để nút phóng to vươn lên trên (Dock style), đặt `AnchorPoint = (0.5, 1)` kết hợp `UIListLayout.VerticalAlignment = Bottom`. `GuiHelper.lua` cung cấp `PopOpen`, `PopClose`, `TweenScale`, `BindButtonScale`, `BindAllNavButtonsAnimation` (tự động gom sự kiện từ mọi `GuiButton` con cháu về scale item gốc) và quản lý `_activeTweens` hủy tween cũ khi tương tác nhanh.
+- **File liên quan:** [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
 ### Tập trung hóa cấu trúc UI qua GuiConfig và GuiHelper (Decoupled GUI Paths)
 - **Ngày:** 16-08-2026
@@ -134,6 +139,20 @@
 ---
 
 ## Bug & biện pháp
+
+### Lỗi bị cắt đỉnh nút (ClipsDescendants) và xung đột vị trí khi scale trong UIListLayout
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Khi hover phóng to nút vươn lên trên trong container có `UIListLayout`, nút không thể chỉnh thủ công `Position.Y`, hoặc phần đỉnh nút bị cắt cụt khi vượt quá khung chứa.
+- **Nguyên nhân:** (1) `UIListLayout` khóa thuộc tính `Position` của các con và căn theo `VerticalAlignment` mặc định (Center/Top). (2) `ClipsDescendants = true` trên Frame cha tự động cắt bỏ mọi visual vượt ra ngoài bounding box.
+- **Fix:** (1) Đặt `AnchorPoint = Vector2.new(0.5, 1)` cho các nút con và đổi `UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom` để layout tự động căn đáy. (2) Tắt `ClipsDescendants = false` trên container `Buttons` và ScreenGui.
+- **File liên quan:** [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
+
+### Nguy cơ xung đột kích thước và Race Condition khi spam click UI Animation
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Khi người chơi bấm mở/đóng menu hoặc di chuột liên tục qua các nút với tốc độ cao, các tween song song đè lên nhau khiến Frame bị méo kích thước, kẹt scale ở số trung gian (vd `0.3`) hoặc không thể mở lại.
+- **Nguyên nhân:** Tween cũ chưa kịp kết thúc đã bị tween mới ghi đè mà không được hủy (`Cancel`), hoặc tween trực tiếp vào thuộc tính `Size` làm mất kích thước chuẩn ban đầu.
+- **Fix:** (1) Dùng bảng `_activeTweens[Instance]` trong `GuiHelper` để tự động gọi `Cancel()` tween cũ trước khi tạo tween mới. (2) Sử dụng `UIScale` thay cho `Size` để bảo toàn kích thước Studio. (3) Khi `PopClose` hoàn tất (`Enum.PlaybackState.Completed`), luôn reset `UIScale.Scale = 1` sau khi gán `Visible = false` để tránh lỗi kẹt scale nếu sau đó UI được mở trực tiếp.
+- **File liên quan:** [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
 ### Bỏ sót sự kiện SFX khi nút bấm nằm trong Frame con lồng sâu (Nesting Frame)
 - **Ngày:** 16-08-2026
