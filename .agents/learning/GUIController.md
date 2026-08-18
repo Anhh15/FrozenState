@@ -6,6 +6,11 @@
 
 ## Kiến trúc
 
+### Mẫu Truy Xuất Động GUI (Dynamic GUI Resolver Pattern) trong Single-Controller Client
+- **Ngày:** 18-08-2026
+- **Chi tiết:** Thay vì lưu biến tĩnh một lần duy nhất lúc `Init()` (dễ bị trỏ vào instance cũ bị hủy khi nhân vật spawn lần đầu `CharacterAdded` hoặc do cơ chế `ResetOnSpawn`), controller sử dụng hàm resolver động (`ResolveScreenElements` / `ResolveElements`) để luôn truy xuất trực tiếp các GuiObject active trong `PlayerGui`. Hàm tự động bật `ResetOnSpawn = false` và `Enabled = true` ngay khi truy xuất, kết hợp fallback thông minh (`Background = Frame:FindFirstChild("Background") or Frame`). Loại bỏ hoàn toàn nguy cơ rò rỉ hoặc tương tác trên GUI rác trong bộ nhớ.
+- **File liên quan:** [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [ModeAnnouncementController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ModeAnnouncementController.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+
 ### Chuẩn hóa phân cấp Animation trên phần tử con Background trong ScreenGui Special
 - **Ngày:** 18-08-2026
 - **Chi tiết:** Thay vì tween trực tiếp trên Frame cha (`RoundLoadingScreen`, `ItemReward`) làm mất trạng thái kích thước hoặc phá vỡ cấu trúc container toàn màn hình, chuyển 100% các animation nền (fade in/out, flash trắng chuyển pha) sang phần tử con `Background` (`Frame`/`ImageLabel`). Frame cha giữ `BackgroundTransparency = 1` và thuần túy quản lý `Visible` / vòng đời hiển thị. Cache giá trị mặc định (`BackgroundColor3`, `BackgroundTransparency`) từ instance `Background` khi `Init()`, giúp tùy biến giao diện trực tiếp trong Roblox Studio mà không cần can thiệp mã nguồn.
@@ -170,6 +175,20 @@
 
 ## Bug & biện pháp
 
+### Lỗi Mất Màn Hình Chuyển Cảnh (RoundLoadingScreen) ở Trận Đầu Tiên của Người Chơi Mới
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Người chơi mới join server luôn bị mất hiệu ứng `RoundLoadingScreen` ở đúng trận đầu tiên của họ, từ trận thứ 2 trở đi mới thấy bình thường.
+- **Nguyên nhân:** (1) Khi người chơi mới kết nối, `Init()` cache cứng tham chiếu GUI trước khi nhân vật spawn lần đầu. Khi nhân vật spawn (`CharacterAdded`), Roblox engine tự động hủy và clone mới `PlayerGui.Special` do thuộc tính mặc định `ResetOnSpawn = true` trong Studio, khiến các biến tĩnh trỏ vào GUI chết. (2) Rào cản kiểm tra `IsInMatch` trong phase `Setup` tạo race condition mạng khi Attribute chưa kịp replicate từ Server.
+- **Fix:** (1) Xây dựng hàm Dynamic Resolver (`ResolveScreenElements`) để luôn truy xuất instance GuiObject đang active trong `PlayerGui`, tự động ép `ResetOnSpawn = false` và `Enabled = true`. (2) Fallback thông minh `Background = Frame:FindFirstChild("Background") or Frame`. (3) Lắng nghe `CharacterAdded` để chuẩn hóa lại ScreenGui. (4) Bỏ chặn `IsInMatch` trong phase `Setup` (100% người chơi có mặt trong Setup đều tham gia trận mới).
+- **File liên quan:** [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [ModeAnnouncementController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ModeAnnouncementController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Lỗi Mất Thanh Nút NavigationButtons/Buttons khi Mở Menu Trước Khi Vào Trận
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Khi người chơi mở Menu (Shop, Inventory, Profile, Quest) ở sảnh rồi vào trận mà không chủ động đóng lại, sau khi hết trận quay về `Intermission` thì thanh nút `NavigationButtons/Buttons` biến mất hoàn toàn, không thể tương tác lại kể cả khi reset character.
+- **Nguyên nhân:** (1) Khi chuyển phase sang `Ready`, `MenuController.CloseAll()` đóng các menu nhưng không khôi phục hiển thị cho container `Buttons`. (2) Sau `GameOver`, Server chưa dọn dẹp sạch thuộc tính `Team` attribute của người chơi khi đưa về sảnh khiến client nhận diện sai trạng thái spectator/player.
+- **Fix:** (1) Trong `MenuController.CloseAll()`, gọi `NavCtrl.SetButtonsContainerVisible(not IsSpectating)`. (2) Trong `NavigationController.SetVisible()`, bổ sung phòng thủ tự động bật `ButtonsContainer.Visible = true` khi không có menu tab nào đang mở (`_activeTab == nil`). (3) Trong `MatchService.RunGameOver`, gọi `SessionService.ClearTeam(Player)` và `PlayerStateHelper.SetTeam(Player, nil)` trước khi chuyển sang `Intermission`.
+- **File liên quan:** [MenuController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [NavigationController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
 ### Lệch nhịp phase Setup giữa Server và Client khi hiển thị thông báo Special Round (Server Setup Race Condition)
 - **Ngày:** 18-08-2026
 - **Vấn đề:** Khi bắt đầu vòng đấu đặc biệt có `ModeAnnouncement` (4.0s), server chỉ đợi 1.5s rồi lập tức chuyển sang `Ready` và teleport người chơi, khiến màn hình bị fade-out sớm hoặc teleport diễn ra trong lúc người chơi chưa đọc xong thông báo.
@@ -202,7 +221,7 @@
 - **Ngày:** 16-08-2026
 - **Vấn đề:** Khi tái cấu trúc các nút điều hướng chuyển vào container con (như `NavigationButtons/Buttons/Extra/Profile` và `Setting`), nút bấm bị mất hiệu ứng âm thanh click và hover chuột.
 - **Nguyên nhân:** Mã nguồn cũ trong `GameStateController` duyệt trực tiếp qua `Container:GetChildren()`, chỉ kiểm tra các phần tử con cấp 1 trực thuộc `Buttons`. Khi nút nằm trong Frame `Extra` (con cấp 2), `GetChildren()` chỉ thấy Frame `Extra` (không phải `GuiButton`) nên bỏ qua việc gắn sự kiện SFX.
-- **Fix:** Thay đổi logic duyệt sang đệ quy toàn bộ con cháu bằng `Container:GetDescendants()` (được đóng gói trong `GuiHelper.BindAllNavButtonsSound`), kiểm tra `Descendant:IsA("GuiButton")` để gắn âm thanh cho tất cả các nút bất kể độ sâu phân cấp.
+- **Fix:** Thay đổi logic duyệt sang đệ quy toàn bộ con cháu bằng `Container:GetDescendants()` (đóng gói trong `GuiHelper.BindAllNavButtonsSound`), kiểm tra `Descendant:IsA("GuiButton")` để gắn âm thanh cho tất cả các nút bất kể độ sâu phân cấp.
 - **File liên quan:** [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
 ### GUI bị reset khi player chết (ResetOnSpawn)
@@ -366,13 +385,6 @@
 - **Fix:** Định nghĩa hàm `GetSpectateController()` lazy-require trong QuestController, đồng thời đổi việc lấy `_navButton` thành `WaitForChild("Button")`.
 - **File liên quan:** [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
 
-### Lỗi LoadingScreen không hoạt động ở trận đấu đầu tiên
-- **Ngày:** 21-07-2026
-- **Vấn đề:** LoadingScreen không hiển thị ở trận đấu đầu tiên nhưng hoạt động bình thường ở các trận sau.
-- **Nguyên nhân:** Client kiểm tra thuộc tính `"Team"` ngay khi nhận được phase `"Setup"`. Tại trận đấu đầu tiên, server chưa kịp chia team nên thuộc tính này bị `nil`. Ở các trận sau, thuộc tính `"Team"` cũ từ trận trước chưa kịp bị reset nên vượt qua kiểm tra.
-- **Fix:** Thay đổi trình tự xử lý trên server: chia team mới và broadcast team trước khi phát tín hiệu phase `"Setup"`.
-- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua)
-
 ### Lỗi ScoreBoard trống trơn và Player Status avatar hiển thị sai đội ở trận đầu tiên
 - **Ngày:** 21-07-2026
 - **Vấn đề:** ScoreBoard bị trống hoàn toàn và HUD hiển thị avatar xếp sai cột Ally/Enemy cho người chơi ở trận đầu tiên.
@@ -393,4 +405,3 @@
 - **Nguyên nhân:** (1) `SpectateController` không lắng nghe `LocalPlayer.CharacterAdded`, khiến cờ `_isSpectating` vẫn là `true` sau khi chết; `NavigationController.SetVisible` liên tục kiểm tra và ép ẩn NavigationButtons. (2) `RestoreCamera` cố gán `CameraSubject` vào instance `Humanoid` cũ đã bị hủy của nhân vật trước đó. (3) `MatchService` trên Server chặn lệnh reset `ReplicationFocus` khi phase không còn là `InGame`.
 - **Fix:** (1) Lắng nghe `CharacterAdded` để tự động tắt spectate, mở lại NavigationButtons và khôi phục di chuyển. (2) `RestoreCamera` kiểm tra tính hợp lệ của Humanoid cũ, nếu đã bị hủy thì fallback bám theo nhân vật mới tại sảnh và đặt `CameraType = Custom`. (3) Cho phép server xử lý yêu cầu reset `ReplicationFocus` ở mọi phase.
 - **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [NavigationController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
-

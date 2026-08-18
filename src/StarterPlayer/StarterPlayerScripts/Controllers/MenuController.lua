@@ -221,6 +221,14 @@ function MenuController.CloseAll(ExcludedFrame)
 	if RewardCtrl and RewardCtrl.Reset then
 		RewardCtrl.Reset()
 	end
+
+	-- Khôi phục hiển thị cho ButtonsContainer của NavigationButtons nếu không đang Spectate
+	local NavCtrl = GetNavigationController()
+	if NavCtrl and NavCtrl.SetButtonsContainerVisible then
+		local SpecCtrl = GetSpectateController()
+		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
+		NavCtrl.SetButtonsContainerVisible(not IsSpectating)
+	end
 end
 
 --- Bật/tắt hiển thị của ScreenGui Menu

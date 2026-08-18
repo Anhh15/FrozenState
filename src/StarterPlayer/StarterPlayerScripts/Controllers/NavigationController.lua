@@ -228,6 +228,13 @@ function NavigationController.SetVisible(Visible)
 
 	if Visible and NavGui.Enabled then
 		NavigationController.UpdateMoneyDisplay()
+
+		-- Tầng bảo vệ phụ: Đảm bảo ButtonsContainer hiển thị khi không có tab menu nào active
+		local MenuCtrl = GetMenuController()
+		local ActiveTab = MenuCtrl and MenuCtrl.GetActiveTab and MenuCtrl.GetActiveTab()
+		if not ActiveTab and not IsSpectating then
+			NavigationController.SetButtonsContainerVisible(true)
+		end
 	end
 end
 

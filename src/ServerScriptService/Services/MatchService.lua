@@ -578,10 +578,11 @@ local function RunGameOver(Result)
 		task.wait(1)
 	end
 
-	-- Teleport tất cả player về SpawnLocation (lobby) và xóa InMatch attribute
+	-- Teleport tất cả player về SpawnLocation (lobby) và xóa InMatch/Team attribute
 	local LobbySpawn = workspace:FindFirstChild("SpawnLocation")
 	for _, Player in ipairs(Players:GetPlayers()) do
 		PlayerStateHelper.SetInMatch(Player, false)
+		SessionService.ClearTeam(Player)
 		local Character = Player.Character
 		if not Character then continue end
 		local HRP = Character:FindFirstChild("HumanoidRootPart")
