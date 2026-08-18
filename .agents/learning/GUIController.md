@@ -1,10 +1,15 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 18-08-2026
+> Cập nhật lần cuối: 19-08-2026
 
 ---
 
 ## Kiến trúc
+
+### Tách rời việc đóng gói dữ liệu thống kê (PreparePayloads) và thời điểm phát sóng (Broadcast) trong GameOver
+- **Ngày:** 19-08-2026
+- **Chi tiết:** Trong quy trình kết thúc trận (`InGame` -> `GameOver` -> `Intermission`), dữ liệu thống kê (Top 3, cá nhân, thắng/thua) phụ thuộc vào thông tin đội nhóm (`Team`). Nếu dọn dẹp state (`ClearTeam`, teleport lobby) trước khi gửi remote, dữ liệu team bị mất khiến bảng thống kê rỗng. Giải pháp chuẩn: chia làm 2 bước — (1) `PrepareGameOverPayloads` chụp snapshot dữ liệu ngay đầu `GameOver` khi team còn nguyên vẹn; (2) `SendGameOverPayloads` chỉ kích hoạt sau khi teleport về sảnh (`Intermission`), đảm bảo hiển thị đúng thời điểm mà dữ liệu không bị sai lệch.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua)
 
 ### Mẫu Truy Xuất Động GUI (Dynamic GUI Resolver Pattern) trong Single-Controller Client
 - **Ngày:** 18-08-2026
@@ -174,6 +179,20 @@
 ---
 
 ## Bug & biện pháp
+
+### Bảng TopPlayersStats bị ẩn toàn bộ trên các chế độ Team-based do thứ tự dọn dẹp ClearTeam
+- **Ngày:** 19-08-2026
+- **Vấn đề:** Khi kết thúc Normal Mode hoặc các mode chia đội (như Eternal Freeze), `TopPlayersStats` không hiển thị các khung `PlayerTop1-3` và người chơi đội thắng bị tính là DEFEAT trên bảng cá nhân. Chế độ FFA (Chaos) không bị lỗi.
+- **Nguyên nhân:** Trong `MatchService.RunGameOver`, `SessionService.ClearTeam` chạy trước khi gọi `BroadcastGameOver`. Khi `GetTopPlayers` lọc theo `GetTeamPlayers(WinTeam)`, mảng trả về `{}` rỗng khiến client ẩn cả 3 slot, đồng thời `GetTeam(Player)` bị `nil` làm sai cờ `Won`. Chế độ FFA lấy theo `GetStats(Player)` nên không bị ảnh hưởng.
+- **Fix:** Chuẩn bị sẵn dữ liệu qua `PrepareGameOverPayloads` ngay đầu phase trước khi dọn dẹp team, sau đó gửi payload bằng `SendGameOverPayloads` khi đã về sảnh.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua)
+
+### AvatarThumbnail trên GameStatistic không hiển thị hình ảnh do rbxthumb với UserId âm trong Studio
+- **Ngày:** 19-08-2026
+- **Vấn đề:** `AvatarThumbnail` trên bảng cá nhân `PlayerStats` và Top 1-3 `TopPlayersStats` trong `GameStatistic` bị trống (không hiển thị ảnh avatar người chơi).
+- **Nguyên nhân:** Script dùng chuỗi URL tĩnh `rbxthumb://` trực tiếp mà không kiểm tra `UserId <= 0`. Khi test trong Roblox Studio, `UserId` người chơi là số âm (`-1`, `-2`), khiến CDN Roblox báo lỗi texture không tải được.
+- **Fix:** Chuyển sang dùng `Players:GetUserThumbnailAsync` bất đồng bộ trong `task.spawn` với `pcall`, bổ sung fallback `TargetUserId = 1` khi `UserId <= 0` cho môi trường Studio, và truyền đúng `Enum.ThumbnailType` (`AvatarThumbnail` cho Top 1-3, `AvatarBust` cho cá nhân).
+- **File liên quan:** [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua)
 
 ### Lỗi Mất Màn Hình Chuyển Cảnh (RoundLoadingScreen) ở Trận Đầu Tiên của Người Chơi Mới
 - **Ngày:** 18-08-2026

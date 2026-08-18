@@ -81,58 +81,71 @@ local function ShowPlayerStats()
 	PlayGuiSound(AudioConfig.Stats.Overall)
 end
 
---- Hiển thị ảnh đại diện 2D của người chơi qua rbxthumb CDN
---- @param imageLabel ImageLabel
---- @param userId number
---- @param thumbnailType string|nil — "Avatar" (Toàn thân) hoặc "AvatarBust" (Từ eo trở lên)
-local function SetPlayerThumbnail(imageLabel, userId, thumbnailType)
-	if not imageLabel then return end
-	if not userId or userId == 0 then
-		imageLabel.Image = ""
-		return
-	end
-	thumbnailType = thumbnailType or "Avatar"
-	imageLabel.Image = string.format("rbxthumb://type=%s&id=%d&w=352&h=352", thumbnailType, userId)
+--- Hiển thị ảnh đại diện của người chơi qua GetUserThumbnailAsync (kèm Studio fallback)
+--- @param ImageLabel ImageLabel
+--- @param UserId number
+--- @param ThumbnailType Enum.ThumbnailType|nil
+local function SetPlayerThumbnail(ImageLabel, UserId, ThumbnailType)
+	if not ImageLabel then return end
+
+	ThumbnailType = ThumbnailType or Enum.ThumbnailType.AvatarThumbnail
+	local ThumbnailSize = Enum.ThumbnailSize.Size352x352
+
+	task.spawn(function()
+		local TargetUserId = UserId
+		if not TargetUserId or TargetUserId <= 0 then
+			TargetUserId = 1 -- Sử dụng ID mẫu để test được trong Studio
+		end
+
+		local Url, IsReady
+		local Ok = pcall(function()
+			Url, IsReady = Players:GetUserThumbnailAsync(TargetUserId, ThumbnailType, ThumbnailSize)
+		end)
+
+		if Ok and Url and ImageLabel and ImageLabel.Parent then
+			ImageLabel.Image = Url
+		end
+	end)
 end
 
 --- Lấy UserId an toàn từ Tên hiển thị (DisplayName hoặc Name) ngay cả khi người chơi đã thoát game
-local function GetUserIdFromName(name)
-	local player = Players:FindFirstChild(name)
-	if player then
-		return player.UserId
+local function GetUserIdFromName(Name)
+	local Player = Players:FindFirstChild(Name)
+	if Player then
+		return Player.UserId
 	end
 	
-	local success, userId = pcall(function()
-		return Players:GetUserIdFromNameAsync(name)
+	local Success, UserId = pcall(function()
+		return Players:GetUserIdFromNameAsync(Name)
 	end)
-	return success and userId or 0
+	return Success and UserId or 0
 end
 
 --- Điền thông tin top 3 vào các PlayerSlots
-local function FillTopPlayers(topPlayers)
-	for i, slot in ipairs(PlayerSlots) do
-		local data = topPlayers[i]
-		if data then
-			slot.PlayerNameText.Text = data.Name
-			slot.FreezesStats.ValueText.Text = tostring(data.Freezes)
-			slot.ThawsStats.ValueText.Text = tostring(data.Thaws)
+local function FillTopPlayers(TopPlayers)
+	for i, Slot in ipairs(PlayerSlots) do
+		local Data = TopPlayers[i]
+		if Data then
+			Slot.PlayerNameText.Text = Data.Name
+			Slot.FreezesStats.ValueText.Text = tostring(Data.Freezes)
+			Slot.ThawsStats.ValueText.Text = tostring(Data.Thaws)
 
-			-- Render ảnh 2D toàn thân (Avatar) cho Top player
-			local userId = data.UserId or 0
-			local avatarThumbnail = slot:FindFirstChild("AvatarThumbnail")
-			if avatarThumbnail then
-				SetPlayerThumbnail(avatarThumbnail, userId, "Avatar")
+			-- Render ảnh 2D toàn thân (AvatarThumbnail) cho Top player
+			local UserId = Data.UserId or 0
+			local AvatarThumbnail = Slot:FindFirstChild("AvatarThumbnail")
+			if AvatarThumbnail then
+				SetPlayerThumbnail(AvatarThumbnail, UserId, Enum.ThumbnailType.AvatarThumbnail)
 			end
 
-			slot.Visible = true
+			Slot.Visible = true
 		else
-			slot.Visible = false
+			Slot.Visible = false
 		end
 	end
 end
 
 --- Điền thống kê cá nhân vào bảng PlayerStats
-local function FillPersonalStats(won, stats)
+local function FillPersonalStats(Won, Stats)
 	local RewardPerFreeze        = RewardHelper.GetRewardAmount("PerFreeze")
 	local RewardPerThaw          = RewardHelper.GetRewardAmount("PerThaw")
 	local RewardPerFreezingSpree = RewardHelper.GetRewardAmount("PerFreezingSpree")
@@ -140,31 +153,31 @@ local function FillPersonalStats(won, stats)
 	local RewardFirstBlood       = RewardHelper.GetRewardAmount("FirstBlood")
 	local RewardLastStanding     = RewardHelper.GetRewardAmount("LastStanding")
 
-	GameResultText.Text  = won and "VICTORY" or "DEFEAT"
+	GameResultText.Text  = Won and "VICTORY" or "DEFEAT"
 	
 	-- Render ảnh 2D từ eo trở lên (AvatarBust) cho cá nhân người chơi
-	SetPlayerThumbnail(MainAvatarThumbnail, LocalPlayer.UserId, "AvatarBust")
+	SetPlayerThumbnail(MainAvatarThumbnail, LocalPlayer.UserId, Enum.ThumbnailType.AvatarBust)
 
 	-- Format hiển thị chi tiết: "Số lượng (x Giá trị) = Tổng nhận được"
 	FreezeVal.Text = ("%d (×%d) = %d"):format(
-		stats.Freezes, RewardPerFreeze, stats.Freezes * RewardPerFreeze
+		Stats.Freezes, RewardPerFreeze, Stats.Freezes * RewardPerFreeze
 	)
 
 	ThawVal.Text = ("%d (×%d) = %d"):format(
-		stats.Thaws, RewardPerThaw, stats.Thaws * RewardPerThaw
+		Stats.Thaws, RewardPerThaw, Stats.Thaws * RewardPerThaw
 	)
 
 	-- Đối với First Blood và Last Standing hiển thị số tiền trực tiếp
 	FSpreeVal.Text = ("%d (×%d) = %d"):format(
-		stats.FreezingSprees, RewardPerFreezingSpree, stats.FreezingSprees * RewardPerFreezingSpree
+		Stats.FreezingSprees, RewardPerFreezingSpree, Stats.FreezingSprees * RewardPerFreezingSpree
 	)
 	TSpreeVal.Text = ("%d (×%d) = %d"):format(
-		stats.ThawingSprees, RewardPerThawingSpree, stats.ThawingSprees * RewardPerThawingSpree
+		Stats.ThawingSprees, RewardPerThawingSpree, Stats.ThawingSprees * RewardPerThawingSpree
 	)
-	FirstBloodVal.Text   = stats.FirstBlood and tostring(RewardFirstBlood) or "0"
-	LastStandingVal.Text = stats.LastStanding and tostring(RewardLastStanding) or "0"
+	FirstBloodVal.Text   = Stats.FirstBlood and tostring(RewardFirstBlood) or "0"
+	LastStandingVal.Text = Stats.LastStanding and tostring(RewardLastStanding) or "0"
 	
-	TotalMoneyVal.Text   = tostring(stats.MoneyEarned)
+	TotalMoneyVal.Text   = tostring(Stats.MoneyEarned)
 end
 
 -- =========================================================
@@ -179,31 +192,31 @@ function GameStatisticController:Init()
 
 	-- Lắng nghe dữ liệu cuối trận từ server
 	local ShowGameOverEvent = RemoteDefinitions.GetEvent("ShowGameOver")
-	ShowGameOverEvent.OnClientEvent:Connect(function(data)
-		if not data then return end
+	ShowGameOverEvent.OnClientEvent:Connect(function(Data)
+		if not Data then return end
 
 		-- Xác định text thông báo thắng theo mode
-		if data.WinTeam then
+		if Data.WinTeam then
 			-- TeamBased: hiển thị tên đội
-			AnnounceText.Text = (data.WinTeam == "Team1") and "TEAM 1 WINS!" or "TEAM 2 WINS!"
-		elseif data.WinPlayer then
+			AnnounceText.Text = (Data.WinTeam == "Team1") and "TEAM 1 WINS!" or "TEAM 2 WINS!"
+		elseif Data.WinPlayer then
 			-- FFA: hiển thị tên người thắng
-			AnnounceText.Text = data.WinPlayer.Name .. " WINS!"
+			AnnounceText.Text = Data.WinPlayer.Name .. " WINS!"
 		else
 			-- Edge case: hòa (FFA dừa 0 người Normal)
 			AnnounceText.Text = "DRAW!"
 		end
 
-		FillTopPlayers(data.TopPlayers or {})
-		FillPersonalStats(data.Won, data.PersonalStats or {})
+		FillTopPlayers(Data.TopPlayers or {})
+		FillPersonalStats(Data.Won, Data.PersonalStats or {})
 
 		ShowTopPlayers()
 	end)
 
 	-- Ẩn GUI khi bắt đầu trận đấu mới
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
-	UpdateGameStateEvent.OnClientEvent:Connect(function(data)
-		if data and (data.Phase == "Ready" or data.Phase == "InGame") then
+	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
+		if Data and (Data.Phase == "Ready" or Data.Phase == "InGame") then
 			HideAll()
 		end
 	end)

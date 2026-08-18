@@ -331,11 +331,12 @@ local function DistributeRewards(Result)
 	end
 end
 
---- Gửi GameStatistic data về từng client
-local function BroadcastGameOver(Result)
+--- Chuẩn bị GameStatistic data cho từng client trước khi dọn dẹp team/state
+local function PrepareGameOverPayloads(Result)
 	local TopPlayers = GetTopPlayers(Result, 3)
 	local ModeKey = SessionService.GetCurrentModeKey()
 	local WinCondition = GameModeHelper.GetWinCondition(ModeKey)
+	local Payloads = {}
 
 	for _, Player in ipairs(Players:GetPlayers()) do
 		local Stats = SessionService.GetStats(Player) or {}
@@ -348,7 +349,7 @@ local function BroadcastGameOver(Result)
 			Won = (PlayerTeam == Result.WinTeam)
 		end
 
-		ShowGameOverEvent:FireClient(Player, {
+		Payloads[Player] = {
 			-- TeamBased: WinTeam = "Team1"/"Team2", WinPlayer = nil
 			-- FFA:       WinTeam = nil, WinPlayer = { Name, UserId }
 			WinTeam    = Result.WinTeam,
@@ -367,7 +368,18 @@ local function BroadcastGameOver(Result)
 				LastStanding   = Stats.LastStanding   or false,
 				MoneyEarned    = Stats.MoneyEarned    or 0,
 			},
-		})
+		}
+	end
+
+	return Payloads
+end
+
+--- Gửi GameStatistic data đã chuẩn bị xuống các client
+local function SendGameOverPayloads(Payloads)
+	for Player, Payload in pairs(Payloads) do
+		if Player.Parent then
+			ShowGameOverEvent:FireClient(Player, Payload)
+		end
 	end
 end
 
@@ -568,10 +580,13 @@ local function RunGameOver(Result)
 	-- Phát phần thưởng
 	DistributeRewards(Result)
 
+	-- Chuẩn bị dữ liệu thống kê cuối trận TRƯỚC KHI ClearTeam để giữ nguyên dữ liệu team và top players
+	local Payloads = PrepareGameOverPayloads(Result)
+
 	-- Thaw tất cả người bị đóng băng
 	FreezeService.ThawAll()
 
-	-- Đếm ngược GameOverDuration
+	-- Đếm ngược GameOverDuration (người chơi ở trong map xem kết quả ván đấu)
 	for t = Duration, 0, -1 do
 		BroadcastGameState("GameOver", t, false)
 		if t == 0 then break end
@@ -607,8 +622,8 @@ local function RunGameOver(Result)
 	-- Dọn dẹp map
 	MapService.UnloadMap()
 
-	-- Gửi thống kê cuối trận xuống client
-	BroadcastGameOver(Result)
+	-- Gửi thống kê cuối trận xuống client khi đã về lobby (chuyển sang Intermission)
+	SendGameOverPayloads(Payloads)
 end
 
 -- =========================================================
