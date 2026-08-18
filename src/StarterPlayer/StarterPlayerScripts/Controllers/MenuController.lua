@@ -69,6 +69,7 @@ local function HideAllFrames()
 	if not MenuGui then return end
 	for _, Child in ipairs(MenuGui:GetChildren()) do
 		if Child:IsA("GuiObject") then
+			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 			Child.Visible = false
 		end
 	end
@@ -96,12 +97,22 @@ function MenuController.OpenTab(TabName)
 	-- Nếu tab yêu cầu đã đang mở thì không làm gì
 	if _activeTab == TabName then return end
 
-	-- Đóng tab hiện tại nếu có
-	if _activeTab and _registeredTabs[_activeTab] and _registeredTabs[_activeTab].Close then
-		_registeredTabs[_activeTab].Close()
+	-- Đóng tab hiện tại nếu có (Phương án A: Fast Switch - ẩn tức thì tab cũ để nhường chỗ)
+	if _activeTab then
+		local OldTabData = _registeredTabs[_activeTab]
+		if OldTabData then
+			if OldTabData.Close then
+				OldTabData.Close()
+			end
+			if OldTabData.Frame then
+				GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(OldTabData.Frame))
+				OldTabData.Frame.Visible = false
+			end
+		end
+		_activeTab = nil
 	end
 
-	-- Ẩn an toàn tất cả các Frame con trong Menu
+	-- Ẩn an toàn tất cả các Frame con khác trong Menu
 	HideAllFrames()
 
 	-- Ẩn thanh nút điều hướng (NavigationButtons/Buttons) để nhường chỗ cho Menu
@@ -110,16 +121,16 @@ function MenuController.OpenTab(TabName)
 		NavCtrl.SetButtonsContainerVisible(false)
 	end
 
-	-- Mở tab mới
+	-- Mở tab mới kèm hiệu ứng PopOpen
 	local TargetData = _registeredTabs[TabName]
 	if TargetData then
-		if TargetData.Frame then
-			TargetData.Frame.Visible = true
-		end
+		_activeTab = TabName
 		if TargetData.Open then
 			TargetData.Open()
 		end
-		_activeTab = TabName
+		if TargetData.Frame then
+			GuiHelper.PopOpen(TargetData.Frame)
+		end
 	else
 		warn(string.format("[MenuController] Tab '%s' chưa được đăng ký trong hệ thống.", tostring(TabName)))
 	end
@@ -131,25 +142,37 @@ function MenuController.CloseTab(TabName)
 	local TargetTab = TabName or _activeTab
 	if not TargetTab then return end
 
-	if _registeredTabs[TargetTab] and _registeredTabs[TargetTab].Close then
-		_registeredTabs[TargetTab].Close()
-	end
-
-	if _registeredTabs[TargetTab] and _registeredTabs[TargetTab].Frame then
-		_registeredTabs[TargetTab].Frame.Visible = false
-	end
-
+	local TargetData = _registeredTabs[TargetTab]
 	if _activeTab == TargetTab then
 		_activeTab = nil
 	end
 
-	-- Nếu không còn tab nào mở, khôi phục lại thanh nút điều hướng
-	if not _activeTab then
-		local NavCtrl = GetNavigationController()
-		if NavCtrl and NavCtrl.SetButtonsContainerVisible then
-			local SpecCtrl = GetSpectateController()
-			local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
-			NavCtrl.SetButtonsContainerVisible(not IsSpectating)
+	if TargetData then
+		if TargetData.Close then
+			TargetData.Close()
+		end
+
+		if TargetData.Frame then
+			GuiHelper.PopClose(TargetData.Frame, nil, function()
+				-- Khi animation đóng hoàn tất, nếu không còn tab nào mở, khôi phục lại thanh nút điều hướng
+				if not _activeTab then
+					local NavCtrl = GetNavigationController()
+					if NavCtrl and NavCtrl.SetButtonsContainerVisible then
+						local SpecCtrl = GetSpectateController()
+						local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
+						NavCtrl.SetButtonsContainerVisible(not IsSpectating)
+					end
+				end
+			end)
+		else
+			if not _activeTab then
+				local NavCtrl = GetNavigationController()
+				if NavCtrl and NavCtrl.SetButtonsContainerVisible then
+					local SpecCtrl = GetSpectateController()
+					local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
+					NavCtrl.SetButtonsContainerVisible(not IsSpectating)
+				end
+			end
 		end
 	end
 end
@@ -177,6 +200,7 @@ function MenuController.CloseAll()
 
 	for _, TabData in pairs(_registeredTabs) do
 		if TabData.Frame then
+			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(TabData.Frame))
 			TabData.Frame.Visible = false
 		end
 	end

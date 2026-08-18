@@ -6,6 +6,11 @@
 
 ## Kiến trúc
 
+### Điều phối Hoạt họa Popup Tập Trung qua MenuController (UIScale Pop Animation)
+- **Ngày:** 18-08-2026
+- **Chi tiết:** Tích hợp hiệu ứng hoạt họa phóng to nảy nhẹ (`PopOpen`) và thu nhỏ (`PopClose`) dựa trên `UIScale` cho 4 menu chính (`Shop`, `Inventory`, `Profile`, `Quest`) trong `ScreenGui.Menu`. Sử dụng `UIScale` giúp hoạt họa hoàn toàn độc lập với kích thước `UDim2.Size` cụ thể của từng Frame thiết kế trong Studio. `MenuController` đóng vai trò điều phối duy nhất: tự động gọi `PopOpen` khi mở tab, `PopClose` khi đóng tab, và áp dụng cơ chế Fast Switch (hủy tween và ẩn ngay tab cũ khi chuyển đổi nhanh giữa các menu để phản hồi tức thì). Các controller con (`ShopController`, `InventoryController`, `ProfileController`, `QuestController`) không trực tiếp can thiệp vào `Visible`, mà chỉ tập trung xử lý dữ liệu.
+- **File liên quan:** [MenuController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+
 ### Phân tách trách nhiệm tập trung: NavigationController & MenuController (Decoupled Lobby UI)
 - **Ngày:** 18-08-2026
 - **Chi tiết:** Tách hoàn toàn trách nhiệm quản lý `NavigationButtons` và `MenuGui` ra khỏi `GameStateController`. `GameStateController` chỉ giữ đúng vai trò điều khiển GameState HUD (Timer, Phase, Frozen indicator) và thông báo thay đổi phase trận đấu. `NavigationController.lua` chuyên trách quản lý toàn bộ ScreenGui `NavigationButtons`, bind SFX, scale animation tập trung cho tất cả nút bấm và quản lý hiển thị số tiền `Cash`. `MenuController.lua` đóng vai trò UI Coordinator cho toàn bộ các cửa sổ trong `MenuGui` (`Shop`, `Inventory`, `Profile`, `Quest`), hiện thực cơ chế hiển thị độc quyền (Mutual Exclusion) và tự động yêu cầu `NavigationController` ẩn/hiện thanh nút khi mở/đóng menu, loại bỏ hoàn toàn các hàm lặp lại `HideAllMenuFrames` ở các controller con.
@@ -144,6 +149,13 @@
 ---
 
 ## Bug & biện pháp
+
+### Xung đột quyền điều khiển Visible và kẹt Animation khi controller con can thiệp trực tiếp
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Khi `MenuController` gọi `PopClose` (cần ~0.2s để thu nhỏ `UIScale` về 0), các controller con nếu tự ý set `Frame.Visible = false` ngay lập tức sẽ ngắt cụt animation đóng, gây mất hiệu ứng thu nhỏ hoặc tạo xung đột hiển thị khi mở lại.
+- **Nguyên nhân:** Thiếu sự phân định trách nhiệm rõ ràng: cả controller điều phối (`MenuController`) lẫn controller nội dung (`ShopController`, `InventoryController`...) cùng can thiệp vào thuộc tính `Visible` của Frame.
+- **Fix:** Chuyển giao 100% quyền quản lý `Frame.Visible` và `PopOpen`/`PopClose` cho `MenuController`. Hàm `Open()`/`Close()` của các controller con chỉ thuần túy làm nhiệm vụ dọn dẹp/nạp dữ liệu (clear list, clean viewport, load data).
+- **File liên quan:** [MenuController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
 
 ### Lỗi bị cắt đỉnh nút (ClipsDescendants) và xung đột vị trí khi scale trong UIListLayout
 - **Ngày:** 18-08-2026

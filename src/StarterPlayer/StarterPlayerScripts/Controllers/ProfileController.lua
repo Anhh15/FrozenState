@@ -275,8 +275,6 @@ end
 local function OpenProfile()
 	if not Profile then return end
 
-	Profile.Visible = true
-
 	-- Hiển thị dữ liệu cũ trước từ cache để tránh giao diện trống/trễ
 	PopulatePlayerInfo()
 	RenderEquippedItems()
@@ -293,7 +291,6 @@ end
 
 local function CloseProfile()
 	if not Profile then return end
-	Profile.Visible = false
 	ClearItemList()
 end
 

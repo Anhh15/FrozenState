@@ -391,21 +391,17 @@ end
 local function OpenInventory()
 	if not Inventory then return end
 
-	Inventory.Visible = true
 	SwitchTab(_currentTab)
 
 	-- Tải dữ liệu mới bất đồng bộ từ Server để hiển thị các skin mới nhất
 	task.spawn(function()
 		PlayerDataController.RefreshData()
-		if Inventory.Visible then
-			SwitchTab(_currentTab)
-		end
+		SwitchTab(_currentTab)
 	end)
 end
 
 local function CloseInventory()
 	if not Inventory then return end
-	Inventory.Visible = false
 	ClearItemList()
 	CleanViewport(SelectionViewport)
 end

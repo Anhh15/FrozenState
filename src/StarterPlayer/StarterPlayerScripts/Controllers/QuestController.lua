@@ -442,13 +442,10 @@ local function CloseQuest()
 	if not _questGui then return end
 	StopCountdownLoop()
 	StopAutoRefreshLoop()
-	_questGui.Visible = false
 end
 
 local function OpenQuest()
 	if not _questGui then return end
-
-	_questGui.Visible = true
 
 	-- Reset tab về Daily khi mở mới
 	_currentTab = "Daily"

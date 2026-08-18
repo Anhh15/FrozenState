@@ -418,7 +418,6 @@ end
 
 local function OpenShop()
 	if not Shop then return end
-	Shop.Visible = true
 	_currentTab = "Icicle"
 	UpdateTabHighlight("Icicle")
 	RenderChestList("Icicle")
@@ -426,7 +425,6 @@ end
 
 local function CloseShop()
 	if not Shop then return end
-	Shop.Visible = false
 	ClearChestList()
 end
 
@@ -436,14 +434,23 @@ end
 
 local ShopController = {}
 
---- Đặt Visible cho Shop frame
+--- Đặt Visible cho Shop frame qua MenuController
 --- @param Visible boolean
 function ShopController.SetVisible(Visible)
 	if not Shop then return end
+	local MenuCtrl = GetMenuController()
 	if Visible then
-		OpenShop()
+		if MenuCtrl then
+			MenuCtrl.OpenTab("Shop")
+		else
+			OpenShop()
+		end
 	else
-		CloseShop()
+		if MenuCtrl then
+			MenuCtrl.CloseTab("Shop")
+		else
+			CloseShop()
+		end
 	end
 end
 
