@@ -6,6 +6,16 @@
 
 ## Kiến trúc
 
+### Chuẩn hóa phân cấp Animation trên phần tử con Background trong ScreenGui Special
+- **Ngày:** 18-08-2026
+- **Chi tiết:** Thay vì tween trực tiếp trên Frame cha (`RoundLoadingScreen`, `ItemReward`) làm mất trạng thái kích thước hoặc phá vỡ cấu trúc container toàn màn hình, chuyển 100% các animation nền (fade in/out, flash trắng chuyển pha) sang phần tử con `Background` (`Frame`/`ImageLabel`). Frame cha giữ `BackgroundTransparency = 1` và thuần túy quản lý `Visible` / vòng đời hiển thị. Cache giá trị mặc định (`BackgroundColor3`, `BackgroundTransparency`) từ instance `Background` khi `Init()`, giúp tùy biến giao diện trực tiếp trong Roblox Studio mà không cần can thiệp mã nguồn.
+- **File liên quan:** [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [ItemRewardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### Hệ thống Thông báo Chế độ Chơi Đặc biệt ModeAnnouncement & Phối hợp Setup Phase
+- **Ngày:** 18-08-2026
+- **Chi tiết:** Xây dựng `ModeAnnouncementController` độc lập quản lý Frame `Special/ModeAnnouncement` (`Background`, `ModeNameText`, `DescriptionText`). Khi là Special Round (Chaos, EternalFreeze), controller kích hoạt hiệu ứng nối tiếp (Fade In tiêu đề in hoa kèm SFX `75713209190949` -> Fade In mô tả), hiển thị trong 4.0s trước khi gọi `RoundLoadingScreen`. Phía Server (`MatchService.RunSetup`) tự động chờ thêm 4.0s để tránh race condition nhảy phase `Ready` sớm. Normal Round bỏ qua hoàn toàn. Tự động `ForceHide()` dọn dẹp khi chuyển phase `Ready`.
+- **File liên quan:** [ModeAnnouncementController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ModeAnnouncementController.lua), [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameModeConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GameModeConfig.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua)
+
 ### Kiến trúc quản lý ResetOnSpawn và vòng đời GUI trong Single-Controller Pattern (ResetOnSpawn = false)
 - **Ngày:** 18-08-2026
 - **Chi tiết:** Trong kiến trúc Controller-Service (`StarterPlayerScripts`), các controller chỉ khởi tạo và gắn sự kiện `.Connect` một lần duy nhất khi client load. Mọi ScreenGui hệ thống (`Menu`, `NavigationButtons`, `GameState`, `Special`, `GameStatistic`) **bắt buộc phải đặt `ResetOnSpawn = false`**. Nếu đặt `true`, Roblox sẽ hủy và tạo mới ScreenGui khi nhân vật chết, làm mất toàn bộ các listener đã kết nối và biến GUI thành "GUI chết". Trạng thái dọn dẹp hoặc khôi phục khi nhân vật chết/hồi sinh được quản lý chủ động qua sự kiện `LocalPlayer.CharacterAdded` trong Controller.
@@ -159,6 +169,13 @@
 ---
 
 ## Bug & biện pháp
+
+### Lệch nhịp phase Setup giữa Server và Client khi hiển thị thông báo Special Round (Server Setup Race Condition)
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Khi bắt đầu vòng đấu đặc biệt có `ModeAnnouncement` (4.0s), server chỉ đợi 1.5s rồi lập tức chuyển sang `Ready` và teleport người chơi, khiến màn hình bị fade-out sớm hoặc teleport diễn ra trong lúc người chơi chưa đọc xong thông báo.
+- **Nguyên nhân:** Server `MatchService.RunSetup` chỉ tính toán thời gian `FadeInDuration` của màn hình tải cố định mà không tính đến thời lượng trình chiếu của thông báo chế độ.
+- **Fix:** Trong `MatchService.RunSetup`, kiểm tra `GameModeHelper.IsSpecialRound(ModeKey)` và gọi `task.wait(GameConfig.GUI.ModeAnnouncement.DisplayDuration)` để đồng bộ tuyệt đối nhịp thời gian giữa Server và Client.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [ModeAnnouncementController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ModeAnnouncementController.lua), [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua), [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua)
 
 ### Xung đột quyền điều khiển Visible và kẹt Animation khi controller con can thiệp trực tiếp
 - **Ngày:** 18-08-2026

@@ -43,6 +43,12 @@ local GameConfig = {
 			HoldDuration    = 1.0,  -- Thời gian giữ màn hình đen khi vào Ready
 			FadeOutDuration = 0.5,  -- Thời gian sáng dần trở lại
 		},
+
+		-- ModeAnnouncement timing (đơn vị: giây)
+		ModeAnnouncement = {
+			DisplayDuration = 4.0,  -- Thời gian hiển thị thông báo chế độ trước khi chuyển sang loading
+			FadeInDuration  = 0.5,  -- Thời gian fade in mỗi dòng chữ (ModeNameText và DescriptionText)
+		},
 	},
 
 	-- =========================================================

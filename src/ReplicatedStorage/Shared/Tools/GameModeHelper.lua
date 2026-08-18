@@ -26,6 +26,22 @@ function GameModeHelper.GetDisplayName(ModeKey)
 	return Mode.DisplayName or "Normal Mode"
 end
 
+--- Lấy mô tả chi tiết của mode
+--- @param ModeKey string?
+--- @return string
+function GameModeHelper.GetDescription(ModeKey)
+	local Mode = GameModeHelper.GetMode(ModeKey)
+	return Mode.Description or ""
+end
+
+--- Kiểm tra xem mode có phải là Special Round không
+--- @param ModeKey string?
+--- @return boolean
+function GameModeHelper.IsSpecialRound(ModeKey)
+	local Mode = GameModeHelper.GetMode(ModeKey)
+	return Mode.IsSpecialRound == true
+end
+
 --- Kiểm tra xem mode có phải là Free For All (không chia đội) không
 --- @param ModeKey string?
 --- @return boolean

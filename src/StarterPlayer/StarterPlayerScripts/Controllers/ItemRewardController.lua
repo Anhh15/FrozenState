@@ -33,6 +33,7 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local SpecialGui    = nil
 local ItemReward    = nil
+local Background    = nil
 local Effect        = nil
 local ChestViewport = nil
 local EffectImage   = nil
@@ -128,8 +129,11 @@ end
 --- Khôi phục các thuộc tính GUI về mặc định (tức thì, không Tween)
 local function RestoreDefaults()
 	if not ItemReward then return end
-	ItemReward.BackgroundColor3      = _defaultBgColor
-	ItemReward.BackgroundTransparency = _defaultBgTransparency
+	ItemReward.BackgroundTransparency = 1
+	if Background then
+		Background.BackgroundColor3       = _defaultBgColor
+		Background.BackgroundTransparency = _defaultBgTransparency
+	end
 	if ChestViewport then
 		ChestViewport.Size = _defaultViewportSize
 	end
@@ -170,7 +174,7 @@ local function RenderItems(Items)
 		local NameText    = Frame:FindFirstChild("NameText",     true)
 		local RarityText  = Frame:FindFirstChild("RarityText",   true)
 		local DropText    = Frame:FindFirstChild("DropRateText", true)
-		local Background  = Frame:FindFirstChild("Background",   true)
+		local ItemBg      = Frame:FindFirstChild("Background",   true)
 		local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
 
 		if NameText   then NameText.Text     = FullEntry.Name end
@@ -180,8 +184,8 @@ local function RenderItems(Items)
 		end
 		if DropText    then DropText.Visible    = false end  -- Ẩn DropRate trong màn hình reward
 		if EquippedTag then EquippedTag.Visible = false end  -- Ẩn Equipped tag trong màn hình reward
-		if Background and RarityEntry then
-			Background.Image = RarityEntry.ImageId
+		if ItemBg and RarityEntry then
+			ItemBg.Image = RarityEntry.ImageId
 		end
 
 		-- Render item 3D preview (nếu template có ItemViewport)
@@ -220,11 +224,12 @@ local function TransitionToPhase2()
 	StopRotation()
 	if Effect then Effect.Visible = false end
 
-	-- Flash: ItemReward → nền trắng hoàn toàn trong 0.4s
+	-- Flash: Background → nền trắng hoàn toàn trong 0.4s
+	local TweenTarget = Background or ItemReward
 	local TweenInfo04 = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	CancelActiveTween()
-	local FlashTween = TweenService:Create(ItemReward, TweenInfo04, {
-		BackgroundColor3      = Color3.fromHex("FFFFFF"),
+	local FlashTween = TweenService:Create(TweenTarget, TweenInfo04, {
+		BackgroundColor3       = Color3.fromHex("FFFFFF"),
 		BackgroundTransparency = 0,
 	})
 	_activeTween = FlashTween
@@ -237,8 +242,8 @@ local function TransitionToPhase2()
 		if ItemFrame then ItemFrame.Visible = true end
 
 		-- Fade về màu mặc định trong 0.4s
-		local FadeTween = TweenService:Create(ItemReward, TweenInfo04, {
-			BackgroundColor3      = _defaultBgColor,
+		local FadeTween = TweenService:Create(TweenTarget, TweenInfo04, {
+			BackgroundColor3       = _defaultBgColor,
 			BackgroundTransparency = _defaultBgTransparency,
 		})
 		_activeTween = FadeTween
@@ -427,6 +432,7 @@ function ItemRewardController:Init()
 	SpecialGui    = PlayerGui:WaitForChild("Special")
 	local IR      = SpecialGui:WaitForChild("ItemReward")
 	ItemReward    = IR
+	Background    = IR:FindFirstChild("Background") or IR:WaitForChild("Background", 5)
 	Effect        = IR:WaitForChild("Effect")
 	ChestViewport = Effect:WaitForChild("ChestViewport")
 	EffectImage   = Effect:WaitForChild("EffectImage")
@@ -436,13 +442,18 @@ function ItemRewardController:Init()
 	-- Ngăn GUI reset khi character chết/respawn
 	SpecialGui.ResetOnSpawn = false
 
-	-- Cache giá trị mặc định từ GUI instance (đọc trực tiếp, không hardcode)
-	_defaultBgColor        = ItemReward.BackgroundColor3
-	_defaultBgTransparency = ItemReward.BackgroundTransparency
+	-- Cache giá trị mặc định từ GUI instance (đọc từ Background nếu có, fallback ItemReward)
+	_defaultBgColor        = (Background and Background.BackgroundColor3) or ItemReward.BackgroundColor3
+	_defaultBgTransparency = (Background and Background.BackgroundTransparency) or ItemReward.BackgroundTransparency
 	_defaultViewportSize   = ChestViewport.Size
 	_defaultEffectRot      = EffectImage.Rotation
 
 	-- Đặt trạng thái ban đầu
+	ItemReward.BackgroundTransparency = 1
+	if Background then
+		Background.BackgroundColor3       = _defaultBgColor
+		Background.BackgroundTransparency = _defaultBgTransparency
+	end
 	ItemReward.Visible = false
 	Effect.Visible     = false
 	ItemFrame.Visible  = false

@@ -49,6 +49,24 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
+	-- TÊN CÁC FRAME CHÍNH TRONG SCREENGUI SPECIAL
+	-- =========================================================
+	SpecialFrames = {
+		RoundLoadingScreen = "RoundLoadingScreen",
+		ItemReward         = "ItemReward",
+		ModeAnnouncement   = "ModeAnnouncement",
+	},
+
+	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG FRAME MODEANNOUNCEMENT
+	-- =========================================================
+	ModeAnnouncementElements = {
+		Background      = "Background",
+		ModeNameText    = "ModeNameText",
+		DescriptionText = "DescriptionText",
+	},
+
+	-- =========================================================
 	-- THÔNG SỐ HUD VÀ CHỈ SỐ (STATS)
 	-- =========================================================
 	Stats = {

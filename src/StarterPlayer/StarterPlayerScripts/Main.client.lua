@@ -29,7 +29,8 @@ local SoundController          = require(Controllers:WaitForChild("SoundControll
 local PlayerStatusController   = require(Controllers:WaitForChild("PlayerStatusController"))
 local ScoreBoardController     = require(Controllers:WaitForChild("ScoreBoardController"))
 local AccoladesController      = require(Controllers:WaitForChild("AccoladesController"))
-local RoundLoadingScreenController  = require(Controllers:WaitForChild("RoundLoadingScreenController"))
+local ModeAnnouncementController   = require(Controllers:WaitForChild("ModeAnnouncementController"))
+local RoundLoadingScreenController = require(Controllers:WaitForChild("RoundLoadingScreenController"))
 
 -- Bước 3: Init tất cả controller
 -- MenuController & NavigationController khởi tạo trước để sẵn sàng đăng ký tab và bind sự kiện
@@ -50,6 +51,7 @@ SoundController:Init()
 PlayerStatusController:Init()
 ScoreBoardController:Init()
 AccoladesController:Init()
+ModeAnnouncementController:Init()
 RoundLoadingScreenController:Init()
 
 print("[Client] FrozenState đã sẵn sàng.")

@@ -24,6 +24,13 @@ local AudioConfig = {
 	},
 
 	-- =========================================================
+	-- ÂM THANH MÀN HÌNH ĐẶC BIỆT (SPECIAL GUI)
+	-- =========================================================
+	Special = {
+		ModeAnnouncement  = 75713209190949,  -- Âm thanh thông báo chế độ chơi đặc biệt
+	},
+
+	-- =========================================================
 	-- ÂM THANH GIAO DIỆN (GUI)
 	-- =========================================================
 	Gui = {
@@ -141,6 +148,7 @@ function AudioConfig.GetAllAudioIds()
 
 	Collect(AudioConfig.Music)
 	Collect(AudioConfig.ItemReward)
+	Collect(AudioConfig.Special)
 	Collect(AudioConfig.Gui)
 	Collect(AudioConfig.Accolades)
 	Collect(AudioConfig.Shop)

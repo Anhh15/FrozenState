@@ -37,6 +37,7 @@ local Modes = {
 
 	Normal = {
 		DisplayName          = "Normal Mode",
+		Description          = "",
 		IsSpecialRound       = false,
 
 		-- Cơ chế
@@ -63,6 +64,7 @@ local Modes = {
 
 	Chaos = {
 		DisplayName          = "Chaos",
+		Description          = "No team, only you. Win by defeat them all",
 		IsSpecialRound       = true,
 
 		HasTeams             = false,
@@ -83,6 +85,7 @@ local Modes = {
 
 	EternalFreeze = {
 		DisplayName          = "Eternal Freeze",
+		Description          = "Thaw is no longer a way to escape",
 		IsSpecialRound       = true,
 
 		HasTeams             = true,
