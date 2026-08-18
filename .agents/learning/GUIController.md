@@ -6,6 +6,16 @@
 
 ## Kiến trúc
 
+### Kiến trúc quản lý ResetOnSpawn và vòng đời GUI trong Single-Controller Pattern (ResetOnSpawn = false)
+- **Ngày:** 18-08-2026
+- **Chi tiết:** Trong kiến trúc Controller-Service (`StarterPlayerScripts`), các controller chỉ khởi tạo và gắn sự kiện `.Connect` một lần duy nhất khi client load. Mọi ScreenGui hệ thống (`Menu`, `NavigationButtons`, `GameState`, `Special`, `GameStatistic`) **bắt buộc phải đặt `ResetOnSpawn = false`**. Nếu đặt `true`, Roblox sẽ hủy và tạo mới ScreenGui khi nhân vật chết, làm mất toàn bộ các listener đã kết nối và biến GUI thành "GUI chết". Trạng thái dọn dẹp hoặc khôi phục khi nhân vật chết/hồi sinh được quản lý chủ động qua sự kiện `LocalPlayer.CharacterAdded` trong Controller.
+- **File liên quan:** [MenuController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [NavigationController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
+
+### Cơ chế Điều phối Hiển thị Độc quyền giữa Menu Tabs và SpectateGui (ExcludedFrame Coordinator)
+- **Ngày:** 18-08-2026
+- **Chi tiết:** Khi frame `Spectate` nằm bên trong ScreenGui `Menu` nhưng hoạt động độc lập với các tab menu nội bộ (Shop, Inventory, Profile, Quest), hàm `HideAllFrames` và `CloseAll` của `MenuController` hỗ trợ tham số `ExcludedFrame`. Khi `SpectateController.SetVisible(true)`, `MenuController.CloseAll(SpectateGui)` đóng các tab khác nhưng bỏ qua `SpectateGui`. Ngược lại, khi mở bất kỳ tab menu nào (`MenuController.OpenTab`), hệ thống chủ động gọi `SpectateController.SetVisible(false)` để giải phóng camera và chuyển trạng thái mượt mà.
+- **File liên quan:** [MenuController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)
+
 ### Điều phối Hoạt họa Popup Tập Trung qua MenuController (UIScale Pop Animation)
 - **Ngày:** 18-08-2026
 - **Chi tiết:** Tích hợp hiệu ứng hoạt họa phóng to nảy nhẹ (`PopOpen`) và thu nhỏ (`PopClose`) dựa trên `UIScale` cho 4 menu chính (`Shop`, `Inventory`, `Profile`, `Quest`) trong `ScreenGui.Menu`. Sử dụng `UIScale` giúp hoạt họa hoàn toàn độc lập với kích thước `UDim2.Size` cụ thể của từng Frame thiết kế trong Studio. `MenuController` đóng vai trò điều phối duy nhất: tự động gọi `PopOpen` khi mở tab, `PopClose` khi đóng tab, và áp dụng cơ chế Fast Switch (hủy tween và ẩn ngay tab cũ khi chuyển đổi nhanh giữa các menu để phản hồi tức thì). Các controller con (`ShopController`, `InventoryController`, `ProfileController`, `QuestController`) không trực tiếp can thiệp vào `Visible`, mà chỉ tập trung xử lý dữ liệu.
@@ -352,3 +362,18 @@
 - **Nguyên nhân:** Do race condition giữa sự kiện RemoteEvent `SetTeamAssignment` và việc đồng bộ thuộc tính `"Team"` (Property Replication), dẫn đến client kiểm tra `LocalPlayer:GetAttribute("Team")` bị `nil` ngay tại thời điểm nhận event.
 - **Fix:** Lấy thông tin team của LocalPlayer trực tiếp từ payload `Teams` gửi kèm sự kiện (`Teams[tostring(LocalPlayer.UserId)]`) thay vì đọc qua attribute.
 - **File liên quan:** [ScoreBoardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStatusController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua)
+
+### Lỗi Gui Spectate không hiển thị do bị HideAllFrames của MenuController ẩn đè
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Bấm nút Spectate trên thanh NavigationButtons nhưng giao diện Spectate không xuất hiện.
+- **Nguyên nhân:** Trong `SpectateController.SetVisible(true)`, code gọi `MenuController.CloseAll()` ngay sau khi set `SpectateGui.Visible = true`. Vì `Spectate` nằm trong ScreenGui `Menu`, `CloseAll` gọi `HideAllFrames()` duyệt qua tất cả con và ép `SpectateGui.Visible = false` ngay lập tức.
+- **Fix:** Đảo thứ tự đóng menu trước rồi mới hiện `SpectateGui`, đồng thời cập nhật `CloseAll`/`HideAllFrames` hỗ trợ tham số `ExcludedFrame` để không ẩn đè `SpectateGui`.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MenuController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua)
+
+### Lỗi mất NavigationButtons vĩnh viễn và kẹt camera sau khi Reset / Chết trong Spectate Mode
+- **Ngày:** 18-08-2026
+- **Vấn đề:** Người chơi bật Spectate rồi reset nhân vật (hoặc chết) thì NavigationButtons không hiện lại, và khi hết trận camera bị kẹt cố định tại một điểm trong không gian.
+- **Nguyên nhân:** (1) `SpectateController` không lắng nghe `LocalPlayer.CharacterAdded`, khiến cờ `_isSpectating` vẫn là `true` sau khi chết; `NavigationController.SetVisible` liên tục kiểm tra và ép ẩn NavigationButtons. (2) `RestoreCamera` cố gán `CameraSubject` vào instance `Humanoid` cũ đã bị hủy của nhân vật trước đó. (3) `MatchService` trên Server chặn lệnh reset `ReplicationFocus` khi phase không còn là `InGame`.
+- **Fix:** (1) Lắng nghe `CharacterAdded` để tự động tắt spectate, mở lại NavigationButtons và khôi phục di chuyển. (2) `RestoreCamera` kiểm tra tính hợp lệ của Humanoid cũ, nếu đã bị hủy thì fallback bám theo nhân vật mới tại sảnh và đặt `CameraType = Custom`. (3) Cho phép server xử lý yêu cầu reset `ReplicationFocus` ở mọi phase.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [NavigationController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+

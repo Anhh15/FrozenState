@@ -64,11 +64,12 @@ end
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Ẩn tất cả các Frame trực thuộc ScreenGui Menu
-local function HideAllFrames()
+--- Ẩn tất cả các Frame trực thuộc ScreenGui Menu (ngoại trừ Frame được chỉ định nếu có)
+--- @param ExcludedFrame GuiObject?
+local function HideAllFrames(ExcludedFrame)
 	if not MenuGui then return end
 	for _, Child in ipairs(MenuGui:GetChildren()) do
-		if Child:IsA("GuiObject") then
+		if Child:IsA("GuiObject") and Child ~= ExcludedFrame then
 			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 			Child.Visible = false
 		end
@@ -93,6 +94,12 @@ end
 --- @param TabName string Tên tab cần mở
 function MenuController.OpenTab(TabName)
 	if not TabName then return end
+
+	-- Nếu đang mở Spectate thì tắt Spectate để nhường chỗ cho Menu tab
+	local SpecCtrl = GetSpectateController()
+	if SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating() then
+		SpecCtrl.SetVisible(false)
+	end
 
 	-- Nếu tab yêu cầu đã đang mở thì không làm gì
 	if _activeTab == TabName then return end
@@ -193,20 +200,21 @@ function MenuController.ToggleTab(TabName)
 end
 
 --- Đóng toàn bộ các tab và dọn dẹp hiệu ứng mở rương (dùng khi vào trận)
-function MenuController.CloseAll()
+--- @param ExcludedFrame GuiObject?
+function MenuController.CloseAll(ExcludedFrame)
 	if _activeTab and _registeredTabs[_activeTab] and _registeredTabs[_activeTab].Close then
 		_registeredTabs[_activeTab].Close()
 	end
 
 	for _, TabData in pairs(_registeredTabs) do
-		if TabData.Frame then
+		if TabData.Frame and TabData.Frame ~= ExcludedFrame then
 			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(TabData.Frame))
 			TabData.Frame.Visible = false
 		end
 	end
 
 	_activeTab = nil
-	HideAllFrames()
+	HideAllFrames(ExcludedFrame)
 
 	-- Reset hiệu ứng mở rương nếu đang chạy
 	local RewardCtrl = GetItemRewardController()

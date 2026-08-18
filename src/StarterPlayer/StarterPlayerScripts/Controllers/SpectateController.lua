@@ -12,6 +12,7 @@ local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -20,7 +21,6 @@ local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelp
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
-local Camera      = workspace.CurrentCamera
 
 -- Biến sẽ được gán trong Init() sau khi GUI đã load xong
 local MenuGui
@@ -73,9 +73,9 @@ local RequestSpectateTargetEvent
 local STREAM_WAIT_TIMEOUT  = 5    -- giây
 local STREAM_POLL_INTERVAL = 0.1  -- giây
 
---- Phát âm thanh GUI qua GuiHelper
+--- Phát âm thanh GUI qua AudioHelper
 local function PlayGuiSound(SoundId)
-	GuiHelper.PlayGuiSound(SoundId)
+	AudioHelper.PlayGuiSound(SoundId)
 end
 
 -- =========================================================
@@ -118,16 +118,23 @@ local function FocusOnTarget(TargetPlayer)
 	task.spawn(function()
 		-- Bước 1: Yêu cầu server set ReplicationFocus vào target
 		-- Engine sẽ tự stream world xung quanh target về cho client này
-		RequestSpectateTargetEvent:FireServer(TargetPlayer)
+		if RequestSpectateTargetEvent then
+			RequestSpectateTargetEvent:FireServer(TargetPlayer)
+		end
 
 		-- Bước 2: Poll chờ Character stream in (tối đa STREAM_WAIT_TIMEOUT giây)
 		local Elapsed = 0
 		while Elapsed < STREAM_WAIT_TIMEOUT do
+			if not _isSpectating then return end
 			local Character = TargetPlayer.Character
-			if Character then
+			if Character and Character.Parent then
 				local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-				if Humanoid then
-					Camera.CameraSubject = Humanoid
+				if Humanoid and Humanoid.Health > 0 then
+					local Cam = workspace.CurrentCamera
+					if Cam then
+						Cam.CameraType = Enum.CameraType.Custom
+						Cam.CameraSubject = Humanoid
+					end
 					return
 				end
 			end
@@ -142,19 +149,29 @@ end
 
 --- Khôi phục camera về nhân vật của LocalPlayer
 local function RestoreCamera()
-	if _savedCameraSubject then
-		Camera.CameraSubject = _savedCameraSubject
-		_savedCameraSubject = nil
+	local Cam = workspace.CurrentCamera
+	if not Cam then return end
+
+	Cam.CameraType = Enum.CameraType.Custom
+
+	-- Kiểm tra nếu _savedCameraSubject còn hợp lệ trong workspace và còn sống
+	local IsSavedValid = _savedCameraSubject 
+		and _savedCameraSubject:IsDescendantOf(workspace) 
+		and _savedCameraSubject:IsA("Humanoid") 
+		and _savedCameraSubject.Health > 0
+
+	if IsSavedValid then
+		Cam.CameraSubject = _savedCameraSubject
 	else
-		-- Fallback: khôi phục về Humanoid của LocalPlayer
+		-- Fallback: khôi phục về Humanoid của LocalPlayer hiện tại
 		local Character = LocalPlayer.Character
-		if Character then
-			local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-			if Humanoid then
-				Camera.CameraSubject = Humanoid
-			end
+		local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+		if Humanoid then
+			Cam.CameraSubject = Humanoid
 		end
 	end
+
+	_savedCameraSubject = nil
 end
 
 -- =========================================================
@@ -222,7 +239,6 @@ local function OnSpectateListUpdated(NormalPlayers)
 
 	-- Nếu danh sách rỗng → tự động tắt spectate
 	if #_targetList == 0 then
-		-- Gọi SetVisible qua pcall để tránh stack overflow nếu có edge case
 		task.defer(function()
 			local SpectateController = require(script)
 			SpectateController.SetVisible(false)
@@ -230,14 +246,9 @@ local function OnSpectateListUpdated(NormalPlayers)
 		return
 	end
 
-	-- Kiểm tra target hiện tại còn trong danh sách không
-	local CurrentTarget = nil
-	if _currentIndex >= 1 and _currentIndex <= #_targetList then
-		-- Index cũ có thể đã shift, cần tìm lại
-	end
-
 	-- Tìm player đang focus trong danh sách mới
-	local CurrentSubject = Camera.CameraSubject
+	local Cam = workspace.CurrentCamera
+	local CurrentSubject = Cam and Cam.CameraSubject
 	local FoundIndex = nil
 
 	if CurrentSubject then
@@ -299,6 +310,18 @@ function SpectateController.SetVisible(Visible)
 			return
 		end
 
+		-- Đóng toàn bộ tab Menu khác (ngoại trừ SpectateGui không bị ẩn)
+		local MenuCtrl = GetMenuController()
+		if MenuCtrl then
+			MenuCtrl.CloseAll(SpectateGui)
+		end
+
+		-- Ẩn thanh nút điều hướng
+		local NavCtrl = GetNavigationController()
+		if NavCtrl then
+			NavCtrl.SetVisible(false)
+		end
+
 		-- Bật spectate
 		_isSpectating = true
 		_currentIndex = 1
@@ -307,19 +330,14 @@ function SpectateController.SetVisible(Visible)
 		LockSpectatorMovement()
 
 		-- Lưu camera hiện tại
-		_savedCameraSubject = Camera.CameraSubject
-
-		-- Hiện Spectate GUI, ẩn NavigationButtons và đóng các menu khác
-		if SpectateGui then SpectateGui.Visible = true end
-		
-		local MenuCtrl = GetMenuController()
-		if MenuCtrl then
-			MenuCtrl.CloseAll()
+		local Cam = workspace.CurrentCamera
+		if Cam then
+			_savedCameraSubject = Cam.CameraSubject
 		end
 
-		local NavCtrl = GetNavigationController()
-		if NavCtrl then
-			NavCtrl.SetVisible(false)
+		-- Hiện Spectate GUI
+		if SpectateGui then
+			SpectateGui.Visible = true
 		end
 
 		-- Focus vào target đầu tiên
@@ -344,7 +362,9 @@ function SpectateController.SetVisible(Visible)
 		end
 
 		-- Ẩn Spectate GUI, hiện lại NavigationButtons
-		if SpectateGui then SpectateGui.Visible = false end
+		if SpectateGui then
+			SpectateGui.Visible = false
+		end
 
 		local NavCtrl = GetNavigationController()
 		if NavCtrl then
@@ -376,21 +396,36 @@ function SpectateController:Init()
 		SpectateGui.Visible = false
 	end
 
-	-- Kết nối các nút điều khiển
-	CloseButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-		SpectateController.SetVisible(false)
-	end)
+	-- Gắn sự kiện click và âm thanh SFX cho các nút điều khiển (không kèm animation scale theo quy định)
+	if CloseButton then
+		CloseButton.MouseButton1Click:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
+			SpectateController.SetVisible(false)
+		end)
+		CloseButton.MouseEnter:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.MouseEnter)
+		end)
+	end
 
-	NextButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.ButtonClick)
-		CycleNext()
-	end)
+	if NextButton then
+		NextButton.MouseButton1Click:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
+			CycleNext()
+		end)
+		NextButton.MouseEnter:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.MouseEnter)
+		end)
+	end
 
-	BackButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.ButtonClick)
-		CycleBack()
-	end)
+	if BackButton then
+		BackButton.MouseButton1Click:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
+			CycleBack()
+		end)
+		BackButton.MouseEnter:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.MouseEnter)
+		end)
+	end
 
 	-- Lắng nghe danh sách Spectate từ server
 	local UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
@@ -416,6 +451,16 @@ function SpectateController:Init()
 	PlayerStateHelper.ObserveMatchState(LocalPlayer, function(IsInMatch)
 		if IsInMatch and _isSpectating then
 			SpectateController.SetVisible(false)
+		end
+	end)
+
+	-- Lắng nghe khi nhân vật hồi sinh hoặc chết để khôi phục trạng thái
+	LocalPlayer.CharacterAdded:Connect(function()
+		if _isSpectating then
+			SpectateController.SetVisible(false)
+		else
+			UnlockSpectatorMovement()
+			RestoreCamera()
 		end
 	end)
 

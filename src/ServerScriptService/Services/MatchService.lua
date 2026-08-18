@@ -444,11 +444,17 @@ local function RunSetup()
 
 	SessionService.SetMatchActive(true)
 
-	-- Báo client bắt đầu RoundLoadingScreen
+	-- Báo client bắt đầu Setup (và ModeAnnouncement nếu là Special Round)
 	BroadcastGameState("Setup", 0, false)
 
 	-- Load map ngẫu nhiên
 	MapService.LoadRandomMap()
+
+	-- Nếu là Special Round: chờ thêm thời gian để client hiển thị ModeAnnouncement
+	if GameModeHelper.IsSpecialRound(ModeKey) then
+		local AnnouncementDuration = (GameConfig.GUI.ModeAnnouncement and GameConfig.GUI.ModeAnnouncement.DisplayDuration) or 4.0
+		task.wait(AnnouncementDuration)
+	end
 
 	task.wait(GameConfig.GUI.RoundLoadingScreen.FadeInDuration)
 	task.wait(0.5)  -- buffer nhỏ để map load xong
@@ -701,12 +707,9 @@ function MatchService:Init()
 		end
 	end)
 
-	-- Spectator yêu cầu focus vào target
+	-- Spectator yêu cầu focus vào target hoặc reset về chính mình
 	RequestSpectateTargetEvent.OnServerEvent:Connect(function(SpectatorPlayer, TargetPlayer)
-		if _currentPhase ~= "InGame" then return end
-		-- Player đang trong trận không được phép spectate
-		if PlayerStateHelper.IsInMatch(SpectatorPlayer) then return end
-
+		-- Nếu TargetPlayer là nil: reset ReplicationFocus về chính spectator (cho phép ở mọi phase)
 		if TargetPlayer == nil then
 			local SpectatorCharacter = SpectatorPlayer.Character
 			if SpectatorCharacter then
@@ -717,6 +720,10 @@ function MatchService:Init()
 			end
 			return
 		end
+
+		-- Chỉ cho phép trỏ sang người chơi khác khi đang trong phase InGame và người xem không ở trong trận
+		if _currentPhase ~= "InGame" then return end
+		if PlayerStateHelper.IsInMatch(SpectatorPlayer) then return end
 
 		if not TargetPlayer:IsDescendantOf(Players) then return end
 		local TargetCharacter = TargetPlayer.Character
