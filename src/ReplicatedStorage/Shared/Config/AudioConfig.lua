@@ -27,7 +27,8 @@ local AudioConfig = {
 	-- ÂM THANH MÀN HÌNH ĐẶC BIỆT (SPECIAL GUI)
 	-- =========================================================
 	Special = {
-		ModeAnnouncement  = 75713209190949,  -- Âm thanh thông báo chế độ chơi đặc biệt
+		ModeAnnouncement       = 75713209190949,  -- Âm thanh thông báo chế độ chơi đặc biệt
+		ModeAnnouncementVolume = 3,               -- Âm lượng phát thông báo chế độ
 	},
 
 	-- =========================================================
@@ -43,7 +44,8 @@ local AudioConfig = {
 	-- ÂM THANH DANH HIỆU (ACCOLADES)
 	-- =========================================================
 	Accolades = {
-		Announcement     = 96102213526905,   -- Âm thanh khi đạt First Blood, Spree
+		Announcement       = 96102213526905,   -- Âm thanh khi đạt First Blood, Spree
+		AnnouncementVolume = 3,                -- Âm lượng phát thông báo danh hiệu
 	},
 
 	-- =========================================================
@@ -51,6 +53,7 @@ local AudioConfig = {
 	-- =========================================================
 	Shop = {
 		ChestBuy         = 113890702074571,  -- Âm thanh khi mua rương thành công
+		ChestBuyVolume   = 5,                -- Âm lượng phát khi mua rương thành công
 		BuyFail          = 128827503277042,  -- Âm thanh khi mua thất bại (thiếu tiền)
 	},
 

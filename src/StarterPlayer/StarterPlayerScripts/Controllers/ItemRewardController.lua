@@ -23,6 +23,7 @@ local ChestConfig     = require(ReplicatedStorage.Shared.Config.ChestConfig)
 local AudioConfig     = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AudioHelper     = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local ViewportManager = require(ReplicatedStorage.Shared.Tools.ViewportManager)
+local GuiHelper       = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES (set trong Init)
@@ -54,21 +55,22 @@ local ItemPreviewFolder = Assets     and Assets:FindFirstChild("ItemPreview")
 -- DEFAULTS (đọc từ GUI trong Init — không hardcode)
 -- =========================================================
 
-local _defaultBgColor        = nil  -- ItemReward.BackgroundColor3
-local _defaultBgTransparency = nil  -- ItemReward.BackgroundTransparency
-local _defaultViewportSize   = nil  -- ChestViewport.Size  (UDim2)
-local _defaultEffectRot      = nil  -- EffectImage.Rotation (number)
+local _DefaultBgColor        = nil  -- ItemReward.BackgroundColor3
+local _DefaultBgTransparency = nil  -- ItemReward.BackgroundTransparency
+local _DefaultViewportSize   = nil  -- ChestViewport.Size  (UDim2)
+local _DefaultEffectRot      = nil  -- EffectImage.Rotation (number)
 
 -- =========================================================
 -- STATE
 -- =========================================================
 
 -- "idle" | "phase1" | "phase2"
-local _state      = "idle"
-local _clickCount = 0        -- số click trong Pha 1 (tối đa 3)
+local _State          = "idle"
+local _ClickCount     = 0        -- số click trong Pha 1 (tối đa 3)
+local _CurrentChestId = nil      -- Id của rương hiện tại đang mở
 
-local _activeTween = nil     -- Tween đang chạy (để cancel khi cần)
-local _rotConn     = nil     -- RunService.Heartbeat connection xoay EffectImage
+local _ActiveTween = nil     -- Tween đang chạy (để cancel khi cần)
+local _RotConn     = nil     -- RunService.Heartbeat connection xoay EffectImage
 
 -- =========================================================
 -- PRIVATE HELPERS
@@ -83,27 +85,28 @@ end
 
 --- Hủy Tween đang chạy (nếu có), không ảnh hưởng state
 local function CancelActiveTween()
-	if _activeTween then
-		_activeTween:Cancel()
-		_activeTween = nil
+	if _ActiveTween then
+		_ActiveTween:Cancel()
+		_ActiveTween = nil
 	end
 end
 
 --- Dừng vòng xoay EffectImage
 local function StopRotation()
-	if _rotConn then
-		_rotConn:Disconnect()
-		_rotConn = nil
+	if _RotConn then
+		_RotConn:Disconnect()
+		_RotConn = nil
 	end
 end
 
---- Bắt đầu xoay EffectImage liên tục (72°/s = 360° trong 5 giây)
+--- Bắt đầu xoay EffectImage liên tục theo RotationSpeed trong cấu hình
 local function StartRotation()
 	StopRotation()
 	if not EffectImage then return end
-	local SPEED = 36  -- độ/giây
-	_rotConn = RunService.Heartbeat:Connect(function(Dt)
-		EffectImage.Rotation = EffectImage.Rotation + SPEED * Dt
+	local AnimConfig = GuiHelper.GetItemRewardAnimConfig(_CurrentChestId)
+	local Speed = AnimConfig.RotationSpeed or 36
+	_RotConn = RunService.Heartbeat:Connect(function(Dt)
+		EffectImage.Rotation = EffectImage.Rotation + Speed * Dt
 	end)
 end
 
@@ -131,14 +134,14 @@ local function RestoreDefaults()
 	if not ItemReward then return end
 	ItemReward.BackgroundTransparency = 1
 	if Background then
-		Background.BackgroundColor3       = _defaultBgColor
-		Background.BackgroundTransparency = _defaultBgTransparency
+		Background.BackgroundColor3       = _DefaultBgColor
+		Background.BackgroundTransparency = _DefaultBgTransparency
 	end
 	if ChestViewport then
-		ChestViewport.Size = _defaultViewportSize
+		ChestViewport.Size = _DefaultViewportSize
 	end
 	if EffectImage then
-		EffectImage.Rotation = _defaultEffectRot
+		EffectImage.Rotation = _DefaultEffectRot
 	end
 end
 
@@ -215,7 +218,7 @@ end
 
 --- Chuyển sang Pha 2: flash trắng → hiện ItemFrame → fade về mặc định
 local function TransitionToPhase2()
-	_state = "phase2"
+	_State = "phase2"
 
 	-- Phát âm thanh chuyển pha 2
 	PlaySound(AudioConfig.ItemReward.Phase2Transition)
@@ -224,15 +227,17 @@ local function TransitionToPhase2()
 	StopRotation()
 	if Effect then Effect.Visible = false end
 
-	-- Flash: Background → nền trắng hoàn toàn trong 0.4s
+	local AnimCfg = GuiHelper.GetItemRewardAnimConfig(_CurrentChestId)
+
+	-- Flash: Background → nền trắng hoàn toàn trong FlashDuration
 	local TweenTarget = Background or ItemReward
-	local TweenInfo04 = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local FlashTweenInfo = TweenInfo.new(AnimCfg.FlashDuration or 0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	CancelActiveTween()
-	local FlashTween = TweenService:Create(TweenTarget, TweenInfo04, {
+	local FlashTween = TweenService:Create(TweenTarget, FlashTweenInfo, {
 		BackgroundColor3       = Color3.fromHex("FFFFFF"),
 		BackgroundTransparency = 0,
 	})
-	_activeTween = FlashTween
+	_ActiveTween = FlashTween
 	FlashTween:Play()
 
 	FlashTween.Completed:Connect(function(Pb)
@@ -241,17 +246,18 @@ local function TransitionToPhase2()
 		-- Hiện ItemFrame
 		if ItemFrame then ItemFrame.Visible = true end
 
-		-- Fade về màu mặc định trong 0.4s
-		local FadeTween = TweenService:Create(TweenTarget, TweenInfo04, {
-			BackgroundColor3       = _defaultBgColor,
-			BackgroundTransparency = _defaultBgTransparency,
+		-- Fade về màu mặc định trong FadeDuration
+		local FadeTweenInfo = TweenInfo.new(AnimCfg.FadeDuration or 0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local FadeTween = TweenService:Create(TweenTarget, FadeTweenInfo, {
+			BackgroundColor3       = _DefaultBgColor,
+			BackgroundTransparency = _DefaultBgTransparency,
 		})
-		_activeTween = FadeTween
+		_ActiveTween = FadeTween
 		FadeTween:Play()
 
 		FadeTween.Completed:Connect(function(Pb2)
 			if Pb2 ~= Enum.PlaybackState.Completed then return end
-			_activeTween = nil
+			_ActiveTween = nil
 		end)
 	end)
 end
@@ -263,38 +269,48 @@ local function PlayClickAnimation()
 
 	-- Tính 50% size mặc định
 	local HalfSize = UDim2.new(
-		_defaultViewportSize.X.Scale  * 0.5,
-		_defaultViewportSize.X.Offset * 0.5,
-		_defaultViewportSize.Y.Scale  * 0.5,
-		_defaultViewportSize.Y.Offset * 0.5
+		_DefaultViewportSize.X.Scale  * 0.5,
+		_DefaultViewportSize.X.Offset * 0.5,
+		_DefaultViewportSize.Y.Scale  * 0.5,
+		_DefaultViewportSize.Y.Offset * 0.5
 	)
 
-	-- Shrink: size hiện tại → 50% (0.15s, Quad Out)
+	local AnimCfg = GuiHelper.GetItemRewardAnimConfig(_CurrentChestId)
+
+	-- Shrink: size hiện tại → 50%
 	local ShrinkTween = TweenService:Create(
 		ChestViewport,
-		TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		TweenInfo.new(
+			AnimCfg.ChestShrinkDuration or 0.15,
+			AnimCfg.ShrinkEasingStyle   or Enum.EasingStyle.Quad,
+			AnimCfg.ShrinkEasingDir     or Enum.EasingDirection.Out
+		),
 		{ Size = HalfSize }
 	)
-	_activeTween = ShrinkTween
+	_ActiveTween = ShrinkTween
 	ShrinkTween:Play()
 
 	ShrinkTween.Completed:Connect(function(Pb)
 		if Pb ~= Enum.PlaybackState.Completed then return end
 
-		-- Expand: 50% → size mặc định (0.25s, Back Out — tạo hiệu ứng "bật lại")
+		-- Expand: 50% → size mặc định (tạo hiệu ứng "bật lại")
 		local ExpandTween = TweenService:Create(
 			ChestViewport,
-			TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-			{ Size = _defaultViewportSize }
+			TweenInfo.new(
+				AnimCfg.ChestExpandDuration or 0.25,
+				AnimCfg.ExpandEasingStyle   or Enum.EasingStyle.Back,
+				AnimCfg.ExpandEasingDir     or Enum.EasingDirection.Out
+			),
+			{ Size = _DefaultViewportSize }
 		)
-		_activeTween = ExpandTween
+		_ActiveTween = ExpandTween
 		ExpandTween:Play()
 
 		ExpandTween.Completed:Connect(function(Pb2)
 			if Pb2 ~= Enum.PlaybackState.Completed then return end
-			_activeTween = nil
+			_ActiveTween = nil
 			-- Kiểm tra xem có đủ 3 lần không để chuyển sang Pha 2
-			if _state == "phase1" and _clickCount >= 3 then
+			if _State == "phase1" and _ClickCount >= 3 then
 				TransitionToPhase2()
 			end
 		end)
@@ -317,8 +333,9 @@ local function DoReset()
 	if ItemFrame   then ItemFrame.Visible   = false end
 	if ClickButton then ClickButton.Active  = false end
 
-	_state      = "idle"
-	_clickCount = 0
+	_State          = "idle"
+	_ClickCount     = 0
+	_CurrentChestId = nil
 end
 
 -- =========================================================
@@ -332,13 +349,15 @@ local ItemRewardController = {}
 --- @param ReceivedItems table  -- array of { ItemId: string, Type?: string, WasDuplicate?: bool, Refund?: number }
 --- @param ChestId string       -- Id của rương (để load model và suy ra Type nếu item thiếu Type)
 function ItemRewardController.ShowChestReward(ReceivedItems, ChestId)
-	if _state ~= "idle" then DoReset() end
+	if _State ~= "idle" then DoReset() end
 
 	local ChestEntry = ChestConfig.GetChest(ChestId)
 	if not ChestEntry then
 		warn(("[ItemRewardController] Không tìm thấy ChestId '%s' trong ChestConfig."):format(tostring(ChestId)))
 		return
 	end
+
+	_CurrentChestId = ChestId
 
 	-- Gắn Type vào mỗi item (lấy từ ChestEntry.Type nếu item chưa có)
 	local ItemsWithType = {}
@@ -355,8 +374,8 @@ function ItemRewardController.ShowChestReward(ReceivedItems, ChestId)
 	RenderItems(ItemsWithType)
 
 	-- Khởi tạo Pha 1
-	_state      = "phase1"
-	_clickCount = 0
+	_State      = "phase1"
+	_ClickCount = 0
 
 	ItemReward.Visible = true
 	Effect.Visible     = true
@@ -378,18 +397,24 @@ function ItemRewardController.ShowChestReward(ReceivedItems, ChestId)
 		end
 	end
 
-	-- Zoom-in ban đầu: 0 → size mặc định (0.4s, Back Out — cảm giác "bật ra")
+	local AnimCfg = GuiHelper.GetItemRewardAnimConfig(ChestId)
+
+	-- Zoom-in ban đầu: 0 → size mặc định
 	CancelActiveTween()
 	local ZoomTween = TweenService:Create(
 		ChestViewport,
-		TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-		{ Size = _defaultViewportSize }
+		TweenInfo.new(
+			AnimCfg.ChestZoomDuration or 0.4,
+			AnimCfg.ZoomEasingStyle   or Enum.EasingStyle.Back,
+			AnimCfg.ZoomEasingDir     or Enum.EasingDirection.Out
+		),
+		{ Size = _DefaultViewportSize }
 	)
-	_activeTween = ZoomTween
+	_ActiveTween = ZoomTween
 	ZoomTween:Play()
 	ZoomTween.Completed:Connect(function(Pb)
 		if Pb == Enum.PlaybackState.Completed then
-			_activeTween = nil
+			_ActiveTween = nil
 		end
 	end)
 
@@ -404,14 +429,16 @@ end
 --- Dùng khi nhận phần thưởng là item cụ thể (icicle, block) mà không phải rương
 --- @param Items table  -- array of { ItemId: string, Type: string, ... }
 function ItemRewardController.ShowItemReward(Items)
-	if _state ~= "idle" then DoReset() end
+	if _State ~= "idle" then DoReset() end
+
+	_CurrentChestId = nil
 
 	-- Clone items vào ItemFrame
 	RenderItems(Items)
 
 	-- Bỏ qua Pha 1, vào thẳng Pha 2
-	_state      = "phase2"
-	_clickCount = 0
+	_State      = "phase2"
+	_ClickCount = 0
 
 	ItemReward.Visible = true
 	Effect.Visible     = false
@@ -443,42 +470,42 @@ function ItemRewardController:Init()
 	SpecialGui.ResetOnSpawn = false
 
 	-- Cache giá trị mặc định từ GUI instance (đọc từ Background nếu có, fallback ItemReward)
-	_defaultBgColor        = (Background and Background.BackgroundColor3) or ItemReward.BackgroundColor3
-	_defaultBgTransparency = (Background and Background.BackgroundTransparency) or ItemReward.BackgroundTransparency
-	_defaultViewportSize   = ChestViewport.Size
-	_defaultEffectRot      = EffectImage.Rotation
+	_DefaultBgColor        = (Background and Background.BackgroundColor3) or ItemReward.BackgroundColor3
+	_DefaultBgTransparency = (Background and Background.BackgroundTransparency) or ItemReward.BackgroundTransparency
+	_DefaultViewportSize   = ChestViewport.Size
+	_DefaultEffectRot      = EffectImage.Rotation
 
 	-- Đặt trạng thái ban đầu
 	ItemReward.BackgroundTransparency = 1
 	if Background then
-		Background.BackgroundColor3       = _defaultBgColor
-		Background.BackgroundTransparency = _defaultBgTransparency
+		Background.BackgroundColor3       = _DefaultBgColor
+		Background.BackgroundTransparency = _DefaultBgTransparency
 	end
 	ItemReward.Visible = false
 	Effect.Visible     = false
 	ItemFrame.Visible  = false
 	ClickButton.Active = false
 
-	-- Kết nối ClickButton — lắng nghe suốt vòng đời, điều phối theo _state
+	-- Kết nối ClickButton — lắng nghe suốt vòng đời, điều phối theo _State
 	ClickButton.MouseButton1Click:Connect(function()
-		if _state == "phase1" then
+		if _State == "phase1" then
 			-- Chặn click thứ 4+ trong Pha 1
-			if _clickCount >= 3 then return end
-			_clickCount = _clickCount + 1
+			if _ClickCount >= 3 then return end
+			_ClickCount = _ClickCount + 1
 
 			-- Phát âm thanh click rương với âm lượng tăng dần theo từng lần click
 			local Volumes = AudioConfig.ItemReward.ChestClickVolumes
-			local SoundVolume = (Volumes and Volumes[_clickCount]) or 1
+			local SoundVolume = (Volumes and Volumes[_ClickCount]) or 1
 			PlaySound(AudioConfig.ItemReward.ChestClick, SoundVolume)
 
 			-- Nếu đang animation thì reset animation (bắt đầu lại từ đầu shrink)
 			PlayClickAnimation()
 
-		elseif _state == "phase2" then
+		elseif _State == "phase2" then
 			-- Một click để đóng toàn bộ
 			DoReset()
 		end
-		-- state == "idle": ClickButton.Active = false nên không kích hoạt được
+		-- State == "idle": ClickButton.Active = false nên không kích hoạt được
 	end)
 
 	print("[ItemRewardController] Đã khởi tạo.")

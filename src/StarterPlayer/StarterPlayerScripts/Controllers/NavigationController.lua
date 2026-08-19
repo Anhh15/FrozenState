@@ -23,46 +23,43 @@ local ExtraContainer   = nil
 local StatsContainer   = nil
 local MoneyLabel       = nil
 
--- Cache các nút điều hướng
-local _navButtons = {}
-
 -- Lazy-require MenuController để chuyển tiếp sự kiện mở menu
-local _menuController = nil
+local _MenuController = nil
 local function GetMenuController()
-	if not _menuController then
+	if not _MenuController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_menuController = require(Module)
+			_MenuController = require(Module)
 		end
 	end
-	return _menuController
+	return _MenuController
 end
 
 -- Lazy-require SpectateController để chuyển tiếp sự kiện Spectate
-local _spectateController = nil
+local _SpectateController = nil
 local function GetSpectateController()
-	if not _spectateController then
+	if not _SpectateController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("SpectateController")
 		if Module then
-			_spectateController = require(Module)
+			_SpectateController = require(Module)
 		end
 	end
-	return _spectateController
+	return _SpectateController
 end
 
 -- Lazy-require PlayerDataController để lấy số tiền hiển thị
-local _playerDataController = nil
+local _PlayerDataController = nil
 local function GetPlayerDataController()
-	if not _playerDataController then
+	if not _PlayerDataController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("PlayerDataController")
 		if Module then
-			_playerDataController = require(Module)
+			_PlayerDataController = require(Module)
 		end
 	end
-	return _playerDataController
+	return _PlayerDataController
 end
 
 -- =========================================================

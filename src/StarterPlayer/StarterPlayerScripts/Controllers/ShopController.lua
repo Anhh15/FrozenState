@@ -70,18 +70,18 @@ local ChestsFolder = Assets and Assets:FindFirstChild("Chests")
 -- STATE
 -- =========================================================
 
-local _currentTab      = "Icicle"  -- Tab đang hiển thị: "Icicle" hoặc "Block"
-local _listConnections = {}        -- Connections của ChestList cards (dọn khi re-render)
-local _previewStates   = {}        -- [Frame] = { Amount: number } — trạng thái per-card
-local _lazyRenderQueue = {}        -- { Frame, ChestEntry } — cards chờ render viewport
-local _scrollConn      = nil       -- Connection theo dõi ChestScroll.CanvasPosition
-local _staggerThread   = nil       -- Thread animation stagger danh sách rương
+local _CurrentTab      = "Icicle"  -- Tab đang hiển thị: "Icicle" hoặc "Block"
+local _ListConnections = {}        -- Connections của ChestList cards (dọn khi re-render)
+local _PreviewStates   = {}        -- [Frame] = { Amount: number } — trạng thái per-card
+local _LazyRenderQueue = {}        -- { Frame, ChestEntry } — cards chờ render viewport
+local _ScrollConn      = nil       -- Connection theo dõi ChestScroll.CanvasPosition
+local _StaggerThread   = nil       -- Thread animation stagger danh sách rương
 
 --- Dừng animation stagger đang chạy dở
 local function StopStaggerAnimation()
-	if _staggerThread then
-		task.cancel(_staggerThread)
-		_staggerThread = nil
+	if _StaggerThread then
+		task.cancel(_StaggerThread)
+		_StaggerThread = nil
 	end
 end
 
@@ -95,28 +95,28 @@ end
 -- =========================================================
 
 --- Lazy-require ItemRewardController để tránh circular dependency
-local _itemRewardController = nil
+local _ItemRewardController = nil
 local function GetItemRewardController()
-	if not _itemRewardController then
+	if not _ItemRewardController then
 		local Module = script.Parent:FindFirstChild("ItemRewardController")
 		if Module then
-			_itemRewardController = require(Module)
+			_ItemRewardController = require(Module)
 		end
 	end
-	return _itemRewardController
+	return _ItemRewardController
 end
 
 --- Lazy-require MenuController để điều phối mở/đóng cửa sổ
-local _menuController = nil
+local _MenuController = nil
 local function GetMenuController()
-	if not _menuController then
+	if not _MenuController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_menuController = require(Module)
+			_MenuController = require(Module)
 		end
 	end
-	return _menuController
+	return _MenuController
 end
 
 --- Dọn dẹp ViewportFrame tránh memory leak (cả Camera lẫn Model)
@@ -242,7 +242,7 @@ end
 
 --- Kiểm tra queue và render các card đang nằm trong (hoặc gần) vùng nhìn thấy của ChestScroll
 local function CheckLazyQueue()
-	if not ChestScroll or #_lazyRenderQueue == 0 then return end
+	if not ChestScroll or #_LazyRenderQueue == 0 then return end
 
 	local Buffer       = ShopConfig.LazyRenderBuffer
 	local CanvasY      = ChestScroll.CanvasPosition.Y
@@ -253,13 +253,13 @@ local function CheckLazyQueue()
 	local VisibleBottom = CanvasY + ScrollHeight + Buffer
 
 	-- Duyệt ngược để an toàn khi xóa phần tử
-	for Index = #_lazyRenderQueue, 1, -1 do
-		local Entry = _lazyRenderQueue[Index]
+	for Index = #_LazyRenderQueue, 1, -1 do
+		local Entry = _LazyRenderQueue[Index]
 		local Frame = Entry.Frame
 
 		-- Nếu card đã bị destroy (ví dụ: đổi tab), bỏ qua
 		if not Frame.Parent then
-			table.remove(_lazyRenderQueue, Index)
+			table.remove(_LazyRenderQueue, Index)
 			continue
 		end
 
@@ -274,7 +274,7 @@ local function CheckLazyQueue()
 				LoadChestModel(ChestView, Entry.ChestEntry.Id)
 			end
 			LoadItemPreviews(Frame, Entry.ChestEntry)
-			table.remove(_lazyRenderQueue, Index)
+			table.remove(_LazyRenderQueue, Index)
 		end
 	end
 end
@@ -291,7 +291,8 @@ local function ExecuteBuy(ChestEntry, Amount)
 	local Result = BuyChestFn:InvokeServer(ChestEntry.Id, Amount)
 
 	if Result and Result.Success then
-		PlayGuiSound(AudioConfig.Shop.ChestBuy, 5)
+		local BuyVolume = AudioConfig.Shop.ChestBuyVolume or 5
+		PlayGuiSound(AudioConfig.Shop.ChestBuy, BuyVolume)
 		-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
 		local RewardCtrl = GetItemRewardController()
 		if RewardCtrl and Result.ReceivedItems then
@@ -312,17 +313,17 @@ end
 --- Xóa toàn bộ nội dung ChestScroll và dọn connections + lazy state cũ
 local function ClearChestList()
 	StopStaggerAnimation()
-	DisconnectAll(_listConnections)
+	DisconnectAll(_ListConnections)
 
 	-- Ngắt connection theo dõi scroll
-	if _scrollConn and _scrollConn.Connected then
-		_scrollConn:Disconnect()
-		_scrollConn = nil
+	if _ScrollConn and _ScrollConn.Connected then
+		_ScrollConn:Disconnect()
+		_ScrollConn = nil
 	end
 
 	-- Reset state per-card
-	table.clear(_previewStates)
-	table.clear(_lazyRenderQueue)
+	table.clear(_PreviewStates)
+	table.clear(_LazyRenderQueue)
 
 	-- Dọn card UI (giữ lại UIGridLayout/UIListLayout)
 	if not ChestScroll then return end
@@ -360,7 +361,7 @@ local function RenderChestList(Type)
 
 		-- Khởi tạo trạng thái số lượng cho card này
 		local State = { Amount = MinAmount }
-		_previewStates[Card] = State
+		_PreviewStates[Card] = State
 
 		-- Tìm các element bên trong card (search từ Card để không phụ thuộc vào nesting cụ thể)
 		local ChestNameText     = Card:FindFirstChild("ChestNameText",     true)
@@ -402,7 +403,7 @@ local function RenderChestList(Type)
 				end
 				UpdateBuyText()
 			end)
-			table.insert(_listConnections, Conn)
+			table.insert(_ListConnections, Conn)
 		end
 
 		-- Kết nối BuyButton
@@ -410,22 +411,22 @@ local function RenderChestList(Type)
 			local Conn = BuyButton.MouseButton1Click:Connect(function()
 				ExecuteBuy(ChestEntry, State.Amount)
 			end)
-			table.insert(_listConnections, Conn)
+			table.insert(_ListConnections, Conn)
 		end
 
 		Card.Parent = ChestScroll
 		table.insert(RenderedCards, Card)
 
 		-- Đẩy vào lazy render queue (viewport chưa render)
-		table.insert(_lazyRenderQueue, { Frame = Card, ChestEntry = ChestEntry })
+		table.insert(_LazyRenderQueue, { Frame = Card, ChestEntry = ChestEntry })
 	end
 
 	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop)
-	_staggerThread = GuiHelper.StaggerPopOpen(RenderedCards)
+	_StaggerThread = GuiHelper.StaggerPopOpen(RenderedCards)
 
 	-- Kết nối scroll để trigger lazy render khi cuộn
-	_scrollConn = ChestScroll:GetPropertyChangedSignal("CanvasPosition"):Connect(CheckLazyQueue)
-	table.insert(_listConnections, _scrollConn)
+	_ScrollConn = ChestScroll:GetPropertyChangedSignal("CanvasPosition"):Connect(CheckLazyQueue)
+	table.insert(_ListConnections, _ScrollConn)
 
 	-- Render ngay các card đang trong vùng nhìn thấy (không chờ người dùng scroll)
 	-- Dùng task.defer để đảm bảo AbsolutePosition đã được tính bởi engine
@@ -434,7 +435,7 @@ end
 
 local function OpenShop()
 	if not Shop then return end
-	_currentTab = "Icicle"
+	_CurrentTab = "Icicle"
 	UpdateTabHighlight("Icicle")
 	RenderChestList("Icicle")
 end
@@ -505,9 +506,9 @@ function ShopController:Init()
 	-- ─── TAB CONTAINER ───────────────────────────────────────
 	if IciclesTab then
 		IciclesTab.MouseButton1Click:Connect(function()
-			if _currentTab == "Icicle" then return end
+			if _CurrentTab == "Icicle" then return end
 			PlayGuiSound(AudioConfig.Gui.ButtonClick)
-			_currentTab = "Icicle"
+			_CurrentTab = "Icicle"
 			UpdateTabHighlight("Icicle")
 			RenderChestList("Icicle")
 		end)
@@ -515,9 +516,9 @@ function ShopController:Init()
 
 	if BlocksTab then
 		BlocksTab.MouseButton1Click:Connect(function()
-			if _currentTab == "Block" then return end
+			if _CurrentTab == "Block" then return end
 			PlayGuiSound(AudioConfig.Gui.ButtonClick)
-			_currentTab = "Block"
+			_CurrentTab = "Block"
 			UpdateTabHighlight("Block")
 			RenderChestList("Block")
 		end)

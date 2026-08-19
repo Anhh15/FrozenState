@@ -13,7 +13,7 @@ local AudioHelper = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local _activeTweens = {}
+local _ActiveTweens = {}
 
 local GuiHelper = {}
 
@@ -179,10 +179,10 @@ end
 --- @param Target Instance
 function GuiHelper.CancelTween(Target)
 	if not Target then return end
-	local CurrentTween = _activeTweens[Target]
+	local CurrentTween = _ActiveTweens[Target]
 	if CurrentTween then
 		CurrentTween:Cancel()
-		_activeTweens[Target] = nil
+		_ActiveTweens[Target] = nil
 	end
 end
 
@@ -227,11 +227,11 @@ function GuiHelper.TweenScale(TargetObject, TargetScale, Duration, Style, Direct
 
 	local TweenInfoObj = TweenInfo.new(TweenDuration, EasingStyle, EasingDir)
 	local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetScale })
-	_activeTweens[UiScale] = Tween
+	_ActiveTweens[UiScale] = Tween
 
 	Tween.Completed:Connect(function(PlaybackState)
-		if _activeTweens[UiScale] == Tween then
-			_activeTweens[UiScale] = nil
+		if _ActiveTweens[UiScale] == Tween then
+			_ActiveTweens[UiScale] = nil
 		end
 		if PlaybackState == Enum.PlaybackState.Completed and OnComplete then
 			OnComplete()
@@ -290,11 +290,11 @@ function GuiHelper.PopOpen(GuiObject, CustomConfig, OnComplete)
 
 	local TweenInfoObj = TweenInfo.new(Duration, Style, Direction)
 	local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetVal })
-	_activeTweens[UiScale] = Tween
+	_ActiveTweens[UiScale] = Tween
 
 	Tween.Completed:Connect(function(PlaybackState)
-		if _activeTweens[UiScale] == Tween then
-			_activeTweens[UiScale] = nil
+		if _ActiveTweens[UiScale] == Tween then
+			_ActiveTweens[UiScale] = nil
 		end
 		if PlaybackState == Enum.PlaybackState.Completed and OnComplete then
 			OnComplete()
@@ -334,11 +334,11 @@ function GuiHelper.PopClose(GuiObject, CustomConfig, OnComplete)
 
 	local TweenInfoObj = TweenInfo.new(Duration, Style, Direction)
 	local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetVal })
-	_activeTweens[UiScale] = Tween
+	_ActiveTweens[UiScale] = Tween
 
 	Tween.Completed:Connect(function(PlaybackState)
-		if _activeTweens[UiScale] == Tween then
-			_activeTweens[UiScale] = nil
+		if _ActiveTweens[UiScale] == Tween then
+			_ActiveTweens[UiScale] = nil
 		end
 		if PlaybackState == Enum.PlaybackState.Completed then
 			GuiObject.Visible = false
@@ -407,6 +407,28 @@ function GuiHelper.BindButtonScale(Button, TargetElement, CustomScaleConfig)
 	end)
 end
 
+--- Tìm tên menu/container từ cây phân cấp tổ tiên (Ancestor) của GuiObject
+--- @param Object Instance
+--- @return string?
+local function ResolveAncestorMenuName(Object)
+	if not Object then return nil end
+	local Overrides  = GuiConfig.Animations and GuiConfig.Animations.Stagger and GuiConfig.Animations.Stagger.Overrides
+	local MenuFrames = GuiConfig.MenuFrames or {}
+	local Curr       = Object.Parent
+	while Curr and Curr.Parent and not Curr:IsA("ScreenGui") do
+		-- 1. Ưu tiên nếu tên trùng với MenuFrames ("Inventory", "Shop", "Quest", "Profile", "Spectate")
+		if MenuFrames[Curr.Name] then
+			return Curr.Name
+		end
+		-- 2. Hoặc trùng với bất kỳ key nào đã đăng ký trong Overrides
+		if Overrides and Overrides[Curr.Name] then
+			return Curr.Name
+		end
+		Curr = Curr.Parent
+	end
+	return nil
+end
+
 --- Lấy cấu hình Stagger của danh sách (kết hợp Default và Overrides)
 --- @param Identifier string? Tên menu hoặc container (vd: "Inventory", "Shop", "Quest")
 --- @return table
@@ -426,24 +448,53 @@ function GuiHelper.GetStaggerConfig(Identifier)
 end
 
 --- Hiển thị danh sách phần tử (Template cards/items) xuất hiện lần lượt với hiệu ứng Pop nảy nhẹ
+--- Hỗ trợ overload tham số linh hoạt:
+---   StaggerPopOpen(ItemsList)
+---   StaggerPopOpen(ItemsList, "Inventory")
+---   StaggerPopOpen(ItemsList, CustomConfig)
+---   StaggerPopOpen(ItemsList, OnComplete)
+---   StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifier)
 --- @param ItemsList table Danh sách GuiObject cần hiển thị
---- @param CustomConfig table? { DelayStep: number?, Duration: number?, EasingStyle: Enum.EasingStyle?, EasingDir: Enum.EasingDirection?, TargetScale: number?, InitialScale: number? }
---- @param OnComplete ( () -> () )? Callback khi toàn bộ sequence hoàn thành
+--- @param CustomConfig (table | string | (() -> ()))? Cấu hình tùy chỉnh, hoặc Identifier (string), hoặc Callback (function)
+--- @param OnComplete ( (() -> ()) | string )? Callback khi toàn bộ sequence hoàn thành hoặc Identifier (string)
 --- @param Identifier string? Tùy chọn tên menu/danh sách để tra cứu Overrides (vd: "Inventory", "Shop", "Quest")
 --- @return thread? Thread điều phối animation
 function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifier)
 	if not ItemsList or #ItemsList == 0 then
-		if OnComplete then OnComplete() end
+		if typeof(CustomConfig) == "function" then
+			CustomConfig()
+		elseif typeof(OnComplete) == "function" then
+			OnComplete()
+		end
 		return nil
 	end
 
-	local TargetId = Identifier
-	if not TargetId and ItemsList[1] and ItemsList[1].Parent then
-		TargetId = ItemsList[1].Parent.Name
+	-- Xử lý Overload tham số
+	local ResolvedConfig   = nil
+	local ResolvedCallback = nil
+	local ResolvedId       = Identifier
+
+	if typeof(CustomConfig) == "string" then
+		ResolvedId = CustomConfig
+	elseif typeof(CustomConfig) == "function" then
+		ResolvedCallback = CustomConfig
+	elseif typeof(CustomConfig) == "table" then
+		ResolvedConfig = CustomConfig
 	end
 
-	local StaggerConfig = GuiHelper.GetStaggerConfig(TargetId)
-	local Cfg           = (type(CustomConfig) == "table" and CustomConfig) or {}
+	if typeof(OnComplete) == "string" then
+		ResolvedId = OnComplete
+	elseif typeof(OnComplete) == "function" then
+		ResolvedCallback = OnComplete
+	end
+
+	-- Dò ngược cây phân cấp tổ tiên nếu chưa có Identifier
+	if not ResolvedId and ItemsList[1] then
+		ResolvedId = ResolveAncestorMenuName(ItemsList[1]) or (ItemsList[1].Parent and ItemsList[1].Parent.Name)
+	end
+
+	local StaggerConfig = GuiHelper.GetStaggerConfig(ResolvedId)
+	local Cfg           = ResolvedConfig or {}
 	local DelayStep     = Cfg.DelayStep    or StaggerConfig.DelayStep    or 0.03
 	local Duration      = Cfg.Duration     or StaggerConfig.Duration     or 0.2
 	local Style         = Cfg.EasingStyle  or StaggerConfig.EasingStyle  or Enum.EasingStyle.Back
@@ -451,7 +502,7 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 	local TargetVal     = Cfg.TargetScale  or StaggerConfig.TargetScale  or 1.0
 	local InitVal       = Cfg.InitialScale or StaggerConfig.InitialScale or 0.0
 
-	-- Khởi tạo UIScale ban đầu về 0 cho tất cả phần tử
+	-- Khởi tạo UIScale ban đầu về InitVal cho tất cả phần tử
 	for _, Item in ipairs(ItemsList) do
 		if Item and Item:IsA("GuiObject") then
 			local Scale = GuiHelper.GetOrCreateScale(Item)
@@ -470,8 +521,8 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 		for Index, Item in ipairs(ItemsList) do
 			if not Item or not Item.Parent or not Item:IsA("GuiObject") then
 				CompletedCount += 1
-				if CompletedCount >= TotalItems and OnComplete then
-					OnComplete()
+				if CompletedCount >= TotalItems and ResolvedCallback then
+					ResolvedCallback()
 				end
 				continue
 			end
@@ -481,23 +532,23 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 				GuiHelper.CancelTween(UiScale)
 				local TweenInfoObj = TweenInfo.new(Duration, Style, Direction)
 				local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetVal })
-				_activeTweens[UiScale] = Tween
+				_ActiveTweens[UiScale] = Tween
 
 				Tween.Completed:Connect(function(PlaybackState)
-					if _activeTweens[UiScale] == Tween then
-						_activeTweens[UiScale] = nil
+					if _ActiveTweens[UiScale] == Tween then
+						_ActiveTweens[UiScale] = nil
 					end
 					CompletedCount += 1
-					if CompletedCount >= TotalItems and OnComplete then
-						OnComplete()
+					if CompletedCount >= TotalItems and ResolvedCallback then
+						ResolvedCallback()
 					end
 				end)
 
 				Tween:Play()
 			else
 				CompletedCount += 1
-				if CompletedCount >= TotalItems and OnComplete then
-					OnComplete()
+				if CompletedCount >= TotalItems and ResolvedCallback then
+					ResolvedCallback()
 				end
 			end
 
@@ -510,5 +561,84 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 	return StaggerThread
 end
 
+--- Lấy cấu hình Animation ItemReward (kết hợp Default và Overrides theo ChestId)
+--- @param ChestId string?
+--- @return table
+function GuiHelper.GetItemRewardAnimConfig(ChestId)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.ItemReward
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
+	local OverrideCfg = (ChestId and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ChestId]) or {}
+
+	return {
+		ChestZoomDuration   = OverrideCfg.ChestZoomDuration   or DefaultCfg.ChestZoomDuration   or 0.4,
+		RotationSpeed       = OverrideCfg.RotationSpeed       or DefaultCfg.RotationSpeed       or 36,
+		ChestShrinkDuration = OverrideCfg.ChestShrinkDuration or DefaultCfg.ChestShrinkDuration or 0.15,
+		ChestExpandDuration = OverrideCfg.ChestExpandDuration or DefaultCfg.ChestExpandDuration or 0.25,
+		FlashDuration       = OverrideCfg.FlashDuration       or DefaultCfg.FlashDuration       or 0.4,
+		FadeDuration        = OverrideCfg.FadeDuration        or DefaultCfg.FadeDuration        or 0.4,
+		ZoomEasingStyle     = OverrideCfg.ZoomEasingStyle     or DefaultCfg.ZoomEasingStyle     or Enum.EasingStyle.Back,
+		ZoomEasingDir       = OverrideCfg.ZoomEasingDir       or DefaultCfg.ZoomEasingDir       or Enum.EasingDirection.Out,
+		ShrinkEasingStyle   = OverrideCfg.ShrinkEasingStyle   or DefaultCfg.ShrinkEasingStyle   or Enum.EasingStyle.Quad,
+		ShrinkEasingDir     = OverrideCfg.ShrinkEasingDir     or DefaultCfg.ShrinkEasingDir     or Enum.EasingDirection.Out,
+		ExpandEasingStyle   = OverrideCfg.ExpandEasingStyle   or DefaultCfg.ExpandEasingStyle   or Enum.EasingStyle.Back,
+		ExpandEasingDir     = OverrideCfg.ExpandEasingDir     or DefaultCfg.ExpandEasingDir     or Enum.EasingDirection.Out,
+	}
+end
+
+--- Lấy cấu hình Animation ModeAnnouncement (kết hợp Default và Overrides theo ModeKey)
+--- @param ModeKey string?
+--- @return table
+function GuiHelper.GetModeAnnouncementAnimConfig(ModeKey)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.ModeAnnouncement
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
+	local OverrideCfg = (ModeKey and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ModeKey]) or {}
+
+	return {
+		DisplayDuration = OverrideCfg.DisplayDuration or DefaultCfg.DisplayDuration or 4.0,
+		FadeInDuration  = OverrideCfg.FadeInDuration  or DefaultCfg.FadeInDuration  or 0.5,
+		EasingStyle     = OverrideCfg.EasingStyle     or DefaultCfg.EasingStyle     or Enum.EasingStyle.Quad,
+		EasingDir       = OverrideCfg.EasingDir       or DefaultCfg.EasingDir       or Enum.EasingDirection.Out,
+	}
+end
+
+--- Lấy cấu hình Animation RoundLoadingScreen (kết hợp Default và Overrides theo ModeKey)
+--- @param ModeKey string?
+--- @return table
+function GuiHelper.GetRoundLoadingAnimConfig(ModeKey)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.RoundLoadingScreen
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
+	local OverrideCfg = (ModeKey and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ModeKey]) or {}
+
+	return {
+		FadeInDuration     = OverrideCfg.FadeInDuration     or DefaultCfg.FadeInDuration     or 1.0,
+		HoldDuration       = OverrideCfg.HoldDuration       or DefaultCfg.HoldDuration       or 1.0,
+		FadeOutDuration    = OverrideCfg.FadeOutDuration    or DefaultCfg.FadeOutDuration    or 0.5,
+		FadeInEasingStyle  = OverrideCfg.FadeInEasingStyle  or DefaultCfg.FadeInEasingStyle  or Enum.EasingStyle.Quad,
+		FadeInEasingDir    = OverrideCfg.FadeInEasingDir    or DefaultCfg.FadeInEasingDir    or Enum.EasingDirection.Out,
+		FadeOutEasingStyle = OverrideCfg.FadeOutEasingStyle or DefaultCfg.FadeOutEasingStyle or Enum.EasingStyle.Quad,
+		FadeOutEasingDir   = OverrideCfg.FadeOutEasingDir   or DefaultCfg.FadeOutEasingDir   or Enum.EasingDirection.In,
+	}
+end
+
+--- Lấy cấu hình Animation Accolades (kết hợp Default và Overrides theo AccoladeType)
+--- @param AccoladeType string?
+--- @return table
+function GuiHelper.GetAccoladesAnimConfig(AccoladeType)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Accolades
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
+	local OverrideCfg = (AccoladeType and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[AccoladeType]) or {}
+
+	return {
+		RealDuration     = OverrideCfg.RealDuration     or DefaultCfg.RealDuration     or 0.5,
+		GhostDuration    = OverrideCfg.GhostDuration    or DefaultCfg.GhostDuration    or 0.7,
+		DisplayDuration  = OverrideCfg.DisplayDuration  or DefaultCfg.DisplayDuration  or 3.0,
+		GhostScale       = OverrideCfg.GhostScale       or DefaultCfg.GhostScale       or 1.8,
+		StartScale       = OverrideCfg.StartScale       or DefaultCfg.StartScale       or 0.05,
+		RealEasingStyle  = OverrideCfg.RealEasingStyle  or DefaultCfg.RealEasingStyle  or Enum.EasingStyle.Back,
+		RealEasingDir    = OverrideCfg.RealEasingDir    or DefaultCfg.RealEasingDir    or Enum.EasingDirection.Out,
+		GhostEasingStyle = OverrideCfg.GhostEasingStyle or DefaultCfg.GhostEasingStyle or Enum.EasingStyle.Quad,
+		GhostEasingDir   = OverrideCfg.GhostEasingDir   or DefaultCfg.GhostEasingDir   or Enum.EasingDirection.Out,
+	}
+end
 
 return GuiHelper

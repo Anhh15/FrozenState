@@ -84,9 +84,10 @@ local GuiConfig = {
 
 	-- =========================================================
 	-- CẤU HÌNH ANIMATION GUI (TWEEN / SCALE / TIMING)
+	-- Hệ thống 2 tầng: Default (mặc định) + Overrides (theo Key cụ thể)
 	-- =========================================================
 	Animations = {
-		-- Cấu hình popup mở/đóng cửa sổ Menu (Inventory, Shop, Quest, Profile...)
+		-- 1. Cấu hình popup mở/đóng cửa sổ Menu (Inventory, Shop, Quest, Profile...)
 		Pop = {
 			-- Thông số mặc định dùng chung cho tất cả các menu
 			Default = {
@@ -100,7 +101,7 @@ local GuiConfig = {
 				TargetScale      = 1,
 			},
 
-			-- Ghi đè riêng cho từng frame menu cụ thể nếu cần (mẫu comment)
+			-- Ghi đè riêng cho từng frame menu cụ thể nếu cần (Key = FrameName)
 			Overrides = {
 				-- ["Shop"] = {
 				-- 	OpenDuration = 0.3,
@@ -111,7 +112,7 @@ local GuiConfig = {
 			},
 		},
 
-		-- Cấu hình hiệu ứng phóng to nút bấm điều hướng khi Hover & Click
+		-- 2. Cấu hình hiệu ứng phóng to nút bấm điều hướng khi Hover & Click
 		ButtonScale = {
 			-- Thông số mặc định dùng chung cho tất cả các nút
 			Default = {
@@ -123,7 +124,7 @@ local GuiConfig = {
 				PressScale       = 0.92,
 			},
 
-			-- Ghi đè riêng cho từng nút cụ thể nếu cần (mẫu comment)
+			-- Ghi đè riêng cho từng nút cụ thể nếu cần (Key = ButtonName)
 			Overrides = {
 				-- ["Shop"] = {
 				-- 	HoverScale = 1.12,
@@ -133,7 +134,8 @@ local GuiConfig = {
 				-- },
 			},
 		},
-		-- Cấu hình hiệu ứng xuất hiện lần lượt cho các Template (Inventory, Shop, Quest...)
+
+		-- 3. Cấu hình hiệu ứng xuất hiện lần lượt cho các Template (Inventory, Shop, Quest...)
 		Stagger = {
 			-- Thông số mặc định dùng chung cho tất cả các danh sách
 			Default = {
@@ -145,25 +147,115 @@ local GuiConfig = {
 				TargetScale      = 1.0,
 			},
 
-			-- Ghi đè riêng cho từng menu/danh sách cụ thể nếu cần (mẫu comment)
+			-- Ghi đè riêng cho từng menu/danh sách cụ thể (Key = Identifier)
 			Overrides = {
+				["Quest"] = {
+					DelayStep = 0.07,
+					Duration = 0.3,
+					EasingStyle = Enum.EasingStyle.Sine,
+				},
 				-- ["Inventory"] = {
 				-- 	DelayStep = 0.03,
 				-- },
 				-- ["Shop"] = {
 				-- 	DelayStep = 0.03,
 				-- },
-				-- ["Quest"] = {
-				-- 	DelayStep = 0.03,
+			},
+		},
+
+		-- 4. Cấu hình hiệu ứng mở rương và phần thưởng (Special/ItemReward)
+		ItemReward = {
+			-- Thông số mặc định dùng chung cho tất cả các loại rương
+			Default = {
+				ChestZoomDuration   = 0.4,   -- Thời gian rương 3D zoom vào giữa màn hình (giây)
+				RotationSpeed       = 36,    -- Tốc độ xoay hào quang EffectImage (độ/giây, 360° trong 10s)
+				ChestShrinkDuration = 0.15,  -- Thời gian thu nhỏ khi click rương ở Pha 1 (giây)
+				ChestExpandDuration = 0.25,  -- Thời gian bật nảy lại sau khi thu nhỏ ở Pha 1 (giây)
+				FlashDuration       = 0.4,   -- Thời gian flash trắng khi chuyển sang Pha 2 (giây)
+				FadeDuration        = 0.4,   -- Thời gian fade về nền mờ sau flash (giây)
+				ZoomEasingStyle     = Enum.EasingStyle.Back,
+				ZoomEasingDir       = Enum.EasingDirection.Out,
+				ShrinkEasingStyle   = Enum.EasingStyle.Quad,
+				ShrinkEasingDir     = Enum.EasingDirection.Out,
+				ExpandEasingStyle   = Enum.EasingStyle.Back,
+				ExpandEasingDir     = Enum.EasingDirection.Out,
+			},
+
+			-- Ghi đè riêng cho từng rương cụ thể nếu cần (Key = ChestId)
+			Overrides = {
+				-- ["GoldenChest"] = {
+				-- 	ChestZoomDuration = 0.5,
+				-- 	RotationSpeed     = 72,
 				-- },
-				["Quest"] = {
-					DelayStep        = 0.03,
-					Duration         = 0.2,
-					EasingStyle      = Enum.EasingStyle.Sine,
-					EasingDir        = Enum.EasingDirection.Out,
-					InitialScale     = 0.0,
-					TargetScale      = 1.0,
-				},
+			},
+		},
+
+		-- 5. Cấu hình màn hình thông báo chế độ chơi đặc biệt (Special/ModeAnnouncement)
+		ModeAnnouncement = {
+			-- Thông số mặc định dùng chung cho tất cả các chế độ chơi đặc biệt
+			Default = {
+				DisplayDuration = 4.0,  -- Thời gian hiển thị thông báo trước khi chuyển sang loading (giây)
+				FadeInDuration  = 0.5,  -- Thời gian fade in mỗi dòng chữ (ModeNameText, DescriptionText)
+				EasingStyle     = Enum.EasingStyle.Quad,
+				EasingDir       = Enum.EasingDirection.Out,
+			},
+
+			-- Ghi đè riêng cho từng chế độ chơi cụ thể nếu cần (Key = ModeKey)
+			Overrides = {
+				-- ["Chaos"] = {
+				-- 	DisplayDuration = 5.0,
+				-- },
+				-- ["EternalFreeze"] = {
+				-- 	DisplayDuration = 4.5,
+				-- },
+			},
+		},
+
+		-- 6. Cấu hình màn hình chuyển cảnh đầu trận (Special/RoundLoadingScreen)
+		RoundLoadingScreen = {
+			-- Thông số mặc định dùng chung cho tất cả các vòng đấu
+			Default = {
+				FadeInDuration     = 1.0,  -- Thời gian mờ đen màn hình khi bắt đầu Setup (giây)
+				HoldDuration       = 1.0,  -- Thời gian giữ màn hình đen khi vào Ready (giây)
+				FadeOutDuration    = 0.5,  -- Thời gian sáng dần trở lại (giây)
+				FadeInEasingStyle  = Enum.EasingStyle.Quad,
+				FadeInEasingDir    = Enum.EasingDirection.Out,
+				FadeOutEasingStyle = Enum.EasingStyle.Quad,
+				FadeOutEasingDir   = Enum.EasingDirection.In,
+			},
+
+			-- Ghi đè riêng cho từng chế độ chơi nếu cần chuyển cảnh khác nhau (Key = ModeKey)
+			Overrides = {
+				-- ["Chaos"] = {
+				-- 	HoldDuration = 1.5,
+				-- },
+			},
+		},
+
+		-- 7. Cấu hình thông báo danh hiệu trong trận (InGameGui/AccoladesAnnouncement)
+		Accolades = {
+			-- Thông số mặc định dùng chung cho tất cả các danh hiệu
+			Default = {
+				RealDuration     = 0.5,  -- Thời gian zoom vào kích thước thực (giây)
+				GhostDuration    = 0.7,  -- Thời gian phóng to và fade out của hiệu ứng ảo ghost (giây)
+				DisplayDuration  = 3.0,  -- Tổng thời gian hiển thị trước khi ẩn (giây)
+				GhostScale       = 1.8,  -- Tỉ lệ phóng to của hiệu ứng ghost
+				StartScale       = 0.05, -- Tỉ lệ ban đầu của label thực trước khi zoom
+				RealEasingStyle  = Enum.EasingStyle.Back,
+				RealEasingDir    = Enum.EasingDirection.Out,
+				GhostEasingStyle = Enum.EasingStyle.Quad,
+				GhostEasingDir   = Enum.EasingDirection.Out,
+			},
+
+			-- Ghi đè riêng cho từng danh hiệu cụ thể nếu cần (Key = AccoladeType)
+			Overrides = {
+				-- ["FirstBlood"] = {
+				-- 	DisplayDuration = 4.0,
+				-- 	GhostScale      = 2.0,
+				-- },
+				-- ["FreezingSpree"] = {
+				-- 	DisplayDuration = 3.5,
+				-- },
 			},
 		},
 	},

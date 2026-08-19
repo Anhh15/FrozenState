@@ -27,16 +27,8 @@ local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
-
--- =========================================================
--- CONFIG
--- =========================================================
-
-local DISPLAY_DURATION = (GameConfig.GUI.ModeAnnouncement and GameConfig.GUI.ModeAnnouncement.DisplayDuration) or 4.0
-local FADE_IN_DURATION = (GameConfig.GUI.ModeAnnouncement and GameConfig.GUI.ModeAnnouncement.FadeInDuration) or 0.5
-
-local TWEEN_INFO_TEXT = TweenInfo.new(FADE_IN_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 -- =========================================================
 -- GUI REFERENCES (Truy xuất động để không bị mất reference khi Character spawn/respawn)
@@ -76,9 +68,9 @@ end
 -- STATE
 -- =========================================================
 
-local _activeTweens   = {}
-local _completeTask   = nil
-local _currentModeKey = "Normal"
+local _ActiveTweens   = {}
+local _CompleteTask   = nil
+local _CurrentModeKey = "Normal"
 
 -- =========================================================
 -- PRIVATE HELPERS
@@ -86,14 +78,14 @@ local _currentModeKey = "Normal"
 
 --- Hủy toàn bộ tween và timer đang chờ
 local function CancelPending()
-	for _, Tween in ipairs(_activeTweens) do
+	for _, Tween in ipairs(_ActiveTweens) do
 		Tween:Cancel()
 	end
-	_activeTweens = {}
+	_ActiveTweens = {}
 
-	if _completeTask then
-		task.cancel(_completeTask)
-		_completeTask = nil
+	if _CompleteTask then
+		task.cancel(_CompleteTask)
+		_CompleteTask = nil
 	end
 end
 
@@ -129,7 +121,7 @@ local ModeAnnouncementController = {}
 --- @param ModeKey string? Tên chế độ chơi
 --- @param OnComplete ( () -> () )? Callback gọi khi hoàn thành thông báo
 function ModeAnnouncementController.ShowAnnouncement(ModeKey, OnComplete)
-	local TargetModeKey = ModeKey or _currentModeKey
+	local TargetModeKey = ModeKey or _CurrentModeKey
 
 	-- Nếu không phải Special Round: bỏ qua hoàn toàn và gọi OnComplete ngay
 	if not GameModeHelper.IsSpecialRound(TargetModeKey) then
@@ -149,6 +141,13 @@ function ModeAnnouncementController.ShowAnnouncement(ModeKey, OnComplete)
 
 	CancelPending()
 
+	local AnimCfg = GuiHelper.GetModeAnnouncementAnimConfig(TargetModeKey)
+	local TweenInfoText = TweenInfo.new(
+		AnimCfg.FadeInDuration or 0.5,
+		AnimCfg.EasingStyle    or Enum.EasingStyle.Quad,
+		AnimCfg.EasingDir      or Enum.EasingDirection.Out
+	)
+
 	-- Cập nhật nội dung
 	local DisplayName = GameModeHelper.GetDisplayName(TargetModeKey)
 	local Description = GameModeHelper.GetDescription(TargetModeKey)
@@ -163,33 +162,35 @@ function ModeAnnouncementController.ShowAnnouncement(ModeKey, OnComplete)
 	-- Phát âm thanh thông báo
 	local SoundId = AudioConfig.Special and AudioConfig.Special.ModeAnnouncement
 	if SoundId then
-		AudioHelper.PlayGuiSound(SoundId, 3)
+		local Volume = AudioConfig.Special.ModeAnnouncementVolume or 3
+		AudioHelper.PlayGuiSound(SoundId, Volume)
 	end
 
-	-- 1. Tween Fade In cho ModeNameText (0.5s)
-	local ModeNameTween = TweenService:Create(ModeNameText, TWEEN_INFO_TEXT, {
+	-- 1. Tween Fade In cho ModeNameText
+	local ModeNameTween = TweenService:Create(ModeNameText, TweenInfoText, {
 		TextTransparency       = 0,
 		TextStrokeTransparency = 0,
 	})
-	table.insert(_activeTweens, ModeNameTween)
+	table.insert(_ActiveTweens, ModeNameTween)
 	ModeNameTween:Play()
 
 	ModeNameTween.Completed:Connect(function(PlaybackState)
 		if PlaybackState ~= Enum.PlaybackState.Completed then return end
 		if not Frame.Visible then return end
 
-		-- 2. Tween Fade In cho DescriptionText (0.5s) ngay khi ModeNameText hoàn tất
-		local DescTween = TweenService:Create(DescriptionText, TWEEN_INFO_TEXT, {
+		-- 2. Tween Fade In cho DescriptionText ngay khi ModeNameText hoàn tất
+		local DescTween = TweenService:Create(DescriptionText, TweenInfoText, {
 			TextTransparency       = 0,
 			TextStrokeTransparency = 0,
 		})
-		table.insert(_activeTweens, DescTween)
+		table.insert(_ActiveTweens, DescTween)
 		DescTween:Play()
 	end)
 
-	-- 3. Hẹn giờ DisplayDuration (4.0s) rồi kích hoạt callback hoàn tất
-	_completeTask = task.delay(DISPLAY_DURATION, function()
-		_completeTask = nil
+	-- 3. Hẹn giờ DisplayDuration rồi kích hoạt callback hoàn tất
+	local DisplayDuration = AnimCfg.DisplayDuration or 4.0
+	_CompleteTask = task.delay(DisplayDuration, function()
+		_CompleteTask = nil
 		if OnComplete then
 			OnComplete()
 		end
@@ -204,7 +205,7 @@ end
 --- Lấy Mode hiện tại
 --- @return string
 function ModeAnnouncementController.GetCurrentModeKey()
-	return _currentModeKey
+	return _CurrentModeKey
 end
 
 function ModeAnnouncementController:Init()
@@ -220,7 +221,7 @@ function ModeAnnouncementController:Init()
 	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
 	SetGameModeEvent.OnClientEvent:Connect(function(Data)
 		if Data and Data.ModeKey then
-			_currentModeKey = Data.ModeKey
+			_CurrentModeKey = Data.ModeKey
 		end
 	end)
 
@@ -236,7 +237,7 @@ function ModeAnnouncementController:Init()
 		end
 	end)
 
-	print("[ModeAnnouncementController] Da khoi tao.")
+	print("[ModeAnnouncementController] Đã khởi tạo.")
 end
 
 return ModeAnnouncementController

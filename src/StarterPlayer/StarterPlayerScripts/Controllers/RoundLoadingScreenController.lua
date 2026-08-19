@@ -19,19 +19,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions          = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig                 = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GuiConfig                  = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiHelper                  = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local GameModeHelper             = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
 local PlayerStateHelper          = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
-
--- =========================================================
--- CONFIG
--- =========================================================
-
-local FADE_IN_DURATION  = GameConfig.GUI.RoundLoadingScreen.FadeInDuration
-local HOLD_DURATION     = GameConfig.GUI.RoundLoadingScreen.HoldDuration
-local FADE_OUT_DURATION = GameConfig.GUI.RoundLoadingScreen.FadeOutDuration
-
-local TWEEN_FADE_IN  = TweenInfo.new(FADE_IN_DURATION,  Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TWEEN_FADE_OUT = TweenInfo.new(FADE_OUT_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 -- =========================================================
 -- GUI REFERENCES (Truy xuất động để không bị mất reference khi Character spawn/respawn)
@@ -59,27 +49,27 @@ local function ResolveScreenElements()
 end
 
 -- Lazy-require ModeAnnouncementController
-local _modeAnnouncementController = nil
+local _ModeAnnouncementController = nil
 local function GetModeAnnouncementController()
-	if not _modeAnnouncementController then
+	if not _ModeAnnouncementController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("ModeAnnouncementController")
 		if Module then
-			_modeAnnouncementController = require(Module)
+			_ModeAnnouncementController = require(Module)
 		end
 	end
-	return _modeAnnouncementController
+	return _ModeAnnouncementController
 end
 
 -- =========================================================
 -- STATE
 -- =========================================================
 
-local _activeTween          = nil   -- Tween đang chạy (để cancel khi cần)
-local _fadeOutTask          = nil   -- task.delay handle cho fade-out sau hold
-local _lastPhase            = ""    -- Phase nhận được lần cuối
-local _currentModeKey       = "Normal"
-local _setupTriggered       = false -- Cờ đánh dấu đã kích hoạt setup của vòng hiện tại
+local _ActiveTween          = nil   -- Tween đang chạy (để cancel khi cần)
+local _FadeOutTask          = nil   -- task.delay handle cho fade-out sau hold
+local _LastPhase            = ""    -- Phase nhận được lần cuối
+local _CurrentModeKey       = "Normal"
+local _SetupTriggered       = false -- Cờ đánh dấu đã kích hoạt setup của vòng hiện tại
 
 -- =========================================================
 -- PRIVATE
@@ -87,13 +77,13 @@ local _setupTriggered       = false -- Cờ đánh dấu đã kích hoạt setup
 
 --- Cancel tween và task đang chạy (dọn dẹp trước khi bắt đầu animation mới)
 local function CancelPending()
-	if _activeTween then
-		_activeTween:Cancel()
-		_activeTween = nil
+	if _ActiveTween then
+		_ActiveTween:Cancel()
+		_ActiveTween = nil
 	end
-	if _fadeOutTask then
-		task.cancel(_fadeOutTask)
-		_fadeOutTask = nil
+	if _FadeOutTask then
+		task.cancel(_FadeOutTask)
+		_FadeOutTask = nil
 	end
 end
 
@@ -121,27 +111,34 @@ local function StartFadeIn()
 	ScreenFrame.Visible = true
 	Background.BackgroundTransparency = 1
 
-	local Tween = TweenService:Create(Background, TWEEN_FADE_IN, {
+	local AnimCfg = GuiHelper.GetRoundLoadingAnimConfig(_CurrentModeKey)
+	local TweenFadeIn = TweenInfo.new(
+		AnimCfg.FadeInDuration     or 1.0,
+		AnimCfg.FadeInEasingStyle  or Enum.EasingStyle.Quad,
+		AnimCfg.FadeInEasingDir    or Enum.EasingDirection.Out
+	)
+
+	local Tween = TweenService:Create(Background, TweenFadeIn, {
 		BackgroundTransparency = 0,
 	})
-	_activeTween = Tween
+	_ActiveTween = Tween
 	Tween:Play()
 	Tween.Completed:Connect(function()
-		if _activeTween == Tween then
-			_activeTween = nil
+		if _ActiveTween == Tween then
+			_ActiveTween = nil
 		end
 	end)
 end
 
 --- Kích hoạt luồng Setup (ModeAnnouncement nếu là Special Round, ngược lại StartFadeIn)
 local function TriggerSetupSequence()
-	if _setupTriggered then return end
-	_setupTriggered = true
+	if _SetupTriggered then return end
+	_SetupTriggered = true
 
-	if GameModeHelper.IsSpecialRound(_currentModeKey) then
+	if GameModeHelper.IsSpecialRound(_CurrentModeKey) then
 		local ModeAnnouncementCtrl = GetModeAnnouncementController()
 		if ModeAnnouncementCtrl and ModeAnnouncementCtrl.ShowAnnouncement then
-			ModeAnnouncementCtrl.ShowAnnouncement(_currentModeKey, function()
+			ModeAnnouncementCtrl.ShowAnnouncement(_CurrentModeKey, function()
 				StartFadeIn()
 			end)
 		else
@@ -160,22 +157,31 @@ local function StartFadeOutSequence()
 
 	CancelPending()
 
+	local AnimCfg = GuiHelper.GetRoundLoadingAnimConfig(_CurrentModeKey)
+	local HoldDuration = AnimCfg.HoldDuration or 1.0
+
 	-- Hold HoldDuration giây rồi fade-out
-	_fadeOutTask = task.delay(HOLD_DURATION, function()
-		_fadeOutTask = nil
+	_FadeOutTask = task.delay(HoldDuration, function()
+		_FadeOutTask = nil
 
 		local CurrentScreen, CurrentBg = ResolveScreenElements()
 		if not CurrentScreen or not CurrentBg then return end
 		if not CurrentScreen.Visible then return end
 
-		local Tween = TweenService:Create(CurrentBg, TWEEN_FADE_OUT, {
+		local TweenFadeOut = TweenInfo.new(
+			AnimCfg.FadeOutDuration    or 0.5,
+			AnimCfg.FadeOutEasingStyle or Enum.EasingStyle.Quad,
+			AnimCfg.FadeOutEasingDir   or Enum.EasingDirection.In
+		)
+
+		local Tween = TweenService:Create(CurrentBg, TweenFadeOut, {
 			BackgroundTransparency = 1,
 		})
-		_activeTween = Tween
+		_ActiveTween = Tween
 		Tween:Play()
 		Tween.Completed:Connect(function()
-			if _activeTween == Tween then
-				_activeTween = nil
+			if _ActiveTween == Tween then
+				_ActiveTween = nil
 				CurrentScreen.Visible = false
 			end
 		end)
@@ -186,19 +192,19 @@ end
 --- @param Phase string
 local function OnPhaseChanged(Phase)
 	-- Tránh xử lý lặp cùng phase
-	if Phase == _lastPhase then return end
-	_lastPhase = Phase
+	if Phase == _LastPhase then return end
+	_LastPhase = Phase
 
 	if Phase == "Setup" then
 		TriggerSetupSequence()
 
 	elseif Phase == "Ready" then
-		_setupTriggered = false
+		_SetupTriggered = false
 		StartFadeOutSequence()
 
 	else
 		-- InGame, GameOver, Intermission -> ẩn ngay (safety net)
-		_setupTriggered = false
+		_SetupTriggered = false
 		ForceHide()
 	end
 end
@@ -222,7 +228,7 @@ function RoundLoadingScreenController:Init()
 	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
 	SetGameModeEvent.OnClientEvent:Connect(function(Data)
 		if Data and Data.ModeKey then
-			_currentModeKey = Data.ModeKey
+			_CurrentModeKey = Data.ModeKey
 		end
 	end)
 
@@ -235,12 +241,12 @@ function RoundLoadingScreenController:Init()
 
 	-- Lắng nghe thay đổi trạng thái tham gia trận để kích hoạt Setup nếu replicate sau remote event
 	PlayerStateHelper.ObserveMatchState(LocalPlayer, function(IsInMatch)
-		if IsInMatch and _lastPhase == "Setup" and not _setupTriggered then
+		if IsInMatch and _LastPhase == "Setup" and not _SetupTriggered then
 			TriggerSetupSequence()
 		end
 	end)
 
-	print("[RoundLoadingScreenController] Da khoi tao.")
+	print("[RoundLoadingScreenController] Đã khởi tạo.")
 end
 
 return RoundLoadingScreenController

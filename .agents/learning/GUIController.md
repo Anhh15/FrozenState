@@ -6,6 +6,16 @@
 
 ## Kiến trúc
 
+### Kiến trúc 2 Tầng Toàn Diện (Default & Overrides) Cho Toàn Bộ Animation GUI & Quản Lý Tập Trung
+- **Ngày:** 19-08-2026
+- **Chi tiết:** Chuẩn hóa 100% các animation GUI trong game (`Pop`, `ButtonScale`, `Stagger`, `ItemReward`, `ModeAnnouncement`, `RoundLoadingScreen`, `Accolades`) sang mô hình 2 tầng (`Default` dùng chung + `Overrides` theo Key) trong `GuiConfig.lua`. Gom toàn bộ thời lượng, tốc độ xoay và âm lượng SFX (`AudioConfig`) khỏi các Controller client. `GuiHelper.lua` cung cấp các hàm resolver (`GetItemRewardAnimConfig`, `GetModeAnnouncementAnimConfig`, `GetRoundLoadingAnimConfig`, `GetAccoladesAnimConfig`) tự động hòa trộn `Overrides` với `Default`, triệt tiêu hoàn toàn magic numbers và hardcode.
+- **File liên quan:** [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [ItemRewardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [ModeAnnouncementController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ModeAnnouncementController.lua), [RoundLoadingScreenController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [AccoladesController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+
+### Cơ chế Dò Ngược Tổ Tiên (Ancestor Resolution) & Overload Tham Số Linh Hoạt cho StaggerPopOpen
+- **Ngày:** 19-08-2026
+- **Chi tiết:** `GuiHelper.StaggerPopOpen` hỗ trợ tự động tìm tên menu nguồn khi người gọi không truyền `Identifier`. Thay vì chỉ lấy `ItemsList[1].Parent.Name` (dễ bị nhận nhầm thành `"ScrollingFrame"`), hàm duyệt ngược cây phân cấp (`Parent`, `Parent.Parent`...) để tìm Frame thuộc `GuiConfig.MenuFrames` hoặc có trong `Overrides`. Đồng thời hỗ trợ overload tham số linh hoạt: cho phép gọi `(ItemsList, "Inventory")`, `(ItemsList, CustomConfig)`, `(ItemsList, OnComplete)` mà không bắt buộc truyền đủ 4 tham số.
+- **File liên quan:** [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
 ### Hoạt họa xuất hiện lần lượt phân tầng (Staggered Pop Animation) & Overrides per-list cho Template Menu
 - **Ngày:** 19-08-2026
 - **Chi tiết:** Thay vì render tức thời toàn bộ danh sách card/template trong `ScrollingFrame` (gây cảm giác thô cứng), áp dụng `GuiHelper.StaggerPopOpen` dựa trên `UIScale` với độ trễ nối tiếp `DelayStep` (`0.03s`) và kiểu `EasingStyle.Back`. Phân tách cấu hình `Default` + `Overrides` theo tên menu/frame trong `GuiConfig.Animations.Stagger` và `Pop`. Hủy an toàn (`CancelTween` và `task.cancel` trên thread stagger) khi người chơi đóng menu hoặc chuyển tab nhanh, ngăn ngừa triệt để hiện tượng kẹt `UIScale = 0` hoặc xung đột hoạt họa.
@@ -189,6 +199,13 @@
 ---
 
 ## Bug & biện pháp
+
+### Lỗi Stagger Animation không nhận Overrides do lấy sai tên cha trực tiếp (ScrollingFrame thay vì Menu Name)
+- **Ngày:** 19-08-2026
+- **Vấn đề:** Khi cấu hình `GuiConfig.Animations.Stagger.Overrides["Inventory"]` (như thay đổi `DelayStep` hoặc `EasingStyle`), animation của các thẻ item trong Inventory không nhận hiệu ứng mới mà luôn chạy theo cấu hình `Default`.
+- **Nguyên nhân:** `InventoryController` gọi `StaggerPopOpen(RenderedFrames)` không truyền `Identifier`. Hàm helper cũ lấy `ItemsList[1].Parent.Name`, trả về `"ScrollingFrame"` (tên của instance `ScrollingFrame` trong Studio) thay vì `"Inventory"`. Khi tra cứu `Overrides["ScrollingFrame"]`, hệ thống không tìm thấy và luôn fallback về `Default`.
+- **Fix:** Viết hàm nội bộ `ResolveAncestorMenuName` duyệt ngược cây cha/ông để tìm Frame khớp với `GuiConfig.MenuFrames` hoặc `Overrides`, đồng thời hỗ trợ overload nhận `Identifier` trực tiếp ở tham số thứ 2.
+- **File liên quan:** [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
 ### Bảng TopPlayersStats bị ẩn toàn bộ trên các chế độ Team-based do thứ tự dọn dẹp ClearTeam
 - **Ngày:** 19-08-2026

@@ -16,48 +16,48 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 -- =========================================================
 
 local MenuGui    = nil
-local _activeTab = nil  -- Tên tab đang mở (vd: "Shop", "Inventory", "Profile", "Quest") hoặc nil
+local _ActiveTab = nil  -- Tên tab đang mở (vd: "Shop", "Inventory", "Profile", "Quest") hoặc nil
 
 -- Danh sách các tab đã đăng ký: { [TabName: string] = { Open = fn, Close = fn, Frame = GuiObject? } }
-local _registeredTabs = {}
+local _RegisteredTabs = {}
 
 -- Lazy-require NavigationController để tránh circular dependency
-local _navigationController = nil
+local _NavigationController = nil
 local function GetNavigationController()
-	if not _navigationController then
+	if not _NavigationController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("NavigationController")
 		if Module then
-			_navigationController = require(Module)
+			_NavigationController = require(Module)
 		end
 	end
-	return _navigationController
+	return _NavigationController
 end
 
 -- Lazy-require ItemRewardController để reset khi CloseAll
-local _itemRewardController = nil
+local _ItemRewardController = nil
 local function GetItemRewardController()
-	if not _itemRewardController then
+	if not _ItemRewardController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("ItemRewardController")
 		if Module then
-			_itemRewardController = require(Module)
+			_ItemRewardController = require(Module)
 		end
 	end
-	return _itemRewardController
+	return _ItemRewardController
 end
 
 -- Lazy-require SpectateController để kiểm tra trạng thái Spectate
-local _spectateController = nil
+local _SpectateController = nil
 local function GetSpectateController()
-	if not _spectateController then
+	if not _SpectateController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("SpectateController")
 		if Module then
-			_spectateController = require(Module)
+			_SpectateController = require(Module)
 		end
 	end
-	return _spectateController
+	return _SpectateController
 end
 
 -- =========================================================
@@ -87,7 +87,7 @@ local MenuController = {}
 --- @param TabData table { Open: () -> (), Close: () -> (), Frame: GuiObject? }
 function MenuController.RegisterTab(TabName, TabData)
 	if not TabName or not TabData then return end
-	_registeredTabs[TabName] = TabData
+	_RegisteredTabs[TabName] = TabData
 end
 
 --- Mở một tab cụ thể và tự động đóng tab đang mở trước đó
@@ -102,11 +102,11 @@ function MenuController.OpenTab(TabName)
 	end
 
 	-- Nếu tab yêu cầu đã đang mở thì không làm gì
-	if _activeTab == TabName then return end
+	if _ActiveTab == TabName then return end
 
 	-- Đóng tab hiện tại nếu có (Phương án A: Fast Switch - ẩn tức thì tab cũ để nhường chỗ)
-	if _activeTab then
-		local OldTabData = _registeredTabs[_activeTab]
+	if _ActiveTab then
+		local OldTabData = _RegisteredTabs[_ActiveTab]
 		if OldTabData then
 			if OldTabData.Close then
 				OldTabData.Close()
@@ -116,7 +116,7 @@ function MenuController.OpenTab(TabName)
 				OldTabData.Frame.Visible = false
 			end
 		end
-		_activeTab = nil
+		_ActiveTab = nil
 	end
 
 	-- Ẩn an toàn tất cả các Frame con khác trong Menu
@@ -129,9 +129,9 @@ function MenuController.OpenTab(TabName)
 	end
 
 	-- Mở tab mới kèm hiệu ứng PopOpen
-	local TargetData = _registeredTabs[TabName]
+	local TargetData = _RegisteredTabs[TabName]
 	if TargetData then
-		_activeTab = TabName
+		_ActiveTab = TabName
 		if TargetData.Open then
 			TargetData.Open()
 		end
@@ -146,12 +146,12 @@ end
 --- Đóng tab đang mở hoặc đóng một tab cụ thể
 --- @param TabName string? Tùy chọn đóng đúng tab được chỉ định
 function MenuController.CloseTab(TabName)
-	local TargetTab = TabName or _activeTab
+	local TargetTab = TabName or _ActiveTab
 	if not TargetTab then return end
 
-	local TargetData = _registeredTabs[TargetTab]
-	if _activeTab == TargetTab then
-		_activeTab = nil
+	local TargetData = _RegisteredTabs[TargetTab]
+	if _ActiveTab == TargetTab then
+		_ActiveTab = nil
 	end
 
 	if TargetData then
@@ -162,7 +162,7 @@ function MenuController.CloseTab(TabName)
 		if TargetData.Frame then
 			GuiHelper.PopClose(TargetData.Frame, nil, function()
 				-- Khi animation đóng hoàn tất, nếu không còn tab nào mở, khôi phục lại thanh nút điều hướng
-				if not _activeTab then
+				if not _ActiveTab then
 					local NavCtrl = GetNavigationController()
 					if NavCtrl and NavCtrl.SetButtonsContainerVisible then
 						local SpecCtrl = GetSpectateController()
@@ -172,7 +172,7 @@ function MenuController.CloseTab(TabName)
 				end
 			end)
 		else
-			if not _activeTab then
+			if not _ActiveTab then
 				local NavCtrl = GetNavigationController()
 				if NavCtrl and NavCtrl.SetButtonsContainerVisible then
 					local SpecCtrl = GetSpectateController()
@@ -186,13 +186,13 @@ end
 
 --- Đóng tab hiện tại đang mở
 function MenuController.CloseCurrentTab()
-	MenuController.CloseTab(_activeTab)
+	MenuController.CloseTab(_ActiveTab)
 end
 
 --- Toggle (bật/tắt) một tab: Nếu đang mở thì đóng, nếu đang đóng thì mở
 --- @param TabName string
 function MenuController.ToggleTab(TabName)
-	if _activeTab == TabName then
+	if _ActiveTab == TabName then
 		MenuController.CloseCurrentTab()
 	else
 		MenuController.OpenTab(TabName)
@@ -202,18 +202,18 @@ end
 --- Đóng toàn bộ các tab và dọn dẹp hiệu ứng mở rương (dùng khi vào trận)
 --- @param ExcludedFrame GuiObject?
 function MenuController.CloseAll(ExcludedFrame)
-	if _activeTab and _registeredTabs[_activeTab] and _registeredTabs[_activeTab].Close then
-		_registeredTabs[_activeTab].Close()
+	if _ActiveTab and _RegisteredTabs[_ActiveTab] and _RegisteredTabs[_ActiveTab].Close then
+		_RegisteredTabs[_ActiveTab].Close()
 	end
 
-	for _, TabData in pairs(_registeredTabs) do
+	for _, TabData in pairs(_RegisteredTabs) do
 		if TabData.Frame and TabData.Frame ~= ExcludedFrame then
 			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(TabData.Frame))
 			TabData.Frame.Visible = false
 		end
 	end
 
-	_activeTab = nil
+	_ActiveTab = nil
 	HideAllFrames(ExcludedFrame)
 
 	-- Reset hiệu ứng mở rương nếu đang chạy
@@ -245,7 +245,7 @@ end
 --- Lấy tên tab đang mở hiện tại
 --- @return string?
 function MenuController.GetActiveTab()
-	return _activeTab
+	return _ActiveTab
 end
 
 --- Khởi tạo MenuController

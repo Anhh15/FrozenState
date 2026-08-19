@@ -10,6 +10,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- CONFIG
@@ -21,11 +23,6 @@ local ACCOLADE_TEXT = {
 	FreezingSpree = "FREEZING SPREE!",
 	ThawingSpree  = "THAWING SPREE!",
 }
-
--- Thời lượng animation (giây)
-local ANIM_REAL_DURATION    = 0.5   -- Thực: zoom vào kích thước mặc định
-local ANIM_GHOST_DURATION   = 0.7   -- Ảo: zoom lớn + fade out (chạy song song)
-local DISPLAY_HOLD_DURATION = 3.0   -- Tổng thời gian hiển thị tính từ đầu animation
 
 -- =========================================================
 -- GUI REFERENCES (lazy-init trong Init)
@@ -51,7 +48,8 @@ local _HideThread       = nil
 
 --- Phát SFX Accolade qua AudioHelper
 local function PlayAccoladeSound()
-	AudioHelper.Play2DSound(AudioConfig.Accolades.Announcement, 3, PlayerGui)
+	local Volume = (AudioConfig.Accolades and AudioConfig.Accolades.AnnouncementVolume) or 3
+	AudioHelper.Play2DSound(AudioConfig.Accolades.Announcement, Volume, PlayerGui)
 end
 
 --- Hiển thị Announcement với animation zoom-in
@@ -62,6 +60,8 @@ local function ShowAnnouncement(AccoladeType)
 
 	local Text = ACCOLADE_TEXT[AccoladeType]
 	if not Text then return end
+
+	local AnimCfg = GuiHelper.GetAccoladesAnimConfig(AccoladeType)
 
 	-- Cancel animation và hide thread cũ (nếu có)
 	if _ActiveRealTween  then _ActiveRealTween:Cancel()  end
@@ -75,19 +75,20 @@ local function ShowAnnouncement(AccoladeType)
 	PlayAccoladeSound()
 
 	-- Đặt trạng thái ban đầu: nhỏ xíu, fully visible
+	local StartScale = AnimCfg.StartScale or 0.05
 	local StartSize = UDim2.new(
-		_DefaultSize.X.Scale * 0.05, _DefaultSize.X.Offset * 0.05,
-		_DefaultSize.Y.Scale * 0.05, _DefaultSize.Y.Offset * 0.05
+		_DefaultSize.X.Scale * StartScale, _DefaultSize.X.Offset * StartScale,
+		_DefaultSize.Y.Scale * StartScale, _DefaultSize.Y.Offset * StartScale
 	)
 	_Announcement.Size        = StartSize
 	_Announcement.TextTransparency = 0
 	_Announcement.Visible     = true
 
-	-- ── Animation Thực: zoom từ nhỏ → kích thước mặc định (0.5s, Back easing) ──
+	-- ── Animation Thực: zoom từ nhỏ → kích thước mặc định ──
 	local RealTweenInfo = TweenInfo.new(
-		ANIM_REAL_DURATION,
-		Enum.EasingStyle.Back,
-		Enum.EasingDirection.Out
+		AnimCfg.RealDuration    or 0.5,
+		AnimCfg.RealEasingStyle or Enum.EasingStyle.Back,
+		AnimCfg.RealEasingDir   or Enum.EasingDirection.Out
 	)
 	local RealTween = TweenService:Create(_Announcement, RealTweenInfo, {
 		Size = _DefaultSize,
@@ -96,7 +97,6 @@ local function ShowAnnouncement(AccoladeType)
 	RealTween:Play()
 
 	-- ── Animation Ảo: clone TextLabel zoom → lớn hơn + fade out song song ──
-	-- Tạo một bản clone để chạy hiệu ứng ảo (ghost), không ảnh hưởng đến label thực
 	local Ghost = _Announcement:Clone()
 	Ghost.Name   = "AnnouncementGhost"
 	Ghost.Parent = _Announcement.Parent
@@ -105,14 +105,15 @@ local function ShowAnnouncement(AccoladeType)
 	Ghost.Visible = true
 	Ghost.ZIndex  = _Announcement.ZIndex - 1  -- phía sau label thực
 
+	local GhostScale = AnimCfg.GhostScale or 1.8
 	local GhostTargetSize = UDim2.new(
-		_DefaultSize.X.Scale * 1.8, _DefaultSize.X.Offset,
-		_DefaultSize.Y.Scale * 1.8, _DefaultSize.Y.Offset
+		_DefaultSize.X.Scale * GhostScale, _DefaultSize.X.Offset,
+		_DefaultSize.Y.Scale * GhostScale, _DefaultSize.Y.Offset
 	)
 	local GhostTweenInfo = TweenInfo.new(
-		ANIM_GHOST_DURATION,
-		Enum.EasingStyle.Quad,
-		Enum.EasingDirection.Out
+		AnimCfg.GhostDuration    or 0.7,
+		AnimCfg.GhostEasingStyle or Enum.EasingStyle.Quad,
+		AnimCfg.GhostEasingDir   or Enum.EasingDirection.Out
 	)
 	local GhostTween = TweenService:Create(Ghost, GhostTweenInfo, {
 		Size              = GhostTargetSize,
@@ -124,8 +125,9 @@ local function ShowAnnouncement(AccoladeType)
 		Ghost:Destroy()
 	end)
 
-	-- ── Ẩn label thực sau DISPLAY_HOLD_DURATION giây ──
-	_HideThread = task.delay(DISPLAY_HOLD_DURATION, function()
+	-- ── Ẩn label thực sau DisplayDuration giây ──
+	local DisplayDuration = AnimCfg.DisplayDuration or 3.0
+	_HideThread = task.delay(DisplayDuration, function()
 		if _Announcement then
 			_Announcement.Visible = false
 		end
