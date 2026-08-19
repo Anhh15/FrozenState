@@ -636,15 +636,15 @@ function GuiHelper.GetAccoladesAnimConfig(AccoladeType)
 	local OverrideCfg = (AccoladeType and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[AccoladeType]) or {}
 
 	return {
-		RealDuration     = OverrideCfg.RealDuration     or DefaultCfg.RealDuration     or 0.5,
-		GhostDuration    = OverrideCfg.GhostDuration    or DefaultCfg.GhostDuration    or 0.7,
-		DisplayDuration  = OverrideCfg.DisplayDuration  or DefaultCfg.DisplayDuration  or 3.0,
-		GhostScale       = OverrideCfg.GhostScale       or DefaultCfg.GhostScale       or 1.8,
-		StartScale       = OverrideCfg.StartScale       or DefaultCfg.StartScale       or 0.05,
-		RealEasingStyle  = OverrideCfg.RealEasingStyle  or DefaultCfg.RealEasingStyle  or Enum.EasingStyle.Back,
-		RealEasingDir    = OverrideCfg.RealEasingDir    or DefaultCfg.RealEasingDir    or Enum.EasingDirection.Out,
-		GhostEasingStyle = OverrideCfg.GhostEasingStyle or DefaultCfg.GhostEasingStyle or Enum.EasingStyle.Quad,
-		GhostEasingDir   = OverrideCfg.GhostEasingDir   or DefaultCfg.GhostEasingDir   or Enum.EasingDirection.Out,
+		OpenDuration     = OverrideCfg.OpenDuration     or DefaultCfg.OpenDuration     or 0.25,
+		CloseDuration    = OverrideCfg.CloseDuration    or DefaultCfg.CloseDuration    or 0.2,
+		DisplayDuration  = OverrideCfg.DisplayDuration  or DefaultCfg.DisplayDuration  or 1.5,
+		OpenEasingStyle  = OverrideCfg.OpenEasingStyle  or DefaultCfg.OpenEasingStyle  or Enum.EasingStyle.Back,
+		OpenEasingDir    = OverrideCfg.OpenEasingDir    or DefaultCfg.OpenEasingDir    or Enum.EasingDirection.Out,
+		CloseEasingStyle = OverrideCfg.CloseEasingStyle or DefaultCfg.CloseEasingStyle or Enum.EasingStyle.Quad,
+		CloseEasingDir   = OverrideCfg.CloseEasingDir   or DefaultCfg.CloseEasingDir   or Enum.EasingDirection.In,
+		InitialScale     = OverrideCfg.InitialScale     or DefaultCfg.InitialScale     or 0,
+		TargetScale      = OverrideCfg.TargetScale      or DefaultCfg.TargetScale      or 1,
 	}
 end
 

@@ -75,6 +75,16 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
+	-- CẤU HÌNH PLAYERSTATUS (HUD IN-GAME)
+	-- =========================================================
+	PlayerStatus = {
+		AllyColor         = Color3.fromHex("009DFF"),
+		EnemyColor        = Color3.fromHex("FF5151"),
+		InactiveColor     = Color3.fromHex("868686"), -- Màu xám khi người chơi Frozen hoặc Dead
+		DefaultImageColor = Color3.fromRGB(255, 255, 255),
+	},
+
+	-- =========================================================
 	-- TIMEOUT MẶC ĐỊNH KHI WAIT CHO CÁC PHẦN TỬ GUI (giây)
 	-- =========================================================
 	Timeouts = {
@@ -243,27 +253,23 @@ local GuiConfig = {
 
 		-- 7. Cấu hình thông báo danh hiệu trong trận (InGameGui/AccoladesAnnouncement)
 		Accolades = {
-			-- Thông số mặc định dùng chung cho tất cả các danh hiệu
+			-- Thông số mặc định dùng chung cho tất cả các danh hiệu theo phong cách Pop (UIScale)
 			Default = {
-				RealDuration     = 0.5,  -- Thời gian zoom vào kích thước thực (giây)
-				GhostDuration    = 0.7,  -- Thời gian phóng to và fade out của hiệu ứng ảo ghost (giây)
-				DisplayDuration  = 3.0,  -- Tổng thời gian hiển thị trước khi ẩn (giây)
-				GhostScale       = 1.8,  -- Tỉ lệ phóng to của hiệu ứng ghost
-				StartScale       = 0.05, -- Tỉ lệ ban đầu của label thực trước khi zoom
-				RealEasingStyle  = Enum.EasingStyle.Back,
-				RealEasingDir    = Enum.EasingDirection.Out,
-				GhostEasingStyle = Enum.EasingStyle.Quad,
-				GhostEasingDir   = Enum.EasingDirection.Out,
+				OpenDuration     = 0.25, -- Thời gian bung nở Pop mở ra (giây)
+				CloseDuration    = 0.2,  -- Thời gian thu nhỏ Pop đóng lại (giây)
+				DisplayDuration  = 1.5,  -- Thời gian duy trì hiển thị trước khi tự động đóng (giây)
+				OpenEasingStyle  = Enum.EasingStyle.Back,
+				OpenEasingDir    = Enum.EasingDirection.Out,
+				CloseEasingStyle = Enum.EasingStyle.Quad,
+				CloseEasingDir   = Enum.EasingDirection.In,
+				InitialScale     = 0,
+				TargetScale      = 1,
 			},
 
 			-- Ghi đè riêng cho từng danh hiệu cụ thể nếu cần (Key = AccoladeType)
 			Overrides = {
 				-- ["FirstBlood"] = {
-				-- 	DisplayDuration = 4.0,
-				-- 	GhostScale      = 2.0,
-				-- },
-				-- ["FreezingSpree"] = {
-				-- 	DisplayDuration = 3.5,
+				-- 	DisplayDuration = 2.0,
 				-- },
 			},
 		},

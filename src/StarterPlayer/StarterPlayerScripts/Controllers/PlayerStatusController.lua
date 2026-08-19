@@ -1,5 +1,6 @@
 -- PlayerStatusController.lua (ModuleScript)
 -- Hiển thị avatar thumbnail của tất cả người chơi trong trận theo đội (AllyTeam / EnemyTeam)
+-- Cập nhật màu sắc trực quan theo trạng thái: Đổi sang màu xám (#868686) khi Frozen/Dead, khôi phục khi Normal
 -- Hoạt động với cả người đang trong trận lẫn Spectator
 -- Spectator: Team1 = xanh dương (AllyTeam), Team2 = đỏ (EnemyTeam)
 
@@ -7,13 +8,11 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 
 -- =========================================================
 -- CONFIG
 -- =========================================================
-
-local ALLY_COLOR  = Color3.fromHex("009DFF")
-local ENEMY_COLOR = Color3.fromHex("FF5151")
 
 -- Thumbnail type: HeadShot
 local THUMBNAIL_TYPE = Enum.ThumbnailType.HeadShot
@@ -35,6 +34,7 @@ local _Template       = nil  -- AvatarThumbnail ImageLabel template
 -- Cache danh sách clone để dọn dẹp khi reset trận
 local _AllyClones  = {}
 local _EnemyClones = {}
+local _cardData    = {}  -- [UserId] = { Card = Clone, IsAlly = boolean, State = string }
 local _playerStatusType = "TwoTeams"  -- "TwoTeams" | "Disabled"
 
 -- =========================================================
@@ -51,6 +51,38 @@ local function ClearAvatars()
 	end
 	_AllyClones  = {}
 	_EnemyClones = {}
+	_cardData    = {}
+end
+
+--- Cập nhật màu sắc giao diện của AvatarThumbnail dựa trên trạng thái người chơi
+--- @param UserId number
+--- @param State string? "Normal" | "Frozen" | "Dead"
+local function UpdateAvatarCardVisual(UserId, State)
+	local Data = _cardData[UserId]
+	if not Data or not Data.Card or not Data.Card.Parent then return end
+
+	Data.State = State or "Normal"
+	local IsInactive = (Data.State == "Frozen" or Data.State == "Dead")
+
+	local StatusCfg = GuiConfig.PlayerStatus or {}
+	local InactiveColor     = StatusCfg.InactiveColor     or Color3.fromHex("868686")
+	local AllyColor         = StatusCfg.AllyColor         or Color3.fromHex("009DFF")
+	local EnemyColor        = StatusCfg.EnemyColor        or Color3.fromHex("FF5151")
+	local DefaultImageColor = StatusCfg.DefaultImageColor or Color3.fromRGB(255, 255, 255)
+
+	if IsInactive then
+		Data.Card.BackgroundColor3 = InactiveColor
+		Data.Card.ImageColor3      = InactiveColor
+	else
+		Data.Card.BackgroundColor3 = Data.IsAlly and AllyColor or EnemyColor
+		Data.Card.ImageColor3      = DefaultImageColor
+	end
+
+	-- Cập nhật icon FrozenStatus con nếu có trong template
+	local FrozenStatus = Data.Card:FindFirstChild("FrozenStatus")
+	if FrozenStatus then
+		FrozenStatus.Visible = IsInactive
+	end
 end
 
 --- Clone một AvatarThumbnail và gán UserId + màu nền vào đúng frame
@@ -59,12 +91,18 @@ end
 local function SpawnAvatarCard(UserId, IsAlly)
 	if not _Template then return end
 
+	local StatusCfg = GuiConfig.PlayerStatus or {}
+	local AllyColor         = StatusCfg.AllyColor         or Color3.fromHex("009DFF")
+	local EnemyColor        = StatusCfg.EnemyColor        or Color3.fromHex("FF5151")
+	local DefaultImageColor = StatusCfg.DefaultImageColor or Color3.fromRGB(255, 255, 255)
+
 	local Clone = _Template:Clone()
 	Clone.Name    = tostring(UserId)
 	Clone.Visible = true
 
-	-- Đặt màu nền theo đội
-	Clone.BackgroundColor3 = IsAlly and ALLY_COLOR or ENEMY_COLOR
+	-- Đặt màu nền và màu ảnh mặc định theo đội
+	Clone.BackgroundColor3 = IsAlly and AllyColor or EnemyColor
+	Clone.ImageColor3      = DefaultImageColor
 
 	-- Clone vào đúng frame đội trước để tránh race condition khi check Clone.Parent
 	if IsAlly then
@@ -74,6 +112,12 @@ local function SpawnAvatarCard(UserId, IsAlly)
 		Clone.Parent = _EnemyTeamFrame
 		table.insert(_EnemyClones, Clone)
 	end
+
+	_cardData[UserId] = {
+		Card   = Clone,
+		IsAlly = IsAlly,
+		State  = "Normal",
+	}
 
 	-- Load thumbnail bất đồng bộ để không block UI
 	-- GetUserThumbnailAsync trả về (url, isReady) — retry nếu isReady = false
@@ -160,20 +204,11 @@ function PlayerStatusController:Init()
 		OnTeamAssigned(Teams)
 	end)
 
-	-- Lắng nghe UpdatePlayerState để cập nhật FrozenStatus trên Avatar card nếu có
+	-- Lắng nghe UpdatePlayerState để cập nhật màu sắc xám khi Frozen/Dead hoặc khôi phục khi Normal
 	local UpdatePlayerStateEvent = RemoteDefinitions.GetEvent("UpdatePlayerState")
 	UpdatePlayerStateEvent.OnClientEvent:Connect(function(Data)
 		if Data and Data.PlayerId then
-			local CardName = tostring(Data.PlayerId)
-			local AllyCard = _AllyTeamFrame and _AllyTeamFrame:FindFirstChild(CardName)
-			local EnemyCard = _EnemyTeamFrame and _EnemyTeamFrame:FindFirstChild(CardName)
-			local Card = AllyCard or EnemyCard
-			if Card then
-				local FrozenStatus = Card:FindFirstChild("FrozenStatus")
-				if FrozenStatus then
-					FrozenStatus.Visible = (Data.State == "Frozen" or Data.State == "Dead")
-				end
-			end
+			UpdateAvatarCardVisual(Data.PlayerId, Data.State)
 		end
 	end)
 
