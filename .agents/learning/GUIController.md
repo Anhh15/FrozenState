@@ -6,6 +6,11 @@
 
 ## Kiến trúc
 
+### Chuẩn hóa Hoạt họa Pop, Nối tiếp (Stagger) và Âm thanh per-item trong GameStatistic
+- **Ngày:** 19-08-2026
+- **Chi tiết:** Mở rộng kiến trúc hoạt họa `Pop` và `Stagger` sang `ScreenGui.GameStatistic` cho cả 2 màn hình `TopPlayersStats` và `PlayerStats`. Bổ sung hỗ trợ `ItemSoundId` vào `GuiHelper.StaggerPopOpen`, cho phép tự động phát âm thanh SFX (như tiếng đếm chỉ số `132948338000932`) đồng bộ với từng bước bung nở của phần tử mà không cần controller viết vòng lặp thủ công. Chuẩn hóa `NextButton` và các nút đóng `CloseButton` với hiệu ứng phóng to rê chuột (`HoverScale`), thu nhỏ khi bấm (`PressScale`) cùng âm thanh tương tác tương tự `NavigationButtons`. Quản lý luồng stagger an toàn (`task.cancel` trên thread và `CancelTween`) khi người chơi đóng GUI hoặc khi phase trận đấu thay đổi.
+- **File liên quan:** [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [AudioConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
+
 ### Kiến trúc 2 Tầng Toàn Diện (Default & Overrides) Cho Toàn Bộ Animation GUI & Quản Lý Tập Trung
 - **Ngày:** 19-08-2026
 - **Chi tiết:** Chuẩn hóa 100% các animation GUI trong game (`Pop`, `ButtonScale`, `Stagger`, `ItemReward`, `ModeAnnouncement`, `RoundLoadingScreen`, `Accolades`) sang mô hình 2 tầng (`Default` dùng chung + `Overrides` theo Key) trong `GuiConfig.lua`. Gom toàn bộ thời lượng, tốc độ xoay và âm lượng SFX (`AudioConfig`) khỏi các Controller client. `GuiHelper.lua` cung cấp các hàm resolver (`GetItemRewardAnimConfig`, `GetModeAnnouncementAnimConfig`, `GetRoundLoadingAnimConfig`, `GetAccoladesAnimConfig`) tự động hòa trộn `Overrides` với `Default`, triệt tiêu hoàn toàn magic numbers và hardcode.

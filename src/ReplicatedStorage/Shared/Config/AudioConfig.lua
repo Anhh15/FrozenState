@@ -69,6 +69,7 @@ local AudioConfig = {
 	-- =========================================================
 	Stats = {
 		Overall          = 119804136935260,  -- Âm thanh khi hiển thị bảng PlayerStats sau trận
+		StaggerCount     = 132948338000932,  -- Âm thanh phát cho từng dòng thống kê khi bung ra
 	},
 
 	-- =========================================================

@@ -444,6 +444,7 @@ function GuiHelper.GetStaggerConfig(Identifier)
 		EasingDir    = OverrideCfg.EasingDir    or DefaultCfg.EasingDir    or Enum.EasingDirection.Out,
 		InitialScale = OverrideCfg.InitialScale or DefaultCfg.InitialScale or 0.0,
 		TargetScale  = OverrideCfg.TargetScale  or DefaultCfg.TargetScale  or 1.0,
+		ItemSoundId  = OverrideCfg.ItemSoundId  or DefaultCfg.ItemSoundId,
 	}
 end
 
@@ -501,6 +502,7 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 	local Direction     = Cfg.EasingDir    or StaggerConfig.EasingDir    or Enum.EasingDirection.Out
 	local TargetVal     = Cfg.TargetScale  or StaggerConfig.TargetScale  or 1.0
 	local InitVal       = Cfg.InitialScale or StaggerConfig.InitialScale or 0.0
+	local ItemSoundId   = Cfg.ItemSoundId  or StaggerConfig.ItemSoundId
 
 	-- Khởi tạo UIScale ban đầu về InitVal cho tất cả phần tử
 	for _, Item in ipairs(ItemsList) do
@@ -530,6 +532,11 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 			local UiScale = GuiHelper.GetOrCreateScale(Item)
 			if UiScale then
 				GuiHelper.CancelTween(UiScale)
+
+				if ItemSoundId then
+					AudioHelper.PlayGuiSound(ItemSoundId)
+				end
+
 				local TweenInfoObj = TweenInfo.new(Duration, Style, Direction)
 				local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetVal })
 				_ActiveTweens[UiScale] = Tween

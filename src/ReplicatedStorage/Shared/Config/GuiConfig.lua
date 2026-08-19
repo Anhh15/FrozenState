@@ -103,12 +103,14 @@ local GuiConfig = {
 
 			-- Ghi đè riêng cho từng frame menu cụ thể nếu cần (Key = FrameName)
 			Overrides = {
-				-- ["Shop"] = {
-				-- 	OpenDuration = 0.3,
-				-- },
-				-- ["Inventory"] = {
-				-- 	OpenDuration = 0.22,
-				-- },
+				["TopPlayersStats"] = {
+					OpenDuration  = 0.3,
+					CloseDuration = 0.2,
+				},
+				["PlayerStats"] = {
+					OpenDuration  = 0.3,
+					CloseDuration = 0.2,
+				},
 			},
 		},
 
@@ -126,12 +128,14 @@ local GuiConfig = {
 
 			-- Ghi đè riêng cho từng nút cụ thể nếu cần (Key = ButtonName)
 			Overrides = {
-				-- ["Shop"] = {
-				-- 	HoverScale = 1.12,
-				-- },
-				-- ["Inventory"] = {
-				-- 	HoverScale = 1.18,
-				-- },
+				["NextButton"] = {
+					HoverScale = 1.1,
+					PressScale = 0.95,
+				},
+				["CloseButton"] = {
+					HoverScale = 1.15,
+					PressScale = 0.9,
+				},
 			},
 		},
 
@@ -150,16 +154,21 @@ local GuiConfig = {
 			-- Ghi đè riêng cho từng menu/danh sách cụ thể (Key = Identifier)
 			Overrides = {
 				["Quest"] = {
-					DelayStep = 0.07,
-					Duration = 0.3,
+					DelayStep   = 0.07,
+					Duration    = 0.3,
 					EasingStyle = Enum.EasingStyle.Sine,
 				},
-				-- ["Inventory"] = {
-				-- 	DelayStep = 0.03,
-				-- },
-				-- ["Shop"] = {
-				-- 	DelayStep = 0.03,
-				-- },
+				["TopPlayersStats"] = {
+					DelayStep   = 0.08,
+					Duration    = 0.25,
+					EasingStyle = Enum.EasingStyle.Back,
+				},
+				["TotalStats"] = {
+					DelayStep   = 0.08,
+					Duration    = 0.22,
+					EasingStyle = Enum.EasingStyle.Back,
+					ItemSoundId = 132948338000932,
+				},
 			},
 		},
 

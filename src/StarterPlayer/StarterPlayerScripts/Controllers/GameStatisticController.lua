@@ -1,6 +1,6 @@
 -- GameStatisticController.lua (ModuleScript)
--- Điều khiển GUI GameStatistic mới với ViewportFrame và UIListLayout
--- Phase 8.3: GUI SFX — CloseButton, NextButton, PlayerStats overall
+-- Điều khiển GUI GameStatistic với ViewportFrame, Pop/Stagger Animations và UI SFX
+-- Phase 8.3: Chuẩn hóa Animation & SFX (Pop, Stagger, Button Hover Scale, Per-Item SFX)
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,8 +8,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -33,13 +35,14 @@ local PlayerSlots = {
 }
 
 -- ── PlayerStats (Bảng Thống Kê Cá Nhân) ───────────────────
-local PlayerStats          = StatGui:WaitForChild("PlayerStats")
-local GameResultText       = PlayerStats:WaitForChild("GameResult"):WaitForChild("GameResultText")
-local CloseButton2         = PlayerStats:WaitForChild("CloseButton")
+local PlayerStats         = StatGui:WaitForChild("PlayerStats")
+local GameResultText      = PlayerStats:WaitForChild("GameResult"):WaitForChild("GameResultText")
+local CloseButton2        = PlayerStats:WaitForChild("CloseButton")
 local MainAvatarThumbnail = PlayerStats:WaitForChild("AvatarThumbnail")
 
-local StatsPanel     = PlayerStats:WaitForChild("Stats")
-local TotalStats     = StatsPanel:WaitForChild("TotalStats")
+local StatsPanel    = PlayerStats:WaitForChild("Stats")
+local TotalStats    = StatsPanel:WaitForChild("TotalStats")
+local TotalMoney    = StatsPanel:WaitForChild("TotalMoney")
 
 -- Tham chiếu tới các dòng thống kê con trong TotalStats
 local FreezeVal       = TotalStats:WaitForChild("Freeze"):WaitForChild("ValueText")
@@ -48,8 +51,29 @@ local FSpreeVal       = TotalStats:WaitForChild("FreezingSpree"):WaitForChild("V
 local TSpreeVal       = TotalStats:WaitForChild("ThawingSpree"):WaitForChild("ValueText")
 local FirstBloodVal   = TotalStats:WaitForChild("FirstBlood"):WaitForChild("ValueText")
 local LastStandingVal = TotalStats:WaitForChild("LastStanding"):WaitForChild("ValueText")
+local TotalMoneyVal   = TotalMoney:WaitForChild("ValueText")
 
-local TotalMoneyVal   = StatsPanel:WaitForChild("TotalMoney"):WaitForChild("ValueText")
+-- Danh sách tuần tự các phần tử chỉ số để thực hiện hiệu ứng StaggerPopOpen
+local StatsItemsSequence = {
+	TotalStats:WaitForChild("Freeze"),
+	TotalStats:WaitForChild("Thaw"),
+	TotalStats:WaitForChild("FreezingSpree"),
+	TotalStats:WaitForChild("ThawingSpree"),
+	TotalStats:WaitForChild("FirstBlood"),
+	TotalStats:WaitForChild("LastStanding"),
+	TotalMoney,
+}
+
+-- Thread theo dõi Stagger animation đang chạy dở
+local _ActiveStaggerThread = nil
+
+--- Dừng Stagger animation đang chạy dở nếu có
+local function StopActiveStagger()
+	if _ActiveStaggerThread then
+		task.cancel(_ActiveStaggerThread)
+		_ActiveStaggerThread = nil
+	end
+end
 
 --- Phát âm thanh GUI qua AudioHelper
 --- @param SoundId number
@@ -62,23 +86,65 @@ end
 -- =========================================================
 
 local function HideAll()
-	StatGui.Enabled         = false
+	StopActiveStagger()
+
+	GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(TopPlayersStats))
+	GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(PlayerStats))
+
+	for _, Slot in ipairs(PlayerSlots) do
+		GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Slot))
+	end
+
+	for _, StatItem in ipairs(StatsItemsSequence) do
+		GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(StatItem))
+	end
+
 	TopPlayersStats.Visible = false
 	PlayerStats.Visible     = false
+	StatGui.Enabled         = false
 end
 
-local function ShowTopPlayers()
-	StatGui.Enabled         = true
-	TopPlayersStats.Visible = true
-	PlayerStats.Visible     = false
+local function ShowTopPlayers(TopPlayersData)
+	StopActiveStagger()
+
+	StatGui.Enabled     = true
+	PlayerStats.Visible = false
+	GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(PlayerStats))
+
+	GuiHelper.PopOpen(TopPlayersStats)
+
+	-- Lọc các slot có dữ liệu người chơi thực tế để áp dụng Stagger
+	local ActiveSlots = {}
+	for i, Slot in ipairs(PlayerSlots) do
+		if TopPlayersData and TopPlayersData[i] then
+			table.insert(ActiveSlots, Slot)
+		else
+			Slot.Visible = false
+		end
+	end
+
+	if #ActiveSlots > 0 then
+		_ActiveStaggerThread = GuiHelper.StaggerPopOpen(ActiveSlots, "TopPlayersStats")
+	end
 end
 
 local function ShowPlayerStats()
-	StatGui.Enabled         = true
+	StopActiveStagger()
+
+	StatGui.Enabled = true
+
+	-- Fast Switch: Ẩn TopPlayersStats tức thì để chuyển sang PlayerStats
+	GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(TopPlayersStats))
 	TopPlayersStats.Visible = false
-	PlayerStats.Visible     = true
-	-- Phase 8.3: Phát 'overall' khi PlayerStats hiện ra
+
+	-- Bung mở bảng PlayerStats
+	GuiHelper.PopOpen(PlayerStats)
+
+	-- Phát âm thanh tổng quan trận đấu
 	PlayGuiSound(AudioConfig.Stats.Overall)
+
+	-- Bung nở lần lượt từng dòng thống kê kèm SFX 132948338000932 cho mỗi dòng
+	_ActiveStaggerThread = GuiHelper.StaggerPopOpen(StatsItemsSequence, "TotalStats")
 end
 
 --- Hiển thị ảnh đại diện của người chơi qua GetUserThumbnailAsync (kèm Studio fallback)
@@ -177,6 +243,17 @@ function GameStatisticController:Init()
 	StatGui.ResetOnSpawn = false
 	HideAll()
 
+	-- Gắn hiệu ứng phóng to hover/click và âm thanh SFX cho NextButton
+	GuiHelper.BindButtonScale(NextButton)
+	GuiHelper.BindButtonSound(NextButton, AudioConfig.Gui.ButtonClick, AudioConfig.Gui.MouseEnter)
+
+	-- Gắn hiệu ứng cho các nút đóng CloseButton
+	GuiHelper.BindButtonScale(CloseButton1)
+	GuiHelper.BindButtonSound(CloseButton1, AudioConfig.Gui.CloseButtonClick, AudioConfig.Gui.MouseEnter)
+
+	GuiHelper.BindButtonScale(CloseButton2)
+	GuiHelper.BindButtonSound(CloseButton2, AudioConfig.Gui.CloseButtonClick, AudioConfig.Gui.MouseEnter)
+
 	-- Lắng nghe dữ liệu cuối trận từ server
 	local ShowGameOverEvent = RemoteDefinitions.GetEvent("ShowGameOver")
 	ShowGameOverEvent.OnClientEvent:Connect(function(Data)
@@ -197,7 +274,7 @@ function GameStatisticController:Init()
 		FillTopPlayers(Data.TopPlayers or {})
 		FillPersonalStats(Data.Won, Data.PersonalStats or {})
 
-		ShowTopPlayers()
+		ShowTopPlayers(Data.TopPlayers or {})
 	end)
 
 	-- Ẩn GUI khi bắt đầu trận đấu mới
@@ -210,19 +287,22 @@ function GameStatisticController:Init()
 
 	-- Cài đặt sự kiện nút bấm chuyển tiếp và đóng
 	NextButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.ButtonClick)
 		ShowPlayerStats()
 	end)
+
 	CloseButton1.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-		HideAll()
-	end)
-	CloseButton2.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-		HideAll()
+		GuiHelper.PopClose(TopPlayersStats, nil, function()
+			HideAll()
+		end)
 	end)
 
-	print("[GameStatisticController] Khởi tạo thành công với cấu trúc GUI mới.")
+	CloseButton2.MouseButton1Click:Connect(function()
+		GuiHelper.PopClose(PlayerStats, nil, function()
+			HideAll()
+		end)
+	end)
+
+	print("[GameStatisticController] Khởi tạo thành công với Pop/Stagger Animation & SFX.")
 end
 
 return GameStatisticController
