@@ -16,9 +16,12 @@ local DataService       = require(script.Parent.DataService)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
 local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 
 -- =========================================================
 -- STATE
@@ -464,11 +467,12 @@ local function RunSetup()
 
 	-- Nếu là Special Round: chờ thêm thời gian để client hiển thị ModeAnnouncement
 	if GameModeHelper.IsSpecialRound(ModeKey) then
-		local AnnouncementDuration = (GameConfig.GUI.ModeAnnouncement and GameConfig.GUI.ModeAnnouncement.DisplayDuration) or 4.0
+		local AnnouncementDuration = (GuiConfig.Animations.ModeAnnouncement and GuiConfig.Animations.ModeAnnouncement.DisplayDuration) or 4.0
 		task.wait(AnnouncementDuration)
 	end
 
-	task.wait(GameConfig.GUI.RoundLoadingScreen.FadeInDuration)
+	local FadeInDuration = (GuiConfig.Animations.RoundLoadingScreen and GuiConfig.Animations.RoundLoadingScreen.FadeInDuration) or 1.0
+	task.wait(FadeInDuration)
 	task.wait(0.5)  -- buffer nhỏ để map load xong
 
 	return true
@@ -613,10 +617,8 @@ local function RunGameOver(Result)
 	task.wait(0.2)
 
 	-- Dọn sạch IceBlock tàn dư
-	for _, Child in ipairs(workspace:GetChildren()) do
-		if Child.Name == "IceBlock" then
-			Child:Destroy()
-		end
+	for _, Block in ipairs(TagHelper.GetTagged(TagConfig.Tags.IceBlock)) do
+		Block:Destroy()
 	end
 
 	-- Dọn dẹp map

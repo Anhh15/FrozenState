@@ -1,7 +1,7 @@
 -- RarityConfig.lua
 -- Tập trung toàn bộ tham số hiển thị theo Rarity cho ItemFrame trong GUI
 -- Không hardcode ImageId hay màu sắc trực tiếp trong logic code
--- Thêm rarity mới: thêm entry tại đây + đảm bảo GameConfig.Rarity cũng có entry tương ứng
+-- Thêm rarity mới: thêm entry tại đây (khớp với enum trong ItemRegistry)
 
 -- ImageId placeholder: thay bằng Roblox Asset Id thực khi có asset đã upload
 -- Ví dụ: "rbxassetid://12345678"

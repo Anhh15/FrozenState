@@ -182,6 +182,13 @@ local QuestConfig = {
 		Uncompleted = "rbxassetid://132149908740563",
 		Completed   = "rbxassetid://99096499302637",
 	},
+	RewardAnnouncementIcons = {
+		Money = "rbxassetid://106702914411826",
+		-- Bạn có thể thêm các icon khác cho các loại phần thưởng tương lai tại đây
+		-- Ví dụ:
+		-- Robux   = "rbxassetid://123456789012345",
+		-- Gem     = "rbxassetid://112233445566778",
+	}
 }
 
 return QuestConfig

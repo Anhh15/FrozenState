@@ -108,19 +108,6 @@ local function SetPlayerThumbnail(ImageLabel, UserId, ThumbnailType)
 	end)
 end
 
---- Lấy UserId an toàn từ Tên hiển thị (DisplayName hoặc Name) ngay cả khi người chơi đã thoát game
-local function GetUserIdFromName(Name)
-	local Player = Players:FindFirstChild(Name)
-	if Player then
-		return Player.UserId
-	end
-	
-	local Success, UserId = pcall(function()
-		return Players:GetUserIdFromNameAsync(Name)
-	end)
-	return Success and UserId or 0
-end
-
 --- Điền thông tin top 3 vào các PlayerSlots
 local function FillTopPlayers(TopPlayers)
 	for i, Slot in ipairs(PlayerSlots) do

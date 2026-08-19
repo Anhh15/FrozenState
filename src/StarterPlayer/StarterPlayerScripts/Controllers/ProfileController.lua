@@ -217,11 +217,6 @@ end
 -- PRIVATE: Điền số liệu thống kê
 -- =========================================================
 
---- Format giá trị boolean thành "Yes" / "No"
-local function FormatBool(Value)
-	return Value and "Yes" or "No"
-end
-
 local function PopulateStats()
 	local Data = PlayerDataController.GetData()
 	if not Data then return end

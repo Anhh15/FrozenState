@@ -8,7 +8,7 @@ local GameConfig = {
 	-- THỜI GIAN CÁC PHASE (đơn vị: giây)
 	-- =========================================================
 	Phase = {
-		IntermissionDuration = 6,   -- Thời gian nghỉ giữa các trận
+		IntermissionDuration = 15,   -- Thời gian nghỉ giữa các trận
 		ReadyDuration        = 3,   -- Đếm ngược trước khi bắt đầu
 		GameOverDuration     = 6,   -- Màn hình kết thúc
 		GameOverRevealDelay  = 2,   -- Delay trước khi hiện win/lose trong GameOver
@@ -32,42 +32,12 @@ local GameConfig = {
 	},
 
 	-- =========================================================
-	-- GUI: VIEWPORT FRAME & TRANSITION
-	-- =========================================================
-	GUI = {
-		ViewportCameraDistance = 5,  -- Khoảng cách camera đến đầu nhân vật trong ViewportFrame (studs)
-
-		-- RoundLoadingScreen transition timing (đơn vị: giây)
-		RoundLoadingScreen = {
-			FadeInDuration  = 1.0,  -- Thời gian mờ đen màn hình khi bắt đầu Setup
-			HoldDuration    = 1.0,  -- Thời gian giữ màn hình đen khi vào Ready
-			FadeOutDuration = 0.5,  -- Thời gian sáng dần trở lại
-		},
-
-		-- ModeAnnouncement timing (đơn vị: giây)
-		ModeAnnouncement = {
-			DisplayDuration = 4.0,  -- Thời gian hiển thị thông báo chế độ trước khi chuyển sang loading
-			FadeInDuration  = 0.5,  -- Thời gian fade in mỗi dòng chữ (ModeNameText và DescriptionText)
-		},
-	},
-
-	-- =========================================================
 	-- PLAYER: Chỉ số di chuyển mặc định
 	-- =========================================================
 	Player = {
 		DefaultWalkSpeed  = 16,   -- WalkSpeed khi không bị lock
 		DefaultJumpPower  = 50,   -- JumpPower khi không bị lock (legacy)
 		DefaultJumpHeight = 7.2,  -- JumpHeight khi không bị lock
-	},
-
-	-- =========================================================
-	-- RARITY: Độ hiếm vật phẩm và màu hiển thị (Hex)
-	-- =========================================================
-	Rarity = {
-		Common    = { Color = "#FFFFFF" },  -- Trắng
-		Rare      = { Color = "#4A90D9" },  -- Xanh lam
-		Epic      = { Color = "#9B59B6" },  -- Tím
-		Legendary = { Color = "#F1C40F" },  -- Vàng
 	},
 
 }

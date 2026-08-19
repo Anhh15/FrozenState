@@ -6,7 +6,7 @@
 -- CẤU TRÚC MỖI ENTRY:
 --   Id      (string) — Tên folder trong ServerStorage/Icicles hoặc ServerStorage/Blocks
 --   Name    (string) — Tên hiển thị (dùng cho GUI sau này)
---   Rarity  (string) — Khớp với key trong GameConfig.Rarity (Common/Rare/Epic/Legendary)
+--   Rarity  (string) — Khớp với key trong RarityConfig (Common/Uncommon/Rare/Epic/Legendary)
 --   Type    (string) — "Icicle" hoặc "Block"
 
 local ItemRegistry = {}

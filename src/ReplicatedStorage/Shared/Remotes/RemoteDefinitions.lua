@@ -19,9 +19,6 @@ local REMOTE_EVENTS = {
 	-- Server → Client: Báo trạng thái của một player (Normal / Frozen / Dead)
 	"UpdatePlayerState",
 
-	-- Server → Client: Cập nhật bảng điểm ingame
-	"UpdateLeaderboard",
-
 	-- Server → Client: Sync số tiền sau khi có thay đổi
 	"UpdateMoney",
 

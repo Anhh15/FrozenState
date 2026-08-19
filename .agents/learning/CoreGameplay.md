@@ -1,10 +1,15 @@
 # CoreGameplay
 > Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu, Audio/Animation, Map/Spawn, Tags và Kinh tế/Thưởng) trong dự án.
-> Cập nhật lần cuối: 17-08-2026
+> Cập nhật lần cuối: 19-08-2026
 
 ---
 
 ## Kiến trúc
+
+### Tinh gọn Cấu hình Trùng lặp và Loại bỏ Dead Code (Single Source of Truth Refactoring)
+- **Ngày:** 19-08-2026
+- **Chi tiết:** Loại bỏ toàn bộ cấu hình trùng lặp và mã nguồn chết rải rác: (1) Xóa `GameConfig.Rarity`, `GameConfig.GUI.ViewportCameraDistance`, và `GameConfig.GUI.RoundLoadingScreen`/`ModeAnnouncement` (chuyển về `GuiConfig.lua` và `RarityConfig.lua`), (2) Xóa RemoteEvent chết `UpdateLeaderboard` trong `RemoteDefinitions.lua` do dữ liệu đã được gộp vào `UpdatePlayerState`, (3) Xóa các hàm chết `GetUserIdFromName` (GameStatisticController) và `FormatBool` (ProfileController). Giúp mã nguồn gọn gàng, giảm bộ nhớ và tuân thủ chặt chẽ nguyên lý Single Source of Truth.
+- **File liên quan:** [GameConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GameConfig.lua), [RemoteDefinitions.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Remotes/RemoteDefinitions.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [GameStatisticController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [ProfileController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
 
 ### Kiến trúc Tách biệt Audio (AudioConfig & AudioHelper) và Animation (AnimationConfig & AnimationHelper)
 - **Ngày:** 17-08-2026
@@ -170,3 +175,10 @@
 - **Nguyên nhân:** (1) `Humanoid.Died` không gọi `EliminatePlayer` trong Intermission/Setup, (2) `RunSetup` đưa toàn bộ `Players:GetPlayers()` vào `InMatch` dù character đang chết, (3) `RunReady` chỉ teleport 1 lần duy nhất lúc đầu nên bỏ lỡ nhân vật mới respawn sau đó tại `SpawnLocation` của Lobby.
 - **Fix:** (1) Thêm `GetAlivePlayers()` trong `MatchService` để chỉ cho người có `Health > 0` tham gia `RunSetup()`, (2) Mở rộng `BindCharacterDeath` bắt chết trong toàn bộ thời gian `IsMatchActive = true`, (3) Lắng nghe `MatchEndSignal` xuyên suốt để ngắt sớm Ready/InGame, (4) Thêm đệm `task.wait(0.2)` trước khi `UnloadMap()` ở `RunGameOver` để tránh rơi void gây chết dây chuyền sang Intermission.
 - **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Lỗi dọn dẹp IceBlock tàn dư thất bại do so khớp chuỗi tên tĩnh ("IceBlock")
+- **Ngày:** 19-08-2026
+- **Vấn đề:** Ở phase GameOver, vòng lặp fallback dọn IceBlock tàn dư trong `MatchService` không xóa được các khối băng sót lại trong Workspace.
+- **Nguyên nhân:** Từ khi chuyển đổi sang skin động (Model), các khối băng được đặt tên theo SkinId (vd: "Default", "Green", "Red") thay vì tên cố định "IceBlock". Do đó điều kiện `Child.Name == "IceBlock"` trong `workspace:GetChildren()` không bao giờ khớp.
+- **Fix:** Thay thế vòng lặp duyệt Workspace $O(n)$ bằng `TagHelper.GetTagged(TagConfig.Tags.IceBlock)` để dọn dẹp chính xác và tối ưu hiệu năng.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [TagHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/TagHelper.lua), [TagConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/TagConfig.lua)
