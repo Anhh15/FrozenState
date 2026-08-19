@@ -242,6 +242,26 @@ function GuiHelper.TweenScale(TargetObject, TargetScale, Duration, Style, Direct
 	return Tween
 end
 
+--- Lấy cấu hình Pop của Frame dựa theo tên (kết hợp Default và Overrides)
+--- @param FrameName string?
+--- @return table
+function GuiHelper.GetPopConfig(FrameName)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Pop
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
+	local OverrideCfg = (FrameName and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[FrameName]) or {}
+
+	return {
+		OpenDuration     = OverrideCfg.OpenDuration     or DefaultCfg.OpenDuration     or 0.25,
+		CloseDuration    = OverrideCfg.CloseDuration    or DefaultCfg.CloseDuration    or 0.2,
+		OpenEasingStyle  = OverrideCfg.OpenEasingStyle  or DefaultCfg.OpenEasingStyle  or Enum.EasingStyle.Back,
+		OpenEasingDir    = OverrideCfg.OpenEasingDir    or DefaultCfg.OpenEasingDir    or Enum.EasingDirection.Out,
+		CloseEasingStyle = OverrideCfg.CloseEasingStyle or DefaultCfg.CloseEasingStyle or Enum.EasingStyle.Quad,
+		CloseEasingDir   = OverrideCfg.CloseEasingDir   or DefaultCfg.CloseEasingDir   or Enum.EasingDirection.In,
+		InitialScale     = OverrideCfg.InitialScale     or DefaultCfg.InitialScale     or 0,
+		TargetScale      = OverrideCfg.TargetScale      or DefaultCfg.TargetScale      or 1,
+	}
+end
+
 --- Mở một cửa sổ GUI kèm hiệu ứng Zoom Pop nảy nhẹ
 --- @param GuiObject GuiObject Frame hoặc container cần mở
 --- @param CustomConfig table? { Duration: number?, EasingStyle: Enum.EasingStyle?, EasingDir: Enum.EasingDirection?, TargetScale: number?, InitialScale: number? }
@@ -250,7 +270,7 @@ end
 function GuiHelper.PopOpen(GuiObject, CustomConfig, OnComplete)
 	if not GuiObject or not GuiObject:IsA("GuiObject") then return nil end
 
-	local PopConfig = GuiConfig.Animations and GuiConfig.Animations.Pop
+	local PopConfig = GuiHelper.GetPopConfig(GuiObject.Name)
 	local Duration  = (CustomConfig and CustomConfig.Duration) or (PopConfig and PopConfig.OpenDuration) or 0.25
 	local Style     = (CustomConfig and CustomConfig.EasingStyle) or (PopConfig and PopConfig.OpenEasingStyle) or Enum.EasingStyle.Back
 	local Direction = (CustomConfig and CustomConfig.EasingDir) or (PopConfig and PopConfig.OpenEasingDir) or Enum.EasingDirection.Out
@@ -297,7 +317,7 @@ function GuiHelper.PopClose(GuiObject, CustomConfig, OnComplete)
 		return nil
 	end
 
-	local PopConfig = GuiConfig.Animations and GuiConfig.Animations.Pop
+	local PopConfig = GuiHelper.GetPopConfig(GuiObject.Name)
 	local Duration  = (CustomConfig and CustomConfig.Duration) or (PopConfig and PopConfig.CloseDuration) or 0.2
 	local Style     = (CustomConfig and CustomConfig.EasingStyle) or (PopConfig and PopConfig.CloseEasingStyle) or Enum.EasingStyle.Quad
 	local Direction = (CustomConfig and CustomConfig.EasingDir) or (PopConfig and PopConfig.CloseEasingDir) or Enum.EasingDirection.In
@@ -385,6 +405,109 @@ function GuiHelper.BindButtonScale(Button, TargetElement, CustomScaleConfig)
 		IsHovered = false
 		GuiHelper.TweenScale(Target, DefaultScale, Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	end)
+end
+
+--- Lấy cấu hình Stagger của danh sách (kết hợp Default và Overrides)
+--- @param Identifier string? Tên menu hoặc container (vd: "Inventory", "Shop", "Quest")
+--- @return table
+function GuiHelper.GetStaggerConfig(Identifier)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Stagger
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
+	local OverrideCfg = (Identifier and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[Identifier]) or {}
+
+	return {
+		DelayStep    = OverrideCfg.DelayStep    or DefaultCfg.DelayStep    or 0.03,
+		Duration     = OverrideCfg.Duration     or DefaultCfg.Duration     or 0.2,
+		EasingStyle  = OverrideCfg.EasingStyle  or DefaultCfg.EasingStyle  or Enum.EasingStyle.Back,
+		EasingDir    = OverrideCfg.EasingDir    or DefaultCfg.EasingDir    or Enum.EasingDirection.Out,
+		InitialScale = OverrideCfg.InitialScale or DefaultCfg.InitialScale or 0.0,
+		TargetScale  = OverrideCfg.TargetScale  or DefaultCfg.TargetScale  or 1.0,
+	}
+end
+
+--- Hiển thị danh sách phần tử (Template cards/items) xuất hiện lần lượt với hiệu ứng Pop nảy nhẹ
+--- @param ItemsList table Danh sách GuiObject cần hiển thị
+--- @param CustomConfig table? { DelayStep: number?, Duration: number?, EasingStyle: Enum.EasingStyle?, EasingDir: Enum.EasingDirection?, TargetScale: number?, InitialScale: number? }
+--- @param OnComplete ( () -> () )? Callback khi toàn bộ sequence hoàn thành
+--- @param Identifier string? Tùy chọn tên menu/danh sách để tra cứu Overrides (vd: "Inventory", "Shop", "Quest")
+--- @return thread? Thread điều phối animation
+function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifier)
+	if not ItemsList or #ItemsList == 0 then
+		if OnComplete then OnComplete() end
+		return nil
+	end
+
+	local TargetId = Identifier
+	if not TargetId and ItemsList[1] and ItemsList[1].Parent then
+		TargetId = ItemsList[1].Parent.Name
+	end
+
+	local StaggerConfig = GuiHelper.GetStaggerConfig(TargetId)
+	local Cfg           = (type(CustomConfig) == "table" and CustomConfig) or {}
+	local DelayStep     = Cfg.DelayStep    or StaggerConfig.DelayStep    or 0.03
+	local Duration      = Cfg.Duration     or StaggerConfig.Duration     or 0.2
+	local Style         = Cfg.EasingStyle  or StaggerConfig.EasingStyle  or Enum.EasingStyle.Back
+	local Direction     = Cfg.EasingDir    or StaggerConfig.EasingDir    or Enum.EasingDirection.Out
+	local TargetVal     = Cfg.TargetScale  or StaggerConfig.TargetScale  or 1.0
+	local InitVal       = Cfg.InitialScale or StaggerConfig.InitialScale or 0.0
+
+	-- Khởi tạo UIScale ban đầu về 0 cho tất cả phần tử
+	for _, Item in ipairs(ItemsList) do
+		if Item and Item:IsA("GuiObject") then
+			local Scale = GuiHelper.GetOrCreateScale(Item)
+			if Scale then
+				GuiHelper.CancelTween(Scale)
+				Scale.Scale = InitVal
+				Item.Visible = true
+			end
+		end
+	end
+
+	local TotalItems     = #ItemsList
+	local CompletedCount = 0
+
+	local StaggerThread = task.spawn(function()
+		for Index, Item in ipairs(ItemsList) do
+			if not Item or not Item.Parent or not Item:IsA("GuiObject") then
+				CompletedCount += 1
+				if CompletedCount >= TotalItems and OnComplete then
+					OnComplete()
+				end
+				continue
+			end
+
+			local UiScale = GuiHelper.GetOrCreateScale(Item)
+			if UiScale then
+				GuiHelper.CancelTween(UiScale)
+				local TweenInfoObj = TweenInfo.new(Duration, Style, Direction)
+				local Tween = TweenService:Create(UiScale, TweenInfoObj, { Scale = TargetVal })
+				_activeTweens[UiScale] = Tween
+
+				Tween.Completed:Connect(function(PlaybackState)
+					if _activeTweens[UiScale] == Tween then
+						_activeTweens[UiScale] = nil
+					end
+					CompletedCount += 1
+					if CompletedCount >= TotalItems and OnComplete then
+						OnComplete()
+					end
+				end)
+
+				Tween:Play()
+			else
+				CompletedCount += 1
+				if CompletedCount >= TotalItems and OnComplete then
+					OnComplete()
+				end
+			end
+
+			if Index < TotalItems and DelayStep > 0 then
+				task.wait(DelayStep)
+			end
+		end
+	end)
+
+	return StaggerThread
 end
 
 

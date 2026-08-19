@@ -70,6 +70,15 @@ local _currentTab     = "Icicle"   -- Tab đang chọn: "Icicle" hoặc "Block"
 local _selectedEntry  = nil        -- Entry item đang được chọn trong ItemSelection
 local _selectionModel = nil        -- Model đang render trong ItemSelection ViewportFrame
 local _listConnections = {}        -- Kết nối RenderItem (dọn dẹp khi re-render)
+local _staggerThread  = nil        -- Thread animation stagger danh sách item
+
+--- Dừng animation stagger đang chạy dở
+local function StopStaggerAnimation()
+	if _staggerThread then
+		task.cancel(_staggerThread)
+		_staggerThread = nil
+	end
+end
 
 --- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId)
@@ -228,6 +237,8 @@ end
 
 --- Dọn dẹp toàn bộ ItemFrame cũ trong ScrollingFrame
 local function ClearItemList()
+	StopStaggerAnimation()
+
 	-- Hủy kết nối sự kiện click cũ
 	for _, Conn in ipairs(_listConnections) do
 		Conn:Disconnect()
@@ -238,6 +249,7 @@ local function ClearItemList()
 	if not ScrollingFrame then return end
 	for _, Child in ipairs(ScrollingFrame:GetChildren()) do
 		if Child ~= ItemTemplate and Child:IsA("GuiObject") then
+			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 			Child:Destroy()
 		end
 	end
@@ -296,6 +308,7 @@ local function RenderList(ItemType)
 		or  ItemRegistry.GetAllBlocks()
 
 	local LayoutOrder = 0
+	local RenderedFrames = {}
 
 	for _, Entry in ipairs(Catalog) do
 		-- Chỉ hiển thị Default hoặc item đã sở hữu
@@ -345,6 +358,7 @@ local function RenderList(ItemType)
 		end
 
 		Frame.Parent = ScrollingFrame
+		table.insert(RenderedFrames, Frame)
 
 		-- Kết nối sự kiện click
 		local EntrySnapshot = Entry  -- closure capture
@@ -363,6 +377,9 @@ local function RenderList(ItemType)
 		end
 		table.insert(_listConnections, Conn)
 	end
+
+	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop)
+	_staggerThread = GuiHelper.StaggerPopOpen(RenderedFrames)
 end
 
 -- =========================================================
@@ -458,10 +475,12 @@ function InventoryController:Init()
 		end)
 	end
 
-	-- Nút Equip
+	-- Nút Equip: Gắn hiệu ứng tương tác scale và âm thanh (giống NavigationButtons)
 	if EquipButton then
+		GuiHelper.BindButtonScale(EquipButton)
+		GuiHelper.BindButtonSound(EquipButton, AudioConfig.Gui.ButtonClick, AudioConfig.Gui.MouseEnter)
+
 		EquipButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			EquipCurrentItem()
 		end)
 	end
@@ -480,3 +499,4 @@ function InventoryController.SetVisible(Visible)
 end
 
 return InventoryController
+

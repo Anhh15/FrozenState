@@ -88,14 +88,27 @@ local GuiConfig = {
 	Animations = {
 		-- Cấu hình popup mở/đóng cửa sổ Menu (Inventory, Shop, Quest, Profile...)
 		Pop = {
-			OpenDuration     = 0.25,
-			CloseDuration    = 0.2,
-			OpenEasingStyle  = Enum.EasingStyle.Back,
-			OpenEasingDir    = Enum.EasingDirection.Out,
-			CloseEasingStyle = Enum.EasingStyle.Quad,
-			CloseEasingDir   = Enum.EasingDirection.In,
-			InitialScale     = 0,
-			TargetScale      = 1,
+			-- Thông số mặc định dùng chung cho tất cả các menu
+			Default = {
+				OpenDuration     = 0.25,
+				CloseDuration    = 0.2,
+				OpenEasingStyle  = Enum.EasingStyle.Back,
+				OpenEasingDir    = Enum.EasingDirection.Out,
+				CloseEasingStyle = Enum.EasingStyle.Quad,
+				CloseEasingDir   = Enum.EasingDirection.In,
+				InitialScale     = 0,
+				TargetScale      = 1,
+			},
+
+			-- Ghi đè riêng cho từng frame menu cụ thể nếu cần (mẫu comment)
+			Overrides = {
+				-- ["Shop"] = {
+				-- 	OpenDuration = 0.3,
+				-- },
+				-- ["Inventory"] = {
+				-- 	OpenDuration = 0.22,
+				-- },
+			},
 		},
 
 		-- Cấu hình hiệu ứng phóng to nút bấm điều hướng khi Hover & Click
@@ -118,6 +131,39 @@ local GuiConfig = {
 				-- ["Inventory"] = {
 				-- 	HoverScale = 1.18,
 				-- },
+			},
+		},
+		-- Cấu hình hiệu ứng xuất hiện lần lượt cho các Template (Inventory, Shop, Quest...)
+		Stagger = {
+			-- Thông số mặc định dùng chung cho tất cả các danh sách
+			Default = {
+				DelayStep        = 0.03, -- Khoảng thời gian trễ giữa các item liên tiếp (giây)
+				Duration         = 0.2,  -- Thời gian bung nở của từng item
+				EasingStyle      = Enum.EasingStyle.Back,
+				EasingDir        = Enum.EasingDirection.Out,
+				InitialScale     = 0.0,
+				TargetScale      = 1.0,
+			},
+
+			-- Ghi đè riêng cho từng menu/danh sách cụ thể nếu cần (mẫu comment)
+			Overrides = {
+				-- ["Inventory"] = {
+				-- 	DelayStep = 0.03,
+				-- },
+				-- ["Shop"] = {
+				-- 	DelayStep = 0.03,
+				-- },
+				-- ["Quest"] = {
+				-- 	DelayStep = 0.03,
+				-- },
+				["Quest"] = {
+					DelayStep        = 0.03,
+					Duration         = 0.2,
+					EasingStyle      = Enum.EasingStyle.Sine,
+					EasingDir        = Enum.EasingDirection.Out,
+					InitialScale     = 0.0,
+					TargetScale      = 1.0,
+				},
 			},
 		},
 	},

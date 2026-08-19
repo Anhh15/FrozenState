@@ -75,6 +75,15 @@ local _listConnections = {}        -- Connections của ChestList cards (dọn k
 local _previewStates   = {}        -- [Frame] = { Amount: number } — trạng thái per-card
 local _lazyRenderQueue = {}        -- { Frame, ChestEntry } — cards chờ render viewport
 local _scrollConn      = nil       -- Connection theo dõi ChestScroll.CanvasPosition
+local _staggerThread   = nil       -- Thread animation stagger danh sách rương
+
+--- Dừng animation stagger đang chạy dở
+local function StopStaggerAnimation()
+	if _staggerThread then
+		task.cancel(_staggerThread)
+		_staggerThread = nil
+	end
+end
 
 --- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId, Volume)
@@ -302,6 +311,7 @@ end
 
 --- Xóa toàn bộ nội dung ChestScroll và dọn connections + lazy state cũ
 local function ClearChestList()
+	StopStaggerAnimation()
 	DisconnectAll(_listConnections)
 
 	-- Ngắt connection theo dõi scroll
@@ -318,6 +328,7 @@ local function ClearChestList()
 	if not ChestScroll then return end
 	for _, Child in ipairs(ChestScroll:GetChildren()) do
 		if not Child:IsA("UIGridLayout") and not Child:IsA("UIListLayout") then
+			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 			Child:Destroy()
 		end
 	end
@@ -341,6 +352,7 @@ local function RenderChestList(Type)
 	local MaxAmount = ShopConfig.MaxAmount
 
 	local Chests = ChestConfig.GetChestsByType(Type)
+	local RenderedCards = {}
 
 	for _, ChestEntry in ipairs(Chests) do
 		local Card = ChestPreviewTemplate:Clone()
@@ -402,10 +414,14 @@ local function RenderChestList(Type)
 		end
 
 		Card.Parent = ChestScroll
+		table.insert(RenderedCards, Card)
 
 		-- Đẩy vào lazy render queue (viewport chưa render)
 		table.insert(_lazyRenderQueue, { Frame = Card, ChestEntry = ChestEntry })
 	end
+
+	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop)
+	_staggerThread = GuiHelper.StaggerPopOpen(RenderedCards)
 
 	-- Kết nối scroll để trigger lazy render khi cuộn
 	_scrollConn = ChestScroll:GetPropertyChangedSignal("CanvasPosition"):Connect(CheckLazyQueue)

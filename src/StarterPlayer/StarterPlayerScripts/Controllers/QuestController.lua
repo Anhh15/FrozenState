@@ -47,6 +47,15 @@ local _questData = nil  -- { Daily = {...}, Milestone = {...}, NextResetTimestam
 -- Task quản lý vòng lặp đếm ngược và auto refresh UI
 local _countdownTask = nil
 local _autoRefreshTask = nil
+local _staggerThread = nil
+
+--- Dừng animation stagger đang chạy dở
+local function StopStaggerAnimation()
+	if _staggerThread then
+		task.cancel(_staggerThread)
+		_staggerThread = nil
+	end
+end
 
 -- Tab active color và inactive color (dùng BackgroundColor3 giống pattern InventoryController)
 local COLOR_ACTIVE   = Color3.fromRGB(255, 255, 255)
@@ -100,9 +109,11 @@ end
 
 --- Dọn sạch tất cả clone trong QuestList
 local function ClearQuestList()
+	StopStaggerAnimation()
 	if not _questList then return end
 	for _, Child in ipairs(_questList:GetChildren()) do
 		if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") then
+			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 			Child:Destroy()
 		end
 	end
@@ -266,7 +277,8 @@ end
 
 --- Render danh sách quest vào QuestList (cập nhật mượt không làm mất vị trí cuộn UI)
 --- @param QuestList table  -- mảng quest data từ server
-local function RenderQuestList(QuestList)
+--- @param TriggerStagger boolean? -- cờ kích hoạt animation stagger khi mở GUI hoặc đổi tab
+local function RenderQuestList(QuestList, TriggerStagger)
 	if not _templates or not _questList then return end
 
 	local Template = _templates:FindFirstChild("QuestTemplate")
@@ -276,6 +288,7 @@ local function RenderQuestList(QuestList)
 	end
 
 	local ValidQuestIds = {}
+	local RenderedFrames = {}
 
 	for _, QuestEntry in ipairs(QuestList) do
 		ValidQuestIds[QuestEntry.QuestId] = true
@@ -287,6 +300,8 @@ local function RenderQuestList(QuestList)
 			Frame.Visible = true
 			Frame.Parent  = _questList
 		end
+
+		table.insert(RenderedFrames, Frame)
 
 		-- DescriptionText
 		local DescriptionText = Frame:FindFirstChild("DescriptionText")
@@ -372,7 +387,7 @@ local function RenderQuestList(QuestList)
 
 						task.spawn(function()
 							task.wait(0.3)
-							RefreshQuestUI()
+							RefreshQuestUI(false)
 						end)
 					else
 						ClaimButton.Active = true
@@ -389,14 +404,21 @@ local function RenderQuestList(QuestList)
 	for _, Child in ipairs(_questList:GetChildren()) do
 		if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") then
 			if not ValidQuestIds[Child.Name] then
+				GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 				Child:Destroy()
 			end
 		end
 	end
+
+	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop) khi mở menu hoặc đổi tab
+	if TriggerStagger then
+		_staggerThread = GuiHelper.StaggerPopOpen(RenderedFrames)
+	end
 end
 
 --- Refresh toàn bộ dữ liệu từ server rồi render tab hiện tại
-RefreshQuestUI = function()
+--- @param TriggerStagger boolean?
+RefreshQuestUI = function(TriggerStagger)
 	local GetQuestDataFn = RemoteDefinitions.GetFunction("GetQuestData")
 	_questData = GetQuestDataFn:InvokeServer()
 
@@ -406,7 +428,7 @@ RefreshQuestUI = function()
 	end
 
 	local QuestList = (_currentTab == "Daily") and _questData.Daily or _questData.Milestone
-	RenderQuestList(QuestList)
+	RenderQuestList(QuestList, TriggerStagger)
 	UpdateNotificationDisplay()
 end
 
@@ -427,7 +449,7 @@ local function SwitchTab(TabName)
 
 	if _questData then
 		local QuestList = (TabName == "Daily") and _questData.Daily or _questData.Milestone
-		RenderQuestList(QuestList)
+		RenderQuestList(QuestList, true)
 		UpdateNotificationDisplay()
 	end
 end
@@ -442,6 +464,7 @@ local function CloseQuest()
 	if not _questGui then return end
 	StopCountdownLoop()
 	StopAutoRefreshLoop()
+	StopStaggerAnimation()
 end
 
 local function OpenQuest()
@@ -451,9 +474,9 @@ local function OpenQuest()
 	_currentTab = "Daily"
 	UpdateTabHighlight("Daily")
 
-	-- Refresh dữ liệu từ server và kích hoạt tự động làm mới
+	-- Refresh dữ liệu từ server và kích hoạt tự động làm mới (kèm stagger animation lần đầu)
 	task.spawn(function()
-		RefreshQuestUI()
+		RefreshQuestUI(true)
 		StartAutoRefreshLoop()
 	end)
 end
@@ -476,27 +499,49 @@ function QuestController:Init()
 	end
 
 	-- Templates folder
-	_templates = _questGui:WaitForChild("Templates")
+	_templates = _questGui:FindFirstChild("Templates") or _questGui:WaitForChild("Templates", GuiConfig.Timeouts.ShortWait)
 
-	-- MainFrame, QuestList ScrollingFrame & NotificationText
-	local MainFrame    = _questGui:WaitForChild("MainFrame")
-	_questList         = MainFrame:WaitForChild("QuestList")
-	_notificationText  = MainFrame:WaitForChild("NotificationText")
+	-- QuestList ScrollingFrame: Hỗ trợ cấu trúc mới (Quest.QuestList.ScrollingFrame) và cũ (Quest.MainFrame.QuestList)
+	local QuestListContainer = _questGui:FindFirstChild("QuestList")
+		or _questGui:WaitForChild("QuestList", GuiConfig.Timeouts.ShortWait)
+
+	if QuestListContainer then
+		_questList = QuestListContainer:FindFirstChildOfClass("ScrollingFrame")
+			or QuestListContainer:FindFirstChild("ScrollingFrame")
+			or (QuestListContainer:IsA("ScrollingFrame") and QuestListContainer)
+	end
+
+	if not _questList then
+		local MainFrame = _questGui:FindFirstChild("MainFrame")
+			or _questGui:WaitForChild("MainFrame", GuiConfig.Timeouts.ShortWait)
+		if MainFrame then
+			_questList = MainFrame:FindFirstChild("QuestList") or MainFrame:FindFirstChildOfClass("ScrollingFrame")
+		end
+	end
+
+	if not _questList then
+		_questList = _questGui:FindFirstChildWhichIsA("ScrollingFrame", true)
+	end
+
+	-- NotificationText (tìm linh hoạt)
+	_notificationText = _questGui:FindFirstChild("NotificationText", true)
 
 	-- TabContainer
-	local TabContainer = _questGui:WaitForChild("TabContainer")
-	_tabDaily          = TabContainer:WaitForChild("DailyTab")
-	_tabMilestone      = TabContainer:WaitForChild("MilestoneTab")
+	local TabContainer = _questGui:FindFirstChild("TabContainer", true) or _questGui:WaitForChild("TabContainer")
+	_tabDaily          = TabContainer and TabContainer:FindFirstChild("DailyTab")
+	_tabMilestone      = TabContainer and TabContainer:FindFirstChild("MilestoneTab")
 
 	-- CloseButton
-	_closeButton = _questGui:WaitForChild("CloseButton")
+	_closeButton = _questGui:FindFirstChild("CloseButton", true) or _questGui:WaitForChild("CloseButton")
 
 	-- RewardAnnouncement
-	_rewardAnnouncement = _questGui:WaitForChild("RewardAnnouncement")
-	_rewardIcon         = _rewardAnnouncement:FindFirstChild("Icon")
-	_rewardAmount       = _rewardAnnouncement:FindFirstChild("AmountText")
-	_rewardOriginalSize = _rewardAnnouncement.Size
-	_rewardAnnouncement.Visible = false
+	_rewardAnnouncement = _questGui:FindFirstChild("RewardAnnouncement", true) or _questGui:WaitForChild("RewardAnnouncement")
+	if _rewardAnnouncement then
+		_rewardIcon         = _rewardAnnouncement:FindFirstChild("Icon")
+		_rewardAmount       = _rewardAnnouncement:FindFirstChild("AmountText")
+		_rewardOriginalSize = _rewardAnnouncement.Size
+		_rewardAnnouncement.Visible = false
+	end
 
 	-- Đăng ký tab với MenuController
 	local MenuCtrl = GetMenuController()
@@ -511,25 +556,31 @@ function QuestController:Init()
 	-- ── Kết nối sự kiện ──
 
 	-- CloseButton
-	_closeButton.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
-		local MenuC = GetMenuController()
-		if MenuC then
-			MenuC.CloseCurrentTab()
-		else
-			CloseQuest()
-		end
-	end)
+	if _closeButton then
+		_closeButton.MouseButton1Click:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
+			local MenuC = GetMenuController()
+			if MenuC then
+				MenuC.CloseCurrentTab()
+			else
+				CloseQuest()
+			end
+		end)
+	end
 
 	-- Tab buttons
-	_tabDaily.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.ButtonClick)
-		SwitchTab("Daily")
-	end)
-	_tabMilestone.MouseButton1Click:Connect(function()
-		PlayGuiSound(AudioConfig.Gui.ButtonClick)
-		SwitchTab("Milestone")
-	end)
+	if _tabDaily then
+		_tabDaily.MouseButton1Click:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
+			SwitchTab("Daily")
+		end)
+	end
+	if _tabMilestone then
+		_tabMilestone.MouseButton1Click:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.ButtonClick)
+			SwitchTab("Milestone")
+		end)
+	end
 
 	-- Highlight tab mặc định
 	UpdateTabHighlight("Daily")

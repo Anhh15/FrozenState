@@ -6,6 +6,16 @@
 
 ## Kiến trúc
 
+### Hoạt họa xuất hiện lần lượt phân tầng (Staggered Pop Animation) & Overrides per-list cho Template Menu
+- **Ngày:** 19-08-2026
+- **Chi tiết:** Thay vì render tức thời toàn bộ danh sách card/template trong `ScrollingFrame` (gây cảm giác thô cứng), áp dụng `GuiHelper.StaggerPopOpen` dựa trên `UIScale` với độ trễ nối tiếp `DelayStep` (`0.03s`) và kiểu `EasingStyle.Back`. Phân tách cấu hình `Default` + `Overrides` theo tên menu/frame trong `GuiConfig.Animations.Stagger` và `Pop`. Hủy an toàn (`CancelTween` và `task.cancel` trên thread stagger) khi người chơi đóng menu hoặc chuyển tab nhanh, ngăn ngừa triệt để hiện tượng kẹt `UIScale = 0` hoặc xung đột hoạt họa.
+- **File liên quan:** [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [InventoryController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
+### Tách biệt vòng đời hoạt họa Stagger khỏi chu kỳ Auto-Refresh ngầm trong Menu GUI
+- **Ngày:** 19-08-2026
+- **Chi tiết:** Trong các menu có cơ chế tự động làm mới dữ liệu thời gian thực (như `QuestController` đếm ngược/cập nhật tiến trình 1s/lần), sử dụng cờ `TriggerStagger` để kiểm soát hoạt họa. Hiệu ứng Stagger Pop chỉ kích hoạt khi người chơi mở menu hoặc chủ động bấm chuyển tab (`TriggerStagger = true`). Vòng lặp cập nhật ngầm định kỳ gọi với `TriggerStagger = false` để thực hiện in-place update các thuộc tính text, progress bar và nút bấm, đảm bảo giao diện luôn mượt mà và giữ nguyên vị trí cuộn `CanvasPosition` mà không bị gián đoạn hay chớp giật.
+- **File liên quan:** [QuestController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [GuiHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+
 ### Tách rời việc đóng gói dữ liệu thống kê (PreparePayloads) và thời điểm phát sóng (Broadcast) trong GameOver
 - **Ngày:** 19-08-2026
 - **Chi tiết:** Trong quy trình kết thúc trận (`InGame` -> `GameOver` -> `Intermission`), dữ liệu thống kê (Top 3, cá nhân, thắng/thua) phụ thuộc vào thông tin đội nhóm (`Team`). Nếu dọn dẹp state (`ClearTeam`, teleport lobby) trước khi gửi remote, dữ liệu team bị mất khiến bảng thống kê rỗng. Giải pháp chuẩn: chia làm 2 bước — (1) `PrepareGameOverPayloads` chụp snapshot dữ liệu ngay đầu `GameOver` khi team còn nguyên vẹn; (2) `SendGameOverPayloads` chỉ kích hoạt sau khi teleport về sảnh (`Intermission`), đảm bảo hiển thị đúng thời điểm mà dữ liệu không bị sai lệch.
