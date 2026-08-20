@@ -18,7 +18,7 @@ local PlayerStateHelper = {}
 --- @return boolean
 function PlayerStateHelper.IsInMatch(Player)
 	if not Player then return false end
-	return (Player:GetAttribute(Attributes.InMatch) == true) or (Player:GetAttribute(Attributes.Team) ~= nil)
+	return Player:GetAttribute(Attributes.InMatch) == true
 end
 
 --- Lấy Team hiện tại của Player

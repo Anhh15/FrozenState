@@ -441,9 +441,8 @@ function FreezeService.EliminatePlayer(Player)
 	IcicleService.RemoveTool(Player)
 	RemoveIceBlock(Player)
 
-	-- Chuyển trạng thái sang Dead, xóa Team assignment và gỡ InMatch attribute
+	-- Chuyển trạng thái sang Dead và gỡ InMatch attribute (giữ nguyên phân đội trong SessionService cho ván đấu)
 	SessionService.SetState(Player, "Dead")
-	SessionService.ClearTeam(Player)
 	PlayerStateHelper.SetInMatch(Player, false)
 
 	-- Reset streaks

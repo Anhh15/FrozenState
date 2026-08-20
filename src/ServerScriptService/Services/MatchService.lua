@@ -484,14 +484,14 @@ local function RunReady()
 	local Duration = GameConfig.Phase.ReadyDuration
 	local ModeKey  = SessionService.GetCurrentModeKey()
 
-	-- Teleport theo SpawnType (chỉ teleport người chơi đang Normal và Character còn sống)
+	-- Teleport theo SpawnType (chỉ teleport và khóa di chuyển người chơi đang Normal trong trận)
 	if GameModeHelper.GetSpawnType(ModeKey) == "FFA" then
 		local AllSpawns = MapService.GetSpawnPoints(nil, "FFA")
 		for _, Player in ipairs(Players:GetPlayers()) do
-			if SessionService.GetState(Player) == "Normal" and Player.Character then
+			if SessionService.GetState(Player) == "Normal" and PlayerStateHelper.IsInMatch(Player) and Player.Character then
 				TeleportToSpawn(Player, AllSpawns)
+				SetMovementLocked(Player, true)
 			end
-			SetMovementLocked(Player, true)
 		end
 	else
 		local Team1Spawns = MapService.GetSpawnPoints("Team1", "TeamBased")
@@ -499,11 +499,11 @@ local function RunReady()
 		for _, Player in ipairs(Players:GetPlayers()) do
 			local Team = SessionService.GetTeam(Player)
 			if not Team then continue end
-			if SessionService.GetState(Player) == "Normal" and Player.Character then
+			if SessionService.GetState(Player) == "Normal" and PlayerStateHelper.IsInMatch(Player) and Player.Character then
 				local Spawns = (Team == "Team1") and Team1Spawns or Team2Spawns
 				TeleportToSpawn(Player, Spawns)
+				SetMovementLocked(Player, true)
 			end
-			SetMovementLocked(Player, true)
 		end
 	end
 
@@ -515,9 +515,9 @@ local function RunReady()
 		task.wait(1)
 	end
 
-	-- Mở khóa di chuyển cho player đang Normal
+	-- Mở khóa di chuyển cho player đang Normal trong trận
 	for _, Player in ipairs(Players:GetPlayers()) do
-		if SessionService.GetState(Player) == "Normal" then
+		if SessionService.GetState(Player) == "Normal" and PlayerStateHelper.IsInMatch(Player) then
 			SetMovementLocked(Player, false)
 		end
 	end

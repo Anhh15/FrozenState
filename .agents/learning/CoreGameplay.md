@@ -1,10 +1,20 @@
 # CoreGameplay
-> Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu, Audio/Animation, Map/Spawn, Tags và Kinh tế/Thưởng) trong dự án.
-> Cập nhật lần cuối: 19-08-2026
+> Tổng hợp kiến thức về cơ chế Gameplay cốt lõi (Freeze/Thaw, vòng lặp trận đấu, Audio/Animation, Map/Spawn, Tags, Quản lý Trạng thái & Highlight) trong dự án.
+> Cập nhật lần cuối: 20-08-2026
 
 ---
 
 ## Kiến trúc
+
+### Tách biệt Trạng thái Tham gia Trận (InMatch) và Phân đội (Team) trong PlayerStateHelper
+- **Ngày:** 20-08-2026
+- **Chi tiết:** Tách bạch hoàn toàn giữa `PlayerStateHelper.IsInMatch(Player)` và phân đội `Team`. `IsInMatch` chỉ kiểm tra duy nhất Attribute `InMatch == true` (Single Source of Truth cho việc player đang sống/tham gia trong trận). Giữ nguyên Attribute `Team` và `_teamAssignment` trong `SessionService` xuyên suốt ván đấu kể cả khi người chơi bị loại (`Dead`), không gọi `ClearTeam` giữa chừng. Điều này giúp bảo toàn dữ liệu đội phục vụ hiển thị bảng điểm, phân định thắng thua theo đội gốc (`ResolveWinnerTeamBased`) và tính thưởng cuối trận (`DistributeRewards`) mà không làm méo mó số lượng thành viên đội.
+- **File liên quan:** [PlayerStateHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua)
+
+### Quản lý Vòng đời Highlight Chặt Chẽ theo Trạng Thái Người Chơi (_playerStates)
+- **Ngày:** 20-08-2026 (cập nhật từ 05-06-2026)
+- **Chi tiết:** Highlight instance được quản lý cục bộ phía Client (`HighlightController`). Client duy trì bảng trạng thái `_playerStates` (`Normal`, `Frozen`, `Dead`) từ `UpdatePlayerState`. Chỉ cho phép gán `TeamHighlight` khi cả `LocalPlayer` và mục tiêu thỏa mãn `IsInMatch == true` và `State ~= "Dead"`. Khi người chơi chết/loại, xóa ngay team khỏi `KnownTeams` và hủy Highlight trên Character. Khi người chơi respawn ở sảnh (`CharacterAdded`), chủ động gọi `RemoveHighlight` nếu không trong trận. Lắng nghe `PlayerStateHelper.ObserveMatchState` để re-evaluate highlight tức thì khi trạng thái vào/ra trận của `LocalPlayer` thay đổi.
+- **File liên quan:** [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [PlayerStateHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua), [TeamService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/TeamService.lua)
 
 ### Tinh gọn Cấu hình Trùng lặp và Loại bỏ Dead Code (Single Source of Truth Refactoring)
 - **Ngày:** 19-08-2026
@@ -41,10 +51,6 @@
 - **Chi tiết:** Khi MatchService điều phối luồng game gọi FreezeService để cập nhật trạng thái, nếu FreezeService muốn kết thúc trận đấu và gọi ngược lại MatchService sẽ gây lỗi tham chiếu vòng (Circular Dependency). Giải pháp là dùng một BindableEvent (`MatchEndSignal`) trung gian đặt tại SessionService. FreezeService sẽ kích hoạt event này khi phát hiện một đội bị wipe sạch, và MatchService lắng nghe event để chuyển tiếp trạng thái GameOver.
 - **File liên quan:** [SessionService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/SessionService.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua), [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua)
 
-### Xử lý Highlight phía Client
-- **Ngày:** 05-06-2026
-- **Chi tiết:** Việc tạo Highlight instance trực tiếp từ Server gây tốn băng thông mạng và khó tùy chỉnh riêng biệt cho từng client (ví dụ: bản thân player không được thấy highlight của chính mình). Giải pháp là Server chỉ đồng bộ team và trạng thái qua RemoteEvent, Client tự nhận diện và quản lý vòng đời của Highlight instance cục bộ.
-- **File liên quan:** [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [TeamService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/TeamService.lua)
 
 ### Highlight xuyên tường cho Player bị đóng băng (AlwaysOnTop)
 - **Ngày:** 21-07-2026
@@ -119,6 +125,27 @@
 ---
 
 ## Bug & biện pháp
+
+### Highlight Tồn Dư trên Nhân Vật Hồi Sinh ở Sảnh khi Reset trong Setup/Ready
+- **Ngày:** 20-08-2026
+- **Vấn đề:** Khi người chơi reset trong Setup/Ready, nhân vật mới hồi sinh ở Sảnh vẫn bị gán viền Highlight đỏ/xanh (hoặc đỏ trong FFA), gây nhầm lẫn cho người trong trận.
+- **Nguyên nhân:** (1) `HighlightController` chỉ bắt `State == "Frozen"` mà bỏ qua `"Dead"`, (2) Bảng `KnownTeams` trên Client không xóa team của người chết, (3) `RefreshAll` không kiểm tra `IsInMatch` / `_playerStates` nên khi `CharacterAdded` ở sảnh, client gán lại highlight dựa trên team cũ (TeamBased) hoặc gán toàn bộ player (FFA).
+- **Fix:** (1) Bổ sung `_playerStates` trong `HighlightController`, xóa `KnownTeams` khi `Dead` và hủy Highlight ngay, (2) Đặt điều kiện `IsInMatch == true` và `State ~= "Dead"` trong `RefreshAll` và `CharacterAdded`, (3) Lắng nghe `ObserveMatchState` để refresh khi `LocalPlayer` thay đổi trạng thái.
+- **File liên quan:** [HighlightController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [PlayerStateHelper.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+
+### Khóa Di Chuyển Sảnh Nhầm Lẫn và Kẹt Đứng Yên ở Phase Ready
+- **Ngày:** 20-08-2026
+- **Vấn đề:** Người chơi ở Sảnh (Spectator hoặc người reset trong Setup) bị khóa `WalkSpeed = 0` ở phase Ready và bị kẹt đứng yên vĩnh viễn ở Sảnh.
+- **Nguyên nhân:** Trong `MatchService.RunReady()`, lệnh `SetMovementLocked(Player, true)` đặt ngoài khối điều kiện kiểm tra `Normal`/`InMatch` (đặc biệt trong mode FFA), khiến tất cả player trên server bị khóa tốc độ; cuối Ready chỉ mở khóa cho ai `Normal` nên người ở Sảnh không bao giờ được mở khóa.
+- **Fix:** Bổ sung điều kiện kiểm tra `SessionService.GetState(Player) == "Normal"` và `PlayerStateHelper.IsInMatch(Player)` trước khi gọi `SetMovementLocked` cả lúc khóa và lúc mở khóa trong `RunReady()`.
+- **File liên quan:** [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Tính Sai Lệch Điểm Bù Cuối Trận do Xóa Phân Đội khi Loại Người Chơi
+- **Ngày:** 20-08-2026
+- **Vấn đề:** Khi hết giờ trận đấu, đội có người bị chết/loại trước đó bị hệ thống hiểu lầm là đội ít người từ đầu trận và cộng điểm bù (+1) sai quy định.
+- **Nguyên nhân:** `FreezeService.EliminatePlayer` gọi `SessionService.ClearTeam(Player)`, xóa player khỏi `_teamAssignment`. Hàm `ResolveWinnerTeamBased` đếm `#TeamPlayers` thấy đội bị giảm số lượng nên kích hoạt công thức bù đội không mong muốn.
+- **Fix:** Bỏ lệnh `SessionService.ClearTeam` trong `EliminatePlayer`, giữ nguyên phân đội trong `SessionService` suốt ván đấu và chỉ xóa tại `RunGameOver` khi ván đấu kết thúc.
+- **File liên quan:** [FreezeService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
 
 ### StudioAccessToApisNotAllowed
 - **Ngày:** 05-06-2026

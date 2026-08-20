@@ -206,7 +206,7 @@ local function FillPersonalStats(Won, Stats)
 	local RewardFirstBlood       = RewardHelper.GetRewardAmount("FirstBlood")
 	local RewardLastStanding     = RewardHelper.GetRewardAmount("LastStanding")
 
-	GameResultText.Text  = Won and "VICTORY" or "DEFEAT"
+	GameResultText.Text  = Won and "VICTORY" or "DEFEATED"
 	
 	-- Render ảnh 2D từ eo trở lên (AvatarBust) cho cá nhân người chơi
 	SetPlayerThumbnail(MainAvatarThumbnail, LocalPlayer.UserId, Enum.ThumbnailType.AvatarBust)

@@ -32,6 +32,7 @@ local LocalPlayer    = Players.LocalPlayer
 local KnownTeams     = {}   -- { [tostring(userId)] = "Team1" | "Team2" }
 local _isFrozenState = false
 local _frozenPlayers = {}   -- { [tostring(userId)] = true | false }
+local _playerStates  = {}   -- { [tostring(userId)] = "Normal" | "Frozen" | "Dead" }
 local _highlightMode = "TeamBased"  -- "TeamBased" | "FFA" | "Disabled"
 
 -- =========================================================
@@ -104,6 +105,7 @@ local function ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen, ForceAlwaysOnT
 end
 
 local function RemoveHighlight(Character)
+	if not Character then return end
 	local H = Character:FindFirstChild(HIGHLIGHT_NAME)
 	if H then H:Destroy() end
 end
@@ -120,32 +122,65 @@ local function RefreshAll()
 		return
 	end
 
+	-- Kiểm tra xem LocalPlayer có đang trong trận hay không
+	local IsLocalInMatch = PlayerStateHelper.IsInMatch(LocalPlayer) and (_playerStates[tostring(LocalPlayer.UserId)] ~= "Dead")
+
 	if _highlightMode == "FFA" then
-		-- FFA: tất cả là kẻ địch, luôn AlwaysOnTop
+		-- FFA: Nếu LocalPlayer không trong trận, xóa toàn bộ highlight
+		if not IsLocalInMatch then
+			for _, Player in ipairs(Players:GetPlayers()) do
+				if Player.Character then
+					RemoveHighlight(Player.Character)
+				end
+			end
+			return
+		end
+
+		-- FFA: tất cả người chơi trong trận là kẻ địch, luôn AlwaysOnTop
 		for _, Player in ipairs(Players:GetPlayers()) do
-			if Player == LocalPlayer then continue end
+			if Player == LocalPlayer then
+				if Player.Character then
+					RemoveHighlight(Player.Character)
+				end
+				continue
+			end
+
 			local Character = Player.Character
 			if not Character then continue end
-			local IsFrozen = (_frozenPlayers[tostring(Player.UserId)] == true)
-			ApplyHighlightForPlayer(Player, true, IsFrozen, true)  -- IsEnemy=true, ForceAlwaysOnTop=true
+
+			local PlayerUserIdStr = tostring(Player.UserId)
+			local IsTargetInMatch = PlayerStateHelper.IsInMatch(Player) and (_playerStates[PlayerUserIdStr] ~= "Dead")
+
+			if not IsTargetInMatch then
+				RemoveHighlight(Character)
+			else
+				local IsFrozen = (_frozenPlayers[PlayerUserIdStr] == true)
+				ApplyHighlightForPlayer(Player, true, IsFrozen, true)  -- IsEnemy=true, ForceAlwaysOnTop=true
+			end
 		end
 		return
 	end
 
-	-- TeamBased: logic cũ
+	-- TeamBased:
 	local MyTeamKey = tostring(LocalPlayer.UserId)
-	local MyTeam    = KnownTeams[MyTeamKey]
+	local MyTeam    = IsLocalInMatch and KnownTeams[MyTeamKey] or nil
 
 	for _, Player in ipairs(Players:GetPlayers()) do
-		if Player == LocalPlayer then continue end
+		if Player == LocalPlayer then
+			if Player.Character then
+				RemoveHighlight(Player.Character)
+			end
+			continue
+		end
 
 		local Character = Player.Character
 		if not Character then continue end
 
 		local PlayerUserIdStr = tostring(Player.UserId)
-		local PlayerTeam      = KnownTeams[PlayerUserIdStr]
+		local IsTargetInMatch = PlayerStateHelper.IsInMatch(Player) and (_playerStates[PlayerUserIdStr] ~= "Dead")
+		local PlayerTeam      = IsTargetInMatch and KnownTeams[PlayerUserIdStr] or nil
 
-		if not PlayerTeam or not MyTeam then
+		if not IsTargetInMatch or not PlayerTeam or not MyTeam then
 			RemoveHighlight(Character)
 		else
 			local IsEnemy  = (PlayerTeam ~= MyTeam)
@@ -157,13 +192,26 @@ end
 
 --- Gắn listener cho character mới của một player
 local function WatchPlayer(Player)
-	if Player == LocalPlayer then return end
+	if Player == LocalPlayer then
+		Player.CharacterAdded:Connect(function(Character)
+			Character:WaitForChild("HumanoidRootPart")
+			RemoveHighlight(Character)
+		end)
+		return
+	end
 
 	Player.CharacterAdded:Connect(function(Character)
 		-- Đợi nhân vật fully loaded
 		Character:WaitForChild("HumanoidRootPart")
 		task.wait(0.1)
-		RefreshAll()
+
+		local PlayerUserIdStr = tostring(Player.UserId)
+		local IsInMatch = PlayerStateHelper.IsInMatch(Player) and (_playerStates[PlayerUserIdStr] ~= "Dead")
+		if not IsInMatch then
+			RemoveHighlight(Character)
+		else
+			RefreshAll()
+		end
 	end)
 
 	-- Nếu character đã có sẵn (join mid-game)
@@ -187,6 +235,7 @@ function HighlightController:Init()
 			-- Reset state cũ của trận trước
 			KnownTeams     = {}
 			_frozenPlayers = {}
+			_playerStates  = {}
 			_isFrozenState = false
 			RefreshAll()
 		end
@@ -214,7 +263,18 @@ function HighlightController:Init()
 	local UpdatePlayerStateEvent = RemoteDefinitions.GetEvent("UpdatePlayerState")
 	UpdatePlayerStateEvent.OnClientEvent:Connect(function(Data)
 		if Data and Data.PlayerId then
-			_frozenPlayers[tostring(Data.PlayerId)] = (Data.State == "Frozen")
+			local PlayerIdStr = tostring(Data.PlayerId)
+			_playerStates[PlayerIdStr]  = Data.State
+			_frozenPlayers[PlayerIdStr] = (Data.State == "Frozen")
+
+			if Data.State == "Dead" then
+				KnownTeams[PlayerIdStr] = nil
+				local DeadPlayer = Players:GetPlayerByUserId(Data.PlayerId)
+				if DeadPlayer and DeadPlayer.Character then
+					RemoveHighlight(DeadPlayer.Character)
+				end
+			end
+
 			RefreshAll()
 		end
 	end)
@@ -230,12 +290,18 @@ function HighlightController:Init()
 			_highlightMode = "TeamBased"
 			KnownTeams     = {}
 			_frozenPlayers = {}
+			_playerStates  = {}
 			for _, Player in ipairs(Players:GetPlayers()) do
 				if Player.Character then
 					RemoveHighlight(Player.Character)
 				end
 			end
 		end
+	end)
+
+	-- Lắng nghe thay đổi trạng thái tham gia trận của LocalPlayer
+	PlayerStateHelper.ObserveMatchState(LocalPlayer, function()
+		RefreshAll()
 	end)
 
 	-- Watch tất cả player hiện tại
