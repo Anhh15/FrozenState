@@ -14,6 +14,7 @@ local GuiConfig = {
 		GameState         = "GameState",
 		Special           = "Special",
 		GameStatistic     = "GameStatistic",
+		ObserverGui       = "ObserverGui",  -- ScreenGui độc lập cho chế độ quan sát (Lobby + Frozen Spectator)
 	},
 
 	-- =========================================================
@@ -38,6 +39,15 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG FRAME BUTTONS CỦA INGAMEGUI
+	-- =========================================================
+	InGameButtons = {
+		Buttons          = "Buttons",          -- Frame chứa các nút in-game
+		SpectateButton   = "SpectateButton",   -- Nút bật Spectate (chỉ hiện khi bị Frozen)
+		ScoreBoardButton = "ScoreBoardButton", -- Nút mở bảng điểm
+	},
+
+	-- =========================================================
 	-- TÊN CÁC FRAME MENU CHÍNH TRONG SCREENGUI MENU
 	-- =========================================================
 	MenuFrames = {
@@ -45,7 +55,14 @@ local GuiConfig = {
 		Inventory = "Inventory",
 		Profile   = "Profile",
 		Quest     = "Quest",
-		Spectate  = "Spectate",
+		-- Spectate đã được chuyển sang ObserverGui (không còn là menu tab)
+	},
+
+	-- =========================================================
+	-- TÊN CÁC FRAME TRONG SCREENGUI OBSERVERGUI
+	-- =========================================================
+	ObserverFrames = {
+		Spectate = "Spectate",  -- Panel điều khiển camera quan sát
 	},
 
 	-- =========================================================

@@ -9,6 +9,7 @@ local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -228,9 +229,13 @@ local ScoreBoardController = {}
 
 function ScoreBoardController:Init()
 	-- Lấy GUI references
-	_InGameGui        = PlayerGui:WaitForChild("InGameGui")
-	_ScoreBoard       = _InGameGui:WaitForChild("ScoreBoard")
-	_ScoreBoardButton = _InGameGui:FindFirstChild("ScoreBoardButton")
+	_InGameGui  = PlayerGui:WaitForChild("InGameGui")
+	_ScoreBoard = _InGameGui:WaitForChild("ScoreBoard")
+
+	-- ScoreBoardButton nằm trong InGameGui/Buttons (frame mới)
+	local InGameBtnCfg  = GuiConfig.InGameButtons
+	local ButtonsFrame  = _InGameGui:FindFirstChild(InGameBtnCfg.Buttons)
+	_ScoreBoardButton   = ButtonsFrame and ButtonsFrame:FindFirstChild(InGameBtnCfg.ScoreBoardButton)
 
 	local AllyInfo  = _ScoreBoard:WaitForChild("AllyInfo")
 	local EnemyInfo = _ScoreBoard:WaitForChild("EnemyInfo")

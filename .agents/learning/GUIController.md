@@ -1,6 +1,6 @@
 # GUIController
 > Tổng hợp kiến thức về quản lý GUI phía client theo trạng thái game trong dự án.
-> Cập nhật lần cuối: 19-08-2026
+> Cập nhật lần cuối: 21-08-2026
 
 ---
 
@@ -456,3 +456,27 @@
 - **Nguyên nhân:** (1) `SpectateController` không lắng nghe `LocalPlayer.CharacterAdded`, khiến cờ `_isSpectating` vẫn là `true` sau khi chết; `NavigationController.SetVisible` liên tục kiểm tra và ép ẩn NavigationButtons. (2) `RestoreCamera` cố gán `CameraSubject` vào instance `Humanoid` cũ đã bị hủy của nhân vật trước đó. (3) `MatchService` trên Server chặn lệnh reset `ReplicationFocus` khi phase không còn là `InGame`.
 - **Fix:** (1) Lắng nghe `CharacterAdded` để tự động tắt spectate, mở lại NavigationButtons và khôi phục di chuyển. (2) `RestoreCamera` kiểm tra tính hợp lệ của Humanoid cũ, nếu đã bị hủy thì fallback bám theo nhân vật mới tại sảnh và đặt `CameraType = Custom`. (3) Cho phép server xử lý yêu cầu reset `ReplicationFocus` ở mọi phase.
 - **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [NavigationController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)
+
+### Lỗi ScoreBoardButton không phản hồi sau khi di chuyển vào Frame con
+- **Ngày:** 21-08-2026
+- **Vấn đề:** Bấm `ScoreBoardButton` không hiện ScoreBoard.
+- **Nguyên nhân:** Khi `ScoreBoardButton` được di chuyển từ `InGameGui` vào frame con `InGameGui/Buttons`, mỗi controller tự resolve path GUI độc lập. Cả `GameStateController` lẫn `ScoreBoardController` đều dùng `InGameGui:FindFirstChild("ScoreBoardButton")` — trả về `nil` vì button đã đổi chỗ. Lỗi silent (không crash) nhưng event không được gắn.
+- **Fix:** Khai báo path mới trong `GuiConfig.InGameButtons = { Buttons, ScoreBoardButton }`. Cập nhật đồng thời **cả 2** controller `GameStateController` và `ScoreBoardController` để resolve qua `InGameGui/Buttons/ScoreBoardButton`. Bài học: khi di chuyển GUI element, grep toàn bộ codebase tìm mọi nơi resolve element đó.
+- **File liên quan:** [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [ScoreBoardController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### Lỗi SpectateGui hiện rồi tắt ngay (flickering) khi player InMatch InGame
+- **Ngày:** 21-08-2026
+- **Vấn đề:** Bấm `SpectateButton` (khi bị Frozen trong trận), GUI Spectate hiện khoảng 1 giây rồi tự ẩn.
+- **Nguyên nhân:** `SpectateGui` nằm trong `ScreenGui Menu`. `GameStateController` nhận `UpdateGameState` broadcast từ server **mỗi giây**, gọi `MenuCtrl.SetVisible(false)` → `MenuGui.Enabled = false` → mọi con trong Menu bị ẩn theo. Việc set `MenuGui.Enabled = true` tạm thời bị override ngay giây tiếp theo.
+- **Fix:** Di chuyển `SpectateGui` ra khỏi `ScreenGui Menu` sang `ObserverGui` độc lập. `ObserverGui.Enabled` do `GameStateController` quản lý theo phase (giống `InGameGui`), không bị `MenuCtrl.SetVisible` ảnh hưởng.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
+
+### Kiến trúc ObserverGui — ScreenGui độc lập cho hệ thống quan sát
+- **Ngày:** 21-08-2026
+- **Chi tiết:** Thay vì đặt `SpectateGui` trong `ScreenGui Menu` (bị disable khi InMatch InGame) hoặc `InGameGui` (chỉ dành cho người trong trận), tạo `ScreenGui ObserverGui` độc lập. Mục tiêu: giao thoa tương tác giữa người trong trận và Spectator — phục vụ cả Lobby Spectator (ngoài trận) lẫn Frozen Spectator (trong trận). `ObserverGui.Enabled` được `GameStateController` quản lý theo lifecycle giống `InGameGui` (bật trong Ready/InGame/GameOver, tắt trong Intermission). `SpectateController` là sole owner quản lý `SpectateGui.Visible` bên trong.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [GameStateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GuiConfig.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### Kiến trúc Frozen Spectator — phân biệt 2 loại spectator trong SpectateController
+- **Ngày:** 21-08-2026
+- **Chi tiết:** `SpectateController` phân biệt 2 loại spectator bằng cờ `_isFrozenSpectator`: (A) **Lobby Spectator** (`IsInMatch = false`) — lock movement, restore nav bar khi tắt. (B) **Frozen Spectator** (`IsInMatch = true`, state Frozen) — không lock/unlock movement (server quản lý), không ẩn/hiện nav bar. Server mở rộng `RequestSpectateTarget` handler: Frozen + HasTeams chỉ cho target đồng minh Normal; Frozen + FFA cho target bất kỳ Normal. Client tự filter danh sách theo `Player:GetAttribute("Team")` (client-side filter). `UpdatePlayerState` listener toggle `SpectateButton.Visible` và tắt spectate khi Thaw/Dead. `CharacterAdded` dùng làm safety net reset state.
+- **File liên quan:** [SpectateController.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](file:///c:/Users/thuyl/OneDrive/Dokumente/THIEN_ANH_FOLDER/SuperFrozenState/FrozenState/src/ServerScriptService/Services/MatchService.lua)

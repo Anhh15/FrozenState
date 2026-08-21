@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -25,10 +26,17 @@ local TimeShadowText  = Frame:WaitForChild("TimeShadowText")
 local StateShadowText = Frame:WaitForChild("StateShadowText")
 
 -- InGameGui (chỉ bật khi Ready, InGame, GameOver)
-local InGameGui        = GuiHelper.GetScreenGui("InGameGui")
-local PlayerStatus     = InGameGui and InGameGui:WaitForChild("PlayerStatus", 10)
-local ScoreBoard       = InGameGui and InGameGui:WaitForChild("ScoreBoard", 10)
-local ScoreBoardButton = InGameGui and InGameGui:FindFirstChild("ScoreBoardButton")
+local InGameGui    = GuiHelper.GetScreenGui("InGameGui")
+local PlayerStatus = InGameGui and InGameGui:WaitForChild("PlayerStatus", 10)
+local ScoreBoard   = InGameGui and InGameGui:WaitForChild("ScoreBoard", 10)
+
+-- ScoreBoardButton nằm trong InGameGui/Buttons (frame mới)
+local InGameBtnCfg     = GuiConfig.InGameButtons
+local ButtonsFrame     = InGameGui and InGameGui:FindFirstChild(InGameBtnCfg.Buttons)
+local ScoreBoardButton = ButtonsFrame and ButtonsFrame:FindFirstChild(InGameBtnCfg.ScoreBoardButton)
+
+-- ObserverGui (ẩn khi Intermission/Setup, hiện khi InGame phases — giống InGameGui)
+local ObserverGui = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.ObserverGui)
 
 -- Lazy-require MenuController để điều phối đóng/mở menu khi chuyển phase
 local _menuController = nil
@@ -137,10 +145,14 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 		UpdateLobbyGuisVisibility(true)
 	end
 
-	-- Quản lý hiển thị InGameGui và các gameplay HUD con
+	-- Quản lý hiển thị InGameGui, ObserverGui và các gameplay HUD con
 	local IsInGamePhase = (Phase == "Ready" or Phase == "InGame" or Phase == "GameOver")
 	if InGameGui then
 		InGameGui.Enabled = IsInGamePhase
+	end
+	-- ObserverGui theo cùng lifecycle với InGameGui: ẩn khi không có trận
+	if ObserverGui then
+		ObserverGui.Enabled = IsInGamePhase
 	end
 
 	local ShowGameplayHud = IsInGamePhase

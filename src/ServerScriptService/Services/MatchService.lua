@@ -739,15 +739,42 @@ function MatchService:Init()
 			return
 		end
 
-		-- Chỉ cho phép trỏ sang người chơi khác khi đang trong phase InGame và người xem không ở trong trận
+		-- Chỉ cho phép trong phase InGame
 		if _currentPhase ~= "InGame" then return end
-		if PlayerStateHelper.IsInMatch(SpectatorPlayer) then return end
 
+		local IsInMatch     = PlayerStateHelper.IsInMatch(SpectatorPlayer)
+		local SpectatorState = SessionService.GetState(SpectatorPlayer)
+		local IsFrozenInMatch = IsInMatch and (SpectatorState == "Frozen")
+
+		-- Validate target còn tồn tại, có character và HRP
 		if not TargetPlayer:IsDescendantOf(Players) then return end
 		local TargetCharacter = TargetPlayer.Character
 		if not TargetCharacter then return end
 		local TargetHRP = TargetCharacter:FindFirstChild("HumanoidRootPart")
 		if not TargetHRP then return end
+
+		-- Target phải đang Normal (không cho spectate người đã Frozen/Dead)
+		if SessionService.GetState(TargetPlayer) ~= "Normal" then return end
+
+		if IsFrozenInMatch then
+			-- Player bị Frozen trong trận: validate theo mode
+			local ModeKey = SessionService.GetCurrentModeKey()
+			if GameModeHelper.IsTeamBased(ModeKey) then
+				-- Mode có team: chỉ cho phép target cùng team
+				local SpectatorTeam = SessionService.GetTeam(SpectatorPlayer)
+				local TargetTeam    = SessionService.GetTeam(TargetPlayer)
+				if not SpectatorTeam or SpectatorTeam ~= TargetTeam then return end
+			end
+			-- Mode không có team (FFA): cho phép target bất kỳ Normal — không cần thêm điều kiện
+
+		elseif not IsInMatch then
+			-- Lobby spectator (không trong trận): cho phép target bất kỳ Normal
+			-- (không cần điều kiện thêm)
+
+		else
+			-- Player đang trong trận nhưng không bị Frozen (Normal) → không được spectate
+			return
+		end
 
 		SpectatorPlayer.ReplicationFocus = TargetHRP
 	end)
