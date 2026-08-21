@@ -648,4 +648,31 @@ function GuiHelper.GetAccoladesAnimConfig(AccoladeType)
 	}
 end
 
+--- Lấy cấu hình Animation GameLoadingScreen
+--- @return table
+function GuiHelper.GetGameLoadingAnimConfig()
+	local AnimConfig = GuiConfig.Animations and GuiConfig.Animations.GameLoadingScreen
+	local DefaultCfg = (AnimConfig and AnimConfig.Default) or {}
+
+	return {
+		DotWaveDuration     = DefaultCfg.DotWaveDuration     or 0.5,
+		DotMinScale         = DefaultCfg.DotMinScale         or 1.0,
+		DotMaxScale         = DefaultCfg.DotMaxScale         or 1.5,
+		DotEasingStyle      = DefaultCfg.DotEasingStyle      or Enum.EasingStyle.Sine,
+		DotEasingDir        = DefaultCfg.DotEasingDir        or Enum.EasingDirection.InOut,
+		TitleMinScale       = DefaultCfg.TitleMinScale       or 1.0,
+		TitleLoadMaxScale   = DefaultCfg.TitleLoadMaxScale   or 1.4,
+		TitlePopScale       = DefaultCfg.TitlePopScale       or 1.6,
+		Phase1PopDuration   = DefaultCfg.Phase1PopDuration   or 0.35,
+		Phase1DotBlinkCount = DefaultCfg.Phase1DotBlinkCount or 2,
+		Phase1DotBlinkTime  = DefaultCfg.Phase1DotBlinkTime  or 0.12,
+		Phase2Duration      = DefaultCfg.Phase2Duration      or 0.65,
+		Phase2EasingStyle   = DefaultCfg.Phase2EasingStyle   or Enum.EasingStyle.Quad,
+		Phase2EasingDir     = DefaultCfg.Phase2EasingDir     or Enum.EasingDirection.InOut,
+		MinLoadingDuration  = DefaultCfg.MinLoadingDuration  or 2.5,
+		SafetyTimeout       = DefaultCfg.SafetyTimeout       or 10,
+		ProgressLerpSpeed   = DefaultCfg.ProgressLerpSpeed   or 8,
+	}
+end
+
 return GuiHelper

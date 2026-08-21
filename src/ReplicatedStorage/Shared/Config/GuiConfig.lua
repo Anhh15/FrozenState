@@ -15,6 +15,7 @@ local GuiConfig = {
 		Special           = "Special",
 		GameStatistic     = "GameStatistic",
 		ObserverGui       = "ObserverGui",  -- ScreenGui độc lập cho chế độ quan sát (Lobby + Frozen Spectator)
+		GameLoadingScreen = "GameLoadingScreen", -- ScreenGui nạp game ban đầu khi mới kết nối
 	},
 
 	-- =========================================================
@@ -81,6 +82,24 @@ local GuiConfig = {
 		Background      = "Background",
 		ModeNameText    = "ModeNameText",
 		DescriptionText = "DescriptionText",
+	},
+
+	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG SCREENGUI GAMELOADINGSCREEN
+	-- =========================================================
+	GameLoadingScreenElements = {
+		ScreenFrame     = "GameLoadingScreen",
+		UpperContainer  = "UpperContainer",
+		LowerContainer  = "LowerContainer",
+		TitleContainer  = "TitleContainer",
+		Title           = "Title",
+		TitleBackground = "TitleBackground",
+		UIGradient      = "UIGradient",
+		Dots            = "Dots",
+		DotPrefix       = "Dot",
+		SkipButton      = "SkipButton",
+		SkipText        = "SkipText",
+		Background      = "Background",
 	},
 
 	-- =========================================================
@@ -289,6 +308,30 @@ local GuiConfig = {
 				-- 	DisplayDuration = 2.0,
 				-- },
 			},
+		},
+
+		-- 8. Cấu hình màn hình khởi động game ban đầu (GameLoadingScreen)
+		GameLoadingScreen = {
+			Default = {
+				DotWaveDuration     = 1.2,  -- Thời gian 1 chu kỳ nở và co của 1 dot (giây)
+				DotMinScale         = 0.6,  -- Scale nhỏ nhất của dot
+				DotMaxScale         = 1,  -- Scale lớn nhất của dot
+				DotEasingStyle      = Enum.EasingStyle.Sine,
+				DotEasingDir        = Enum.EasingDirection.InOut,
+				TitleMinScale       = 1.0,  -- Scale ban đầu của Title
+				TitleLoadMaxScale   = 1.4,  -- Scale tối đa của Title khi đạt 100% load
+				TitlePopScale       = 1.6,  -- Scale bung nở của Title ở Pha 1 kết thúc
+				Phase1PopDuration   = 0.35, -- Thời gian bung Title lên 1.6
+				Phase1DotBlinkCount = 2,    -- Số lần nhấp nháy của Dot ở Pha 1 (1.6 -> 1.3 -> 1.6)
+				Phase1DotBlinkTime  = 0.4, -- Thời gian mỗi lượt nhấp nháy của Dot
+				Phase2Duration      = 0.5, -- Thời gian trượt rèm Upper/Lower ra khỏi màn hình (giây)
+				Phase2EasingStyle   = Enum.EasingStyle.Quad,
+				Phase2EasingDir     = Enum.EasingDirection.InOut,
+				MinLoadingDuration  = 3,  -- Thời gian nạp tối thiểu (giây) để hiển thị đầy đủ hoạt ảnh
+				SafetyTimeout       = 10,   -- Timeout tối đa (giây) tự động hoàn tất nếu CDN rớt mạng
+				ProgressLerpSpeed   = 8,    -- Tốc độ lerp mượt mà của VisualProgress
+			},
+			Overrides = {},
 		},
 	},
 

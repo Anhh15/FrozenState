@@ -49,12 +49,12 @@ local function BroadcastGameState(Phase, TimeRemaining, IsFrozenState)
 	})
 end
 
---- Lấy danh sách các người chơi đang thực sự còn sống (có Character, HRP và Health > 0)
+--- Lấy danh sách các người chơi đang thực sự còn sống và đã hoàn tất tải game (GameLoaded)
 local function GetAlivePlayers()
 	local Alive = {}
 	for _, Player in ipairs(Players:GetPlayers()) do
 		local Character = Player.Character
-		if Character and Character.Parent then
+		if Character and Character.Parent and PlayerStateHelper.IsGameLoaded(Player) then
 			local Humanoid = Character:FindFirstChildOfClass("Humanoid")
 			local HRP = Character:FindFirstChild("HumanoidRootPart")
 			if Humanoid and Humanoid.Health > 0 and HRP then
@@ -701,11 +701,21 @@ function MatchService:Init()
 	end
 
 	for _, P in ipairs(Players:GetPlayers()) do
+		PlayerStateHelper.SetGameLoaded(P, false)
 		BindPlayer(P)
 	end
 
+	-- Lắng nghe khi Client hoàn thành GameLoadingScreen
+	local FinishGameLoadingEvent = RemoteDefinitions.GetEvent("FinishGameLoading")
+	FinishGameLoadingEvent.OnServerEvent:Connect(function(Player)
+		if not Player then return end
+		PlayerStateHelper.SetGameLoaded(Player, true)
+		print(string.format("[MatchService] Player %s (%d) đã hoàn tất GameLoadingScreen.", Player.Name, Player.UserId))
+	end)
+
 	-- Khi player mới join giữa trận
 	Players.PlayerAdded:Connect(function(NewPlayer)
+		PlayerStateHelper.SetGameLoaded(NewPlayer, false)
 		BindPlayer(NewPlayer)
 
 		task.wait(2)

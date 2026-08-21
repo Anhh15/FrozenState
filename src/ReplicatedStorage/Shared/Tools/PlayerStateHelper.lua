@@ -21,6 +21,14 @@ function PlayerStateHelper.IsInMatch(Player)
 	return Player:GetAttribute(Attributes.InMatch) == true
 end
 
+--- Kiểm tra xem Player đã hoàn tất GameLoadingScreen hay chưa
+--- @param Player Player?
+--- @return boolean
+function PlayerStateHelper.IsGameLoaded(Player)
+	if not Player then return false end
+	return Player:GetAttribute(Attributes.GameLoaded) == true
+end
+
 --- Lấy Team hiện tại của Player
 --- @param Player Player?
 --- @return string?
@@ -55,6 +63,14 @@ end
 -- =========================================================
 -- WRITE METHODS (Server-Side)
 -- =========================================================
+
+--- Đặt trạng thái GameLoaded cho Player (chỉ chạy từ Server)
+--- @param Player Player?
+--- @param IsLoaded boolean
+function PlayerStateHelper.SetGameLoaded(Player, IsLoaded)
+	if not Player then return end
+	Player:SetAttribute(Attributes.GameLoaded, IsLoaded == true)
+end
 
 --- Đặt trạng thái InMatch cho Player (chỉ chạy từ Server)
 --- @param Player Player?

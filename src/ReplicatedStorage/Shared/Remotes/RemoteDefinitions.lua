@@ -54,6 +54,9 @@ local REMOTE_EVENTS = {
 	-- Server → Client: Broadcast GameMode khi bắt đầu trận (Setup phase)
 	-- Payload: { ModeKey, HighlightMode, ScoreboardType, PlayerStatusType }
 	"SetGameMode",
+
+	-- Client → Server: Báo hiệu hoàn tất GameLoadingScreen (mở rèm vào lobby)
+	"FinishGameLoading",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

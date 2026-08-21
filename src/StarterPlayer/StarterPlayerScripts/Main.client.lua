@@ -31,9 +31,13 @@ local ScoreBoardController     = require(Controllers:WaitForChild("ScoreBoardCon
 local AccoladesController      = require(Controllers:WaitForChild("AccoladesController"))
 local ModeAnnouncementController   = require(Controllers:WaitForChild("ModeAnnouncementController"))
 local RoundLoadingScreenController = require(Controllers:WaitForChild("RoundLoadingScreenController"))
+local GameLoadingController        = require(Controllers:WaitForChild("GameLoadingController"))
 
 -- Bước 3: Init tất cả controller
--- MenuController & NavigationController khởi tạo trước để sẵn sàng đăng ký tab và bind sự kiện
+-- GameLoadingController khởi tạo trước để che màn hình và bắt đầu preload
+GameLoadingController:Init()
+
+-- MenuController & NavigationController khởi tạo tiếp theo để sẵn sàng đăng ký tab và bind sự kiện
 MenuController:Init()
 NavigationController:Init()
 PlayerDataController:Init()

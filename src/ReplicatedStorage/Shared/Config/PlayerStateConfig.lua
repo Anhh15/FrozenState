@@ -9,6 +9,7 @@ local PlayerStateConfig = {
 	-- =========================================================
 	Attributes = {
 		InMatch              = "InMatch",              -- boolean: player đang trực tiếp tham chiến
+		GameLoaded           = "GameLoaded",           -- boolean: player đã hoàn thành GameLoadingScreen (sẵn sàng ghép trận)
 		Team                 = "Team",                 -- string: "Team1" | "Team2" | nil
 		EquippedIcicleSkinId = "EquippedIcicleSkinId", -- string: SkinId của Icicle đang trang bị
 		VictimUserId         = "VictimUserId",         -- number: UserId nạn nhân bị đóng băng (trên IceBlock Model)
