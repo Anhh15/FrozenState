@@ -75,17 +75,17 @@ local function ClearBoard()
 end
 
 --- Hiển thị hoặc ẩn ScoreBoard
---- Spectator (không có team) không được xem ScoreBoard
+--- Spectator / Người chơi không trong trận không được xem ScoreBoard
 --- Disabled (chế độ không có Scoreboard) — block toàn bộ
 --- @param Visible boolean
 local function SetScoreBoardVisible(Visible)
 	-- Block nếu mode không có ScoreBoard
 	if _scoreboardType == "Disabled" then return end
 
-	-- Ẩn với Spectator
+	-- Ẩn với Spectator / Người chơi không trong trận
 	if Visible then
-		local MyTeam = PlayerStateHelper.GetTeam(LocalPlayer)
-		if not MyTeam then return end
+		local IsInMatch = PlayerStateHelper.IsInMatch(LocalPlayer)
+		if not IsInMatch then return end
 	end
 
 	if _ScoreBoard then
@@ -341,6 +341,13 @@ function ScoreBoardController:Init()
 			ClearBoard()
 			SetScoreBoardVisible(false)
 			_scoreboardType = "TwoTeams"  -- reset về default cho vòng tiếp theo
+		end
+	end)
+
+	-- ── OBSERVE: Tự động đóng ScoreBoard khi không còn trong trận (chết/loại/về sảnh) ──
+	PlayerStateHelper.ObserveMatchState(LocalPlayer, function(IsInMatch)
+		if not IsInMatch then
+			SetScoreBoardVisible(false)
 		end
 	end)
 

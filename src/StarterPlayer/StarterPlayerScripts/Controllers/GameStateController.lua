@@ -160,12 +160,15 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 		PlayerStatus.Visible = ShowGameplayHud and (_playerStatusType ~= "Disabled")
 	end
 	if ScoreBoard then
-		if not ShowGameplayHud or _scoreboardType == "Disabled" then
+		if not ShowGameplayHud or not IsInMatch or _scoreboardType == "Disabled" then
 			ScoreBoard.Visible = false
 		end
 	end
+	if ButtonsFrame then
+		ButtonsFrame.Visible = ShowGameplayHud and IsInMatch
+	end
 	if ScoreBoardButton then
-		ScoreBoardButton.Visible = ShowGameplayHud and (_scoreboardType ~= "Disabled")
+		ScoreBoardButton.Visible = ShowGameplayHud and IsInMatch and (_scoreboardType ~= "Disabled")
 	end
 end
 

@@ -1,6 +1,6 @@
 # InGameExperience
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về trải nghiệm giao diện thi đấu trong trận (PlayerStatus, ScoreBoard, Accolades và Phân phối HUD theo GameMode).
-> Cập nhật lần cuối: 21-08-2026
+> Cập nhật lần cuối: 22-08-2026
 
 ---
 
@@ -37,6 +37,13 @@
 - **Chi tiết:** `GameStateController` lắng nghe `SetGameMode` để lấy cấu hình hiển thị (`PlayerStatusType`, `ScoreboardType`). Khi hiển thị HUD thi đấu, controller áp dụng điều kiện kết hợp `ShowGameplayHud and (_type ~= "Disabled")` để tránh việc vô tình kích hoạt các UI con đã bị vô hiệu hóa bởi chế độ chơi (ví dụ: tắt PlayerStatus trong một số chế độ đặc thù).
 - **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameModeConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameModeConfig.lua)
 
+### 7. Phân Quyền Hiển Thị & Tương Tác HUD Thi Đấu Theo IsInMatch SSOT
+- **Chi tiết:** Phân định rạch ròi giữa HUD quan sát toàn cục (`PlayerStatus`) và HUD thi đấu chủ động (`InGameGui/Buttons`, `ScoreBoard`):
+  - `PlayerStatus`: Hiển thị cho cả Spectator và người trong trận để theo dõi diễn biến 2 đội.
+  - `ButtonsFrame` (`ScoreBoardButton`, `SpectateButton`) và `ScoreBoard`: Ràng buộc chặt chẽ theo `IsInMatch(LocalPlayer) == true`.
+  - `ScoreBoardController` đăng ký `ObserveMatchState` để tự động đóng ScoreBoard ngay khi người chơi bị loại (`State == "Dead"`, `IsInMatch == false`) và chặn toàn bộ phím tắt (`Ctrl`, `R1`, Mobile button) khi không còn trong trận.
+- **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -58,3 +65,13 @@
 - **Nguyên nhân:** Race condition giữa sự kiện RemoteEvent `SetTeamAssignment` và việc đồng bộ thuộc tính `"Team"` (Property Replication), dẫn đến việc Client kiểm tra `LocalPlayer:GetAttribute("Team")` trả về `nil` ngay tại thời điểm nhận event.
 - **Giải pháp:** Lấy thông tin team của LocalPlayer trực tiếp từ payload `Teams` gửi kèm trong sự kiện (`Teams[tostring(LocalPlayer.UserId)]`) thay vì đọc qua attribute.
 - **File liên quan:** [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStatusController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua)
+
+### 4. Rò rỉ Nút HUD Thi Đấu cho Spectator và Lỗi Người Chết Vẫn Bật Được ScoreBoard
+- **Vấn đề:** Spectator ở Sảnh bị hiện cụm nút `InGameGui/Buttons` nhưng không thể tương tác; người chơi trong trận sau khi chết/bị loại vẫn bấm được phím tắt để mở `ScoreBoard`.
+- **Nguyên nhân:**
+  1. `GameStateController` chỉ kiểm tra phase (`IsInGamePhase`) mà bỏ qua `IsInMatch` khi bật `ButtonsFrame` và `ScoreBoardButton`.
+  2. `ScoreBoardController` kiểm tra `GetTeam` thay vì `IsInMatch`. Khi player chết, server set `InMatch = false` nhưng giữ `Team` attribute để tổng kết cuối trận, khiến người chết lọt qua kiểm tra.
+- **Giải pháp:**
+  1. Gán điều kiện hiển thị `ShowGameplayHud and IsInMatch` cho `ButtonsFrame` và `ScoreBoardButton`.
+  2. Dùng `PlayerStateHelper.IsInMatch(LocalPlayer)` làm điều kiện tiên quyết duy nhất cho `SetScoreBoardVisible` và tự động đóng board qua `ObserveMatchState`.
+- **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
