@@ -10,11 +10,11 @@ local EconomyConfig = {
 	Rewards = {
 		PerFreeze        = 10,  -- Tiền thưởng khi đóng băng 1 kẻ địch
 		PerThaw          = 10,  -- Tiền thưởng khi giải cứu 1 đồng minh
-		PerFreezingSpree = 10,  -- Thưởng thêm khi đạt Freezing Spree (chuỗi N lần freeze liên tiếp)
-		PerThawingSpree  = 10,  -- Thưởng thêm khi đạt Thawing Spree (chuỗi N lần thaw liên tiếp)
-		FirstBlood       = 10,  -- Thưởng cho người đầu tiên thực hiện đóng băng trong trận
-		LastStanding     = 10,  -- Thưởng cho người sống sót cuối cùng
-		MatchWin         = 10,  -- Thưởng khi đội hoặc cá nhân thắng trận
+		PerFreezingSpree = 30,  -- Thưởng thêm khi đạt Freezing Spree (chuỗi N lần freeze liên tiếp)
+		PerThawingSpree  = 30,  -- Thưởng thêm khi đạt Thawing Spree (chuỗi N lần thaw liên tiếp)
+		FirstBlood       = 20,  -- Thưởng cho người đầu tiên thực hiện đóng băng trong trận
+		LastStanding     = 20,  -- Thưởng cho người sống sót cuối cùng
+		MatchWin         = 30,  -- Thưởng khi đội hoặc cá nhân thắng trận
 		MatchLose        = 10,  -- Thưởng an ủi khi thua trận
 	},
 

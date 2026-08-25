@@ -26,7 +26,7 @@ local CHEST_CATALOG = {
 		Id     = "BasicIcicleChest",
 		Name   = "Basic Icicle Chest",
 		Type   = "Icicle",
-		Price1 = 10,
+		Price1 = 1000,
 		Items  = {
 			{ ItemId = "Green", DropRate = 60 },
 			{ ItemId = "Red",   DropRate = 40 },
@@ -53,7 +53,7 @@ local CHEST_CATALOG = {
 		Id     = "BasicBlockChest",
 		Name   = "Basic Block Chest",
 		Type   = "Block",
-		Price1 = 10,
+		Price1 = 1000,
 		Items  = {
 			{ ItemId = "Green", DropRate = 60 },
 			{ ItemId = "Red",   DropRate = 40 },

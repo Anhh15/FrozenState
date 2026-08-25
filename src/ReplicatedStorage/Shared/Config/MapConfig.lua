@@ -24,6 +24,13 @@ local MapConfig = {
 		FFA   = "SpawnPoint",    -- Ví dụ: SpawnPoint1, SpawnPoint2...
 	},
 
+	-- =========================================================
+	-- THIẾT LẬP SPAWN POINT
+	-- =========================================================
+	Spawn = {
+		DefaultYOffset = 4,      -- Khoảng cách stud nâng cao trên spawn part để tránh kẹt chân/sàn
+	},
+
 }
 
 return MapConfig

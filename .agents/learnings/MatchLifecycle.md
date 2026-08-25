@@ -1,6 +1,6 @@
 # MatchLifecycle
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về vòng đời trận đấu (State Machine, Player State, WinCondition, Special Round, Death/Disconnect Lifecycle và Map Management).
-> Cập nhật lần cuối: 21-08-2026
+> Cập nhật lần cuối: 25-08-2026
 
 ---
 
@@ -47,9 +47,9 @@
 - **Chi tiết:** `MatchService` kết nối `SessionService.MatchEndSignal` ngay từ khi khởi tạo `Init()`. Khi nhận được tín hiệu thắng/thua sớm (do đối thủ bị loại hết trong `Setup` hoặc `Ready`), hệ thống lưu lại `_earlyResult`. Vòng lặp `RunReady` sẽ ngắt sớm (`break`) và `RunInGame` kiểm tra `_earlyResult` để return ngay lập tức (không cấp vũ khí, không đếm ngược vô ích), chuyển thẳng sang phase `GameOver`.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
 
-### 7. Phân tách Map & Spawn Point Đa hình (TeamBase vs FFA)
-- **Chi tiết:** Cấu trúc map được chuẩn hóa thành `SpawnPoint/TeamBase/T1SpawnPoint[1-8]`, `T2SpawnPoint[1-8]` và `SpawnPoint/FFA/SpawnPoint[1-16]`. `MapConfig` quản lý cấu trúc tên thư mục, `MapHelper` cung cấp các hàm lọc Part spawn theo mode và tính toán CFrame spawn an toàn phía trên mặt sàn cho nhân vật.
-- **File liên quan:** [MapConfig.lua](../../src/ReplicatedStorage/Shared/Config/MapConfig.lua), [MapHelper.lua](../../src/ReplicatedStorage/Shared/Tools/MapHelper.lua), [MapService.lua](../../src/ServerScriptService/Services/MapService.lua)
+### 7. Phân tách Map & Phân bổ Spawn Point Độc nhất (Unique Spawn Assignment)
+- **Chi tiết:** Cấu trúc map chuẩn hóa thành `SpawnPoint/TeamBase/T1SpawnPoint[1-8]`, `T2SpawnPoint[1-8]` và `SpawnPoint/FFA/SpawnPoint[1-16]`. Hằng số chiều cao spawn được lưu tại `MapConfig.Spawn.DefaultYOffset`. `MapHelper.AssignSpawnPoints` sử dụng thuật toán Fisher-Yates Shuffle để phân bổ 1-1 không trùng lặp cho danh sách người chơi (FFA lẫn TeamBased), tự động wrap-around $\left(((i - 1) \pmod M) + 1\right)$ khi số người chơi $N > M$ (số spawn point).
+- **File liên quan:** [MapConfig.lua](../../src/ReplicatedStorage/Shared/Config/MapConfig.lua), [MapHelper.lua](../../src/ReplicatedStorage/Shared/Tools/MapHelper.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [MapService.lua](../../src/ServerScriptService/Services/MapService.lua)
 
 ### 8. Tập trung Hằng số Di chuyển vào GameConfig.Player
 - **Chi tiết:** Toàn bộ thông số di chuyển của nhân vật (`DefaultWalkSpeed`, `DefaultJumpPower`, `DefaultJumpHeight`) được lưu trữ tại một nơi duy nhất trong `GameConfig.Player`. Tất cả các service và controller (`MatchService`, `FreezeService`, `SpectateController`) chỉ được đọc từ cấu hình này khi khóa hoặc khôi phục di chuyển.
@@ -87,3 +87,10 @@
 - **Nguyên nhân:** Lệnh khóa tốc độ `SetMovementLocked` trong `RunReady` đặt ngoài khối điều kiện kiểm tra người tham gia trận.
 - **Giải pháp:** Bổ sung điều kiện kiểm tra `SessionService.GetState(Player) == "Normal"` và `PlayerStateHelper.IsInMatch(Player)` trước khi gọi khóa hoặc mở khóa di chuyển trong `RunReady()`.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+
+### 6. Trùng lặp điểm spawn khi vào trận do chọn ngẫu nhiên có hoàn lại (Sampling with Replacement)
+- **Vấn đề:** Người chơi xuất hiện đè lên nhau tại cùng một tọa độ spawn ở phase Ready, gây hiện tượng kẹt nhân vật và va chạm vật lý (physics jitter/glitch).
+- **Nguyên nhân:** Hàm `TeleportToSpawn` gọi `math.random(1, #SpawnPoints)` độc lập cho từng người chơi. Theo nghịch lý ngày sinh nhật (Birthday Paradox), xác suất trùng ít nhất 2 người khi có $N$ player trên $M$ spawn là $1 - \prod_{k=0}^{N-1} \frac{M-k}{M}$ (với 4 người trong 16 spawn FFA, tỷ lệ trùng lên tới $\approx 33.4\%$).
+- **Giải pháp:** Chuyển sang cơ chế phân bổ độc nhất trong `MapHelper.AssignSpawnPoints`. Xáo trộn mảng spawn bằng Fisher-Yates Shuffle $O(M)$ trước khi gán 1-1 cho danh sách người chơi.
+- **File liên quan:** [MapHelper.lua](../../src/ReplicatedStorage/Shared/Tools/MapHelper.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [MapConfig.lua](../../src/ReplicatedStorage/Shared/Config/MapConfig.lua)
+

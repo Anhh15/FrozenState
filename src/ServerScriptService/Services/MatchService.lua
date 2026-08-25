@@ -22,6 +22,7 @@ local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
+local MapHelper         = require(ReplicatedStorage.Shared.Tools.MapHelper)
 
 -- =========================================================
 -- STATE
@@ -65,16 +66,17 @@ local function GetAlivePlayers()
 	return Alive
 end
 
---- Teleport player đến một trong các spawn point (ngẫu nhiên)
-local function TeleportToSpawn(Player, SpawnPoints)
-	if #SpawnPoints == 0 then return end
+--- Teleport player đến một điểm spawn cụ thể
+--- @param Player Player
+--- @param SpawnPart BasePart
+local function TeleportToSpawn(Player, SpawnPart)
+	if not SpawnPart then return end
 	local Character = Player.Character
 	if not Character then return end
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
 	if not HRP then return end
 
-	local Spawn = SpawnPoints[math.random(1, #SpawnPoints)]
-	HRP.CFrame  = Spawn.CFrame + Vector3.new(0, 4, 0)
+	HRP.CFrame = MapHelper.GetSpawnCFrame(SpawnPart)
 end
 
 --- Khóa / mở khóa di chuyển
@@ -487,23 +489,48 @@ local function RunReady()
 	-- Teleport theo SpawnType (chỉ teleport và khóa di chuyển người chơi đang Normal trong trận)
 	if GameModeHelper.GetSpawnType(ModeKey) == "FFA" then
 		local AllSpawns = MapService.GetSpawnPoints(nil, "FFA")
+		local PlayersToSpawn = {}
+
 		for _, Player in ipairs(Players:GetPlayers()) do
 			if SessionService.GetState(Player) == "Normal" and PlayerStateHelper.IsInMatch(Player) and Player.Character then
-				TeleportToSpawn(Player, AllSpawns)
-				SetMovementLocked(Player, true)
+				table.insert(PlayersToSpawn, Player)
 			end
+		end
+
+		local Assignments = MapHelper.AssignSpawnPoints(PlayersToSpawn, AllSpawns)
+		for Player, SpawnPart in pairs(Assignments) do
+			TeleportToSpawn(Player, SpawnPart)
+			SetMovementLocked(Player, true)
 		end
 	else
 		local Team1Spawns = MapService.GetSpawnPoints("Team1", "TeamBased")
 		local Team2Spawns = MapService.GetSpawnPoints("Team2", "TeamBased")
+		local Team1Players = {}
+		local Team2Players = {}
+
 		for _, Player in ipairs(Players:GetPlayers()) do
 			local Team = SessionService.GetTeam(Player)
 			if not Team then continue end
 			if SessionService.GetState(Player) == "Normal" and PlayerStateHelper.IsInMatch(Player) and Player.Character then
-				local Spawns = (Team == "Team1") and Team1Spawns or Team2Spawns
-				TeleportToSpawn(Player, Spawns)
-				SetMovementLocked(Player, true)
+				if Team == "Team1" then
+					table.insert(Team1Players, Player)
+				elseif Team == "Team2" then
+					table.insert(Team2Players, Player)
+				end
 			end
+		end
+
+		local Team1Assignments = MapHelper.AssignSpawnPoints(Team1Players, Team1Spawns)
+		local Team2Assignments = MapHelper.AssignSpawnPoints(Team2Players, Team2Spawns)
+
+		for Player, SpawnPart in pairs(Team1Assignments) do
+			TeleportToSpawn(Player, SpawnPart)
+			SetMovementLocked(Player, true)
+		end
+
+		for Player, SpawnPart in pairs(Team2Assignments) do
+			TeleportToSpawn(Player, SpawnPart)
+			SetMovementLocked(Player, true)
 		end
 	end
 

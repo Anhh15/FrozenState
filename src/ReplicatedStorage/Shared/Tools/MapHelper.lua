@@ -92,11 +92,42 @@ end
 
 --- Tính toán CFrame an toàn phía trên SpawnPart
 --- @param SpawnPart BasePart
---- @param YOffset number? -- Chiều cao cộng thêm (mặc định 3 studs)
+--- @param YOffset number? -- Chiều cao cộng thêm (mặc định lấy từ MapConfig.Spawn.DefaultYOffset)
 --- @return CFrame
 function MapHelper.GetSpawnCFrame(SpawnPart, YOffset)
-	local Offset = YOffset or 3
+	local DefaultOffset = (MapConfig.Spawn and MapConfig.Spawn.DefaultYOffset) or 4
+	local Offset = YOffset or DefaultOffset
 	return SpawnPart.CFrame + Vector3.new(0, Offset, 0)
+end
+
+--- Gán điểm spawn độc nhất (không trùng lặp) cho danh sách người chơi sử dụng Fisher-Yates Shuffle
+--- @param PlayerList table -- { Player, ... }
+--- @param SpawnPointList table -- { BasePart, ... }
+--- @return table -- { [Player] = BasePart }
+function MapHelper.AssignSpawnPoints(PlayerList, SpawnPointList)
+	local Assignments = {}
+	if not PlayerList or #PlayerList == 0 then
+		return Assignments
+	end
+	if not SpawnPointList or #SpawnPointList == 0 then
+		warn("[MapHelper] Danh sách SpawnPointList rỗng, không thể phân bổ điểm spawn.")
+		return Assignments
+	end
+
+	-- Xáo trộn mảng SpawnPointList (Fisher-Yates Shuffle)
+	local ShuffledSpawns = table.clone(SpawnPointList)
+	for i = #ShuffledSpawns, 2, -1 do
+		local j = math.random(1, i)
+		ShuffledSpawns[i], ShuffledSpawns[j] = ShuffledSpawns[j], ShuffledSpawns[i]
+	end
+
+	-- Gán 1-1 cho từng người chơi. Tự động wrap-around nếu số người chơi vượt quá số spawn
+	for Index, Player in ipairs(PlayerList) do
+		local SpawnIndex = ((Index - 1) % #ShuffledSpawns) + 1
+		Assignments[Player] = ShuffledSpawns[SpawnIndex]
+	end
+
+	return Assignments
 end
 
 return MapHelper
