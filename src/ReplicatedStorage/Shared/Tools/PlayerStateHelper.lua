@@ -148,4 +148,32 @@ function PlayerStateHelper.ObserveMatchState(Player, Callback)
 	}
 end
 
+--- Lắng nghe sự kiện thay đổi trạng thái GameLoaded của Player
+--- Tự động gọi callback 1 lần ban đầu (Option A) và trả về object có Disconnect()
+--- @param Player Player
+--- @param Callback (IsLoaded: boolean) -> ()
+--- @return { Disconnect: () -> () }
+function PlayerStateHelper.ObserveGameLoaded(Player, Callback)
+	if not Player or not Callback then
+		return { Disconnect = function() end }
+	end
+
+	local function FireCallback()
+		local IsLoaded = PlayerStateHelper.IsGameLoaded(Player)
+		Callback(IsLoaded)
+	end
+
+	local Conn = Player:GetAttributeChangedSignal(Attributes.GameLoaded):Connect(FireCallback)
+	task.spawn(FireCallback)
+
+	return {
+		Disconnect = function()
+			if Conn then
+				Conn:Disconnect()
+				Conn = nil
+			end
+		end,
+	}
+end
+
 return PlayerStateHelper

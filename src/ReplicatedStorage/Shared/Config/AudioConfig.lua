@@ -9,9 +9,12 @@ local AudioConfig = {
 	-- NHẠC NỀN (BGM)
 	-- =========================================================
 	Music = {
-		Lobby       = 1846271108,      -- Nhạc khi ở lobby (không tham gia trận)
-		InGame      = 92288659295773,  -- Nhạc khi đang trong trận
-		FrozenState = 135654634674766, -- Nhạc khi kích hoạt Frozen State (45 giây cuối)
+		Lobby          = 1846271108,      -- Nhạc khi ở lobby (không tham gia trận)
+		InGame         = 92288659295773,  -- Nhạc khi đang trong trận
+		FrozenState    = 135654634674766, -- Nhạc khi kích hoạt Frozen State (45 giây cuối)
+		GameOver       = 132515049116690, -- Nhạc nền khi kết thúc trận (GameOver phase)
+		GameLoading    = 127066705522583, -- Nhạc nền màn hình tải game (nil = im lặng)
+		DefaultVolume  = 0.3,             -- Âm lượng mặc định cho nhạc nền
 	},
 
 	-- =========================================================
@@ -138,7 +141,7 @@ function AudioConfig.GetAllAudioIds()
 	local AudioIdList = {}
 
 	local function Collect(Value)
-		if type(Value) == "number" then
+		if type(Value) == "number" and Value >= 1000 and math.floor(Value) == Value then
 			if not AudioIdSet[Value] then
 				AudioIdSet[Value] = true
 				table.insert(AudioIdList, Value)

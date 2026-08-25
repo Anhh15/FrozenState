@@ -327,7 +327,7 @@ local GuiConfig = {
 				Phase2Duration      = 0.5, -- Thời gian trượt rèm Upper/Lower ra khỏi màn hình (giây)
 				Phase2EasingStyle   = Enum.EasingStyle.Quad,
 				Phase2EasingDir     = Enum.EasingDirection.InOut,
-				MinLoadingDuration  = 3,  -- Thời gian nạp tối thiểu (giây) để hiển thị đầy đủ hoạt ảnh
+				MinLoadingDuration  = 10,  -- Thời gian nạp tối thiểu (giây) để hiển thị đầy đủ hoạt ảnh
 				SafetyTimeout       = 10,   -- Timeout tối đa (giây) tự động hoàn tất nếu CDN rớt mạng
 				ProgressLerpSpeed   = 8,    -- Tốc độ lerp mượt mà của VisualProgress
 			},

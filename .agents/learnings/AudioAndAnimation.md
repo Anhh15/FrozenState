@@ -1,6 +1,6 @@
 # AudioAndAnimation
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống âm thanh và hoạt ảnh (AudioConfig, AnimationConfig, Sound Pooling, Client-Side Spatial Audio, Preload và Memory Cleanup).
-> Cập nhật lần cuối: 21-08-2026
+> Cập nhật lần cuối: 26-08-2026
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### 1. Tập trung hóa Cấu hình Audio & Animation (Single Source of Truth)
 - **Chi tiết:** Tách bạch hoàn toàn giữa hệ thống âm thanh và hoạt ảnh để tránh lai tạp cấu hình:
-  - `AudioConfig.lua`: Tập trung 100% Sound IDs (BGM Lobby/InGame/GameOver, SFX trận đấu Freeze/Thaw/Swing, GUI SFX Click/Hover/Close, Shop/Chest/Quest/Accolades) và cấu hình âm lượng mặc định.
+  - `AudioConfig.lua`: Tập trung 100% Sound IDs (BGM Lobby/InGame/FrozenState/GameOver/GameLoading, SFX trận đấu Freeze/Thaw/Swing, GUI SFX Click/Hover/Close, Shop/Chest/Quest/Accolades) và cấu hình âm lượng mặc định `DefaultVolume`.
   - `AnimationConfig.lua`: Quản lý Animation IDs (Swing, Pose, Idle), Animation Priority (`Action`, `Movement`), và thời lượng cửa sổ quét va chạm (`HitStartTime`, `HitEndTime`) cho từng skin vũ khí.
 - **File liên quan:** [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua)
 
@@ -29,6 +29,13 @@
 ### 5. Chuẩn hóa Animation Loading qua Animator
 - **Chi tiết:** Loại bỏ phương thức lỗi thời `Humanoid:LoadAnimation()` (deprecated). Toàn bộ hoạt ảnh được nạp thông qua `Animator:LoadAnimation()` trên `Humanoid.Animator` hoặc `AnimationController.Animator`, kết hợp cache `AnimationTrack` để tái sử dụng và giải phóng khi nhân vật respawn.
 - **File liên quan:** [AnimationHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+
+### 6. Điều phối Nhạc nền Đa trạng thái Theo Vòng đời Trận & Tải Game (State-Driven BGM)
+- **Chi tiết:** `MusicController` điều phối BGM duy nhất theo máy trạng thái: $\text{GameLoading} \rightarrow \text{Lobby} \rightarrow \text{InGame/FrozenState} \rightarrow \text{GameOver}$.
+  - Hỗ trợ linh hoạt trạng thái `GameLoading`: phát BGM riêng nếu có ID, hoặc giữ im lặng an toàn (`_BgmSound:Stop()`) nếu là `nil`/`0`.
+  - Tự động chuyển BGM `GameOver` khi hết trận và quay lại `Lobby` khi về Sảnh.
+  - Hỗ trợ dừng nhạc phòng thủ khi Sound ID không hợp lệ, đồng bộ âm lượng từ `AudioConfig.Music.DefaultVolume`.
+- **File liên quan:** [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
 
 ---
 
@@ -51,3 +58,15 @@
 - **Nguyên nhân:** Animation trong Roblox Studio được xuất bản với thuộc tính `Looped = true`. Khi phát bằng `LoadAnimation()`, track không dừng tự nhiên dẫn đến sự kiện `Track.Stopped` không bao giờ được kích hoạt.
 - **Giải pháp:** Ghi đè `Track.Looped = false` trên Client ngay sau khi load animation, lưu reference track hiện tại để gọi `Track:Stop()` khi `Tool.Unequipped`.
 - **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+
+### 4. Tiền tải Nhầm Hằng số Âm lượng Thành Sound ID trong PreloadAsync
+- **Vấn đề:** Khi `AudioConfig.GetAllAudioIds()` duyệt đệ quy các bảng cấu hình, các hằng số âm lượng (như `DefaultVolume = 0.5`, `ChestClickVolumes = {1, 3, 5}`) bị thu thập nhầm thành các Asset ID `"rbxassetid://0.5"`, `"rbxassetid://1"`, gây lỗi 404 và lãng phí băng thông preload mạng.
+- **Nguyên nhân:** Bộ thu thập `Collect(Value)` chỉ kiểm tra `type(Value) == "number"` mà không phân biệt giữa Sound ID và hằng số cấu hình.
+- **Giải pháp:** Bổ sung điều kiện lọc nghiêm ngặt `type(Value) == "number" and Value >= 1000 and math.floor(Value) == Value` để chỉ gom các Sound ID hợp lệ (số nguyên $\ge 1000$).
+- **File liên quan:** [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua)
+
+### 5. Âm thanh Lobby Phát Đè lên Màn hình Tải Game Do Khởi tạo Sớm
+- **Vấn đề:** `MusicController` tự động phát BGM `Lobby` ngay khi `Init()`, gây xung đột âm thanh trong lúc người chơi vẫn đang ở màn hình `GameLoadingScreen`.
+- **Nguyên nhân:** Khởi tạo phát nhạc tĩnh không ràng buộc với trạng thái tải dữ liệu thực tế của Client.
+- **Giải pháp:** Chuyển sang cơ chế quan sát trạng thái `PlayerStateHelper.ObserveGameLoaded(LocalPlayer)`. Giữ im lặng hoặc phát BGM tải game riêng trong lúc nạp, chỉ kích hoạt nhạc `Lobby` khi màn hình tải hoàn tất (mở rèm hoặc bấm Skip).
+- **File liên quan:** [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)

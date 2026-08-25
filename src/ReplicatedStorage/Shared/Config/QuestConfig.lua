@@ -168,7 +168,7 @@ local QuestConfig = {
 				Id            = "M_PlayTime2h",
 				Description   = "Play for 2 hours",
 				StatKey       = "PlayTime",
-				Requirement   = 7200,
+				Requirement   = 15,
 				RewardType    = "Money",
 				RewardAmount  = 600,
 			},
