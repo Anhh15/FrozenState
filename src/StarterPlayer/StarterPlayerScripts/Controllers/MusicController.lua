@@ -3,18 +3,19 @@
 --
 -- Logic:
 --   1. Đang ở GameLoading:
---      - Có cấu hình AudioConfig.Music.GameLoading → Phát nhạc GameLoading
+--      - Có cấu hình AudioConfig.Music.GameLoading → Phát nhạc GameLoading (Volume.GameLoading)
 --      - Không cấu hình (nil/0)                  → Giữ im lặng hoàn toàn
 --
 --   2. Đã hoàn tất GameLoading:
---      - Phase GameOver                          → Nhạc GameOver
+--      - Phase GameOver                          → Nhạc GameOver (Volume.GameOver)
 --      - Có team/InMatch:
---          - InGame + FrozenState                → Nhạc FrozenState
---          - InGame (bình thường)                → Nhạc InGame
---          - Không InGame                        → Nhạc Lobby
+--          - InGame + FrozenState                → Nhạc FrozenState (Volume.FrozenState)
+--          - InGame (bình thường)                → Nhạc InGame (Volume.InGame)
+--          - Ready (chuẩn bị)                    → Nhạc Ready (Volume.Ready) hoặc fallback Lobby
+--          - Không InGame/Ready                  → Nhạc Lobby (Volume.Lobby)
 --      - Không có team/Spectator:
 --          - Phase GameOver                      → Nhạc GameOver (thông báo kết thúc trận)
---          - Các phase khác                      → Nhạc Lobby
+--          - Các phase khác                      → Nhạc Lobby (Volume.Lobby)
 --
 -- Chuyển nhạc: dừng ngay lập tức, play nhạc mới (không fade)
 
@@ -42,11 +43,12 @@ local _IsGameLoaded   = false
 local _BgmSound = Instance.new("Sound")
 _BgmSound.Name     = "BackgroundMusic"
 _BgmSound.Looped   = true
-_BgmSound.Volume   = (AudioConfig.Music and AudioConfig.Music.DefaultVolume) or 0.5
+_BgmSound.Volume   = (AudioConfig.Music and AudioConfig.Music.DefaultVolume) or 0.3
 _BgmSound.Parent   = SoundService
 
--- SoundId đang phát (để tránh restart nhạc khi không cần)
-local _CurrentSoundId = nil
+-- SoundId và MusicKey đang phát (để tránh restart nhạc khi không cần)
+local _CurrentSoundId  = nil
+local _CurrentMusicKey = nil
 
 local UpdateGameStateEvent
 
@@ -54,17 +56,17 @@ local UpdateGameStateEvent
 -- PRIVATE
 -- =========================================================
 
---- Xác định nhạc cần phát dựa trên trạng thái hiện tại
---- @return number? — SoundId cần phát (hoặc nil nếu giữ im lặng)
+--- Xác định nhạc cần phát và Key định danh dựa trên trạng thái hiện tại
+--- @return number?, string? — SoundId cần phát và MusicKey tương ứng
 local function ResolveMusicId()
 	-- 1. Nếu chưa tải xong màn hình GameLoadingScreen ban đầu
 	if not _IsGameLoaded then
-		return AudioConfig.Music and AudioConfig.Music.GameLoading
+		return AudioConfig.Music and AudioConfig.Music.GameLoading, "GameLoading"
 	end
 
 	-- 2. Đang ở phase GameOver (thông báo kết thúc trận đấu)
 	if _CurrentPhase == "GameOver" then
-		return AudioConfig.Music and AudioConfig.Music.GameOver
+		return AudioConfig.Music and AudioConfig.Music.GameOver, "GameOver"
 	end
 
 	-- 3. Đang trong trận đấu (InMatch)
@@ -72,45 +74,59 @@ local function ResolveMusicId()
 	if IsInMatch then
 		if _CurrentPhase == "InGame" then
 			if _IsFrozenState then
-				return AudioConfig.Music.FrozenState
+				return AudioConfig.Music.FrozenState, "FrozenState"
 			else
-				return AudioConfig.Music.InGame
+				return AudioConfig.Music.InGame, "InGame"
+			end
+		elseif _CurrentPhase == "Ready" then
+			local ReadyMusicId = AudioConfig.Music and AudioConfig.Music.Ready
+			if ReadyMusicId then
+				return ReadyMusicId, "Ready"
+			else
+				return AudioConfig.Music.Lobby, "Lobby"
 			end
 		else
-			return AudioConfig.Music.Lobby
+			return AudioConfig.Music.Lobby, "Lobby"
 		end
 	else
 		-- Spectator / Người chơi ở Sảnh
-		return AudioConfig.Music.Lobby
+		return AudioConfig.Music.Lobby, "Lobby"
 	end
 end
 
---- Áp dụng nhạc nền theo SoundId
---- Nếu nhạc này đang phát thì không làm gì (tránh restart giữa chừng)
+--- Áp dụng nhạc nền theo SoundId và MusicKey
+--- Tự động cập nhật âm lượng cơ sở tương ứng cho từng track
 --- Hỗ trợ SoundId là nil/0 để dừng nhạc an toàn
 --- @param SoundId number?
-local function ApplyMusic(SoundId)
-	if _CurrentSoundId == SoundId then return end
-	_CurrentSoundId = SoundId
-
-	local TargetVolume = (AudioConfig.Music and AudioConfig.Music.DefaultVolume) or 0.5
+--- @param MusicKey string?
+local function ApplyMusic(SoundId, MusicKey)
+	local TargetVolume = AudioConfig.GetMusicVolume(MusicKey)
 
 	if not SoundId or SoundId == 0 then
+		_CurrentSoundId = nil
+		_CurrentMusicKey = nil
 		_BgmSound:Stop()
 		_BgmSound.SoundId = ""
 		return
 	end
 
+	-- Cập nhật âm lượng cho track
+	_BgmSound.Volume = TargetVolume
+
+	-- Nếu cùng SoundId đang phát thì không khởi động lại
+	if _CurrentSoundId == SoundId then return end
+	_CurrentSoundId  = SoundId
+	_CurrentMusicKey = MusicKey
+
 	_BgmSound:Stop()
 	_BgmSound.SoundId = "rbxassetid://" .. tostring(SoundId)
-	_BgmSound.Volume  = TargetVolume
 	_BgmSound:Play()
 end
 
 --- Cập nhật nhạc dựa trên trạng thái mới nhất
 local function UpdateMusic()
-	local SoundId = ResolveMusicId()
-	ApplyMusic(SoundId)
+	local SoundId, MusicKey = ResolveMusicId()
+	ApplyMusic(SoundId, MusicKey)
 end
 
 -- =========================================================

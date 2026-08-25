@@ -10,11 +10,22 @@ local AudioConfig = {
 	-- =========================================================
 	Music = {
 		Lobby          = 1846271108,      -- Nhạc khi ở lobby (không tham gia trận)
+		Ready          = 140401222967075,  -- Nhạc đếm ngược chuẩn bị vào trận (Ready phase)
 		InGame         = 92288659295773,  -- Nhạc khi đang trong trận
 		FrozenState    = 135654634674766, -- Nhạc khi kích hoạt Frozen State (45 giây cuối)
 		GameOver       = 132515049116690, -- Nhạc nền khi kết thúc trận (GameOver phase)
 		GameLoading    = 127066705522583, -- Nhạc nền màn hình tải game (nil = im lặng)
 		DefaultVolume  = 0.3,             -- Âm lượng mặc định cho nhạc nền
+
+		-- Âm lượng cơ sở riêng cho từng bản nhạc (0.0 -> 1.0)
+		Volumes = {
+			Lobby       = 0.3,
+			Ready       = 0.3,
+			InGame      = 0.3,
+			FrozenState = 0.3,
+			GameOver    = 0.6,
+			GameLoading = 0.25,
+		},
 	},
 
 	-- =========================================================
@@ -132,6 +143,17 @@ function AudioConfig.GetThawAudio(BlockSkinId)
 		return Override.ThawAudio
 	end
 	return AudioConfig.Default.ThawAudio
+end
+
+--- Lấy âm lượng cơ sở cho bản nhạc theo MusicKey
+--- @param MusicKey string?
+--- @return number
+function AudioConfig.GetMusicVolume(MusicKey)
+	local Volume = MusicKey and AudioConfig.Music.Volumes and AudioConfig.Music.Volumes[MusicKey]
+	if type(Volume) == "number" then
+		return Volume
+	end
+	return AudioConfig.Music.DefaultVolume or 0.3
 end
 
 --- Thu thập tất cả Audio ID trong config để preload vào RAM

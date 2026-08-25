@@ -8,7 +8,7 @@
 
 ### 1. Tập trung hóa Cấu hình Audio & Animation (Single Source of Truth)
 - **Chi tiết:** Tách bạch hoàn toàn giữa hệ thống âm thanh và hoạt ảnh để tránh lai tạp cấu hình:
-  - `AudioConfig.lua`: Tập trung 100% Sound IDs (BGM Lobby/InGame/FrozenState/GameOver/GameLoading, SFX trận đấu Freeze/Thaw/Swing, GUI SFX Click/Hover/Close, Shop/Chest/Quest/Accolades) và cấu hình âm lượng mặc định `DefaultVolume`.
+  - `AudioConfig.lua`: Tập trung 100% Sound IDs (BGM Lobby/Ready/InGame/FrozenState/GameOver/GameLoading, SFX trận đấu Freeze/Thaw/Swing, GUI SFX Click/Hover/Close, Shop/Chest/Quest/Accolades), bảng âm lượng cơ sở `Music.Volumes` cho từng track và hằng số `DefaultVolume`.
   - `AnimationConfig.lua`: Quản lý Animation IDs (Swing, Pose, Idle), Animation Priority (`Action`, `Movement`), và thời lượng cửa sổ quét va chạm (`HitStartTime`, `HitEndTime`) cho từng skin vũ khí.
 - **File liên quan:** [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua)
 
@@ -30,11 +30,11 @@
 - **Chi tiết:** Loại bỏ phương thức lỗi thời `Humanoid:LoadAnimation()` (deprecated). Toàn bộ hoạt ảnh được nạp thông qua `Animator:LoadAnimation()` trên `Humanoid.Animator` hoặc `AnimationController.Animator`, kết hợp cache `AnimationTrack` để tái sử dụng và giải phóng khi nhân vật respawn.
 - **File liên quan:** [AnimationHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
 
-### 6. Điều phối Nhạc nền Đa trạng thái Theo Vòng đời Trận & Tải Game (State-Driven BGM)
-- **Chi tiết:** `MusicController` điều phối BGM duy nhất theo máy trạng thái: $\text{GameLoading} \rightarrow \text{Lobby} \rightarrow \text{InGame/FrozenState} \rightarrow \text{GameOver}$.
-  - Hỗ trợ linh hoạt trạng thái `GameLoading`: phát BGM riêng nếu có ID, hoặc giữ im lặng an toàn (`_BgmSound:Stop()`) nếu là `nil`/`0`.
-  - Tự động chuyển BGM `GameOver` khi hết trận và quay lại `Lobby` khi về Sảnh.
-  - Hỗ trợ dừng nhạc phòng thủ khi Sound ID không hợp lệ, đồng bộ âm lượng từ `AudioConfig.Music.DefaultVolume`.
+### 6. Điều phối Nhạc nền Đa trạng thái & Cân Bằng Âm Lượng Từng Track (State-Driven BGM & Track Balancing)
+- **Chi tiết:** `MusicController` điều phối BGM duy nhất theo máy trạng thái: $\text{GameLoading} \rightarrow \text{Lobby} \rightarrow \text{Ready} \rightarrow \text{InGame/FrozenState} \rightarrow \text{GameOver}$.
+  - **Per-Track Volume:** Cân bằng âm lượng gốc giữa các bản nhạc qua `AudioConfig.Music.Volumes` và `AudioConfig.GetMusicVolume(MusicKey)`.
+  - **Linh hoạt Loading & Ready:** Tự động giữ im lặng hoặc phát BGM riêng khi tải game; phát BGM `Ready` khi đếm ngược chuẩn bị vào trận.
+  - **Phòng thủ âm thanh:** Hỗ trợ dừng nhạc an toàn (`:Stop()`) khi Sound ID là `nil`/`0`.
 - **File liên quan:** [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
 
 ---
@@ -70,3 +70,9 @@
 - **Nguyên nhân:** Khởi tạo phát nhạc tĩnh không ràng buộc với trạng thái tải dữ liệu thực tế của Client.
 - **Giải pháp:** Chuyển sang cơ chế quan sát trạng thái `PlayerStateHelper.ObserveGameLoaded(LocalPlayer)`. Giữ im lặng hoặc phát BGM tải game riêng trong lúc nạp, chỉ kích hoạt nhạc `Lobby` khi màn hình tải hoàn tất (mở rèm hoặc bấm Skip).
 - **File liên quan:** [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+
+### 6. Lệch Mức Âm Lượng Giữa Các Bản Nhạc Do Thiếu Cấu Hình Per-Track Base Volume
+- **Vấn đề:** Các bản audio tải lên Roblox có mức độ to gốc (loudness dBFS) không đồng đều. Dùng chung một hằng số volume làm nhạc ở một số phase (như Ready/InGame) bị quá to trong khi Lobby/GameLoading lại quá nhỏ.
+- **Nguyên nhân:** Thiếu lớp trừu tượng cấu hình âm lượng cơ sở theo từng track trước khi đưa ra Sound instance.
+- **Giải pháp:** Xây dựng bảng `Music.Volumes` trong `AudioConfig.lua` và hàm `AudioConfig.GetMusicVolume(MusicKey)`. `MusicController` truyền kèm `MusicKey` khi cập nhật nhạc, tự động điều chỉnh `_BgmSound.Volume` tương ứng với từng track.
+- **File liên quan:** [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua)
