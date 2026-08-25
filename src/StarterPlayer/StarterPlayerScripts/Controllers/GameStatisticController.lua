@@ -267,8 +267,7 @@ function GameStatisticController:Init()
 			-- FFA: hiển thị tên người thắng
 			AnnounceText.Text = Data.WinPlayer.Name .. " WINS!"
 		else
-			-- Edge case: hòa (FFA dừa 0 người Normal)
-			AnnounceText.Text = "DRAW!"
+			AnnounceText.Text = "MATCH ENDED"
 		end
 
 		FillTopPlayers(Data.TopPlayers or {})

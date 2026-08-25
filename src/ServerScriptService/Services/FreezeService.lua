@@ -184,29 +184,6 @@ local function BroadcastSpectateList()
 	UpdateSpectateListEvent:FireAllClients(NormalPlayers)
 end
 
---- Kiểm tra điều kiện thắng trận sau mỗi freeze/eliminate
---- Phân nhánh theo WinCondition của mode hiện tại
-local function CheckWinCondition(FrozenTeam)
-	local WinCondition = GameModeHelper.GetWinCondition(SessionService.GetCurrentModeKey())
-
-	if WinCondition == "TeamBased" then
-		if FrozenTeam and SessionService.IsTeamWiped(FrozenTeam) then
-			local WinTeam = (FrozenTeam == "Team1") and "Team2" or "Team1"
-			SessionService.MatchEndSignal:Fire({ WinTeam = WinTeam })
-		end
-
-	elseif WinCondition == "FFA" then
-		local NormalPlayers = SessionService.GetAllNormalPlayers()
-		if #NormalPlayers == 1 then
-			-- Chỉ còn 1 người Normal → đó là người thắng
-			SessionService.MatchEndSignal:Fire({ WinPlayer = NormalPlayers[1] })
-		elseif #NormalPlayers == 0 then
-			-- Edge case: 2 người cuối cùng bị loại đồng thời → hòa, WinPlayer = nil
-			SessionService.MatchEndSignal:Fire({ WinPlayer = nil })
-		end
-	end
-end
-
 -- =========================================================
 -- PUBLIC API
 -- =========================================================
@@ -297,7 +274,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	print(("[FreezeService] %s đã đóng băng %s"):format(Attacker.Name, Victim.Name))
 
 	-- Kiểm tra điều kiện thắng
-	CheckWinCondition(SessionService.GetTeam(Victim))
+	SessionService.CheckWinCondition()
 
 	-- Cập nhật danh sách Spectate (1 người bị loại khỏi Normal)
 	BroadcastSpectateList()
@@ -426,8 +403,6 @@ function FreezeService.EliminatePlayer(Player)
 	if not SessionService.IsMatchActive() then return end
 	if SessionService.GetState(Player) == "Dead" then return end
 
-	local OldTeam = SessionService.GetTeam(Player)
-
 	-- Unanchor HRP nếu player đang bị frozen
 	local Char = Player.Character
 	if Char then
@@ -453,8 +428,8 @@ function FreezeService.EliminatePlayer(Player)
 	BroadcastPlayerState(Player)
 	BroadcastSpectateList()
 
-	-- Kiểm tra điều kiện thắng trận (OldTeam cho TeamBased, nil cho FFA)
-	CheckWinCondition(OldTeam)
+	-- Kiểm tra điều kiện thắng trận
+	SessionService.CheckWinCondition()
 
 	print(("[FreezeService] 💀 %s đã bị loại khỏi trận và chuyển sang Spectator."):format(Player.Name))
 end

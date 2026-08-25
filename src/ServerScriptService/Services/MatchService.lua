@@ -122,87 +122,48 @@ end
 
 --- TeamBased: so sánh số người Normal còn lại của từng team
 local function ResolveWinnerTeamBased()
-	local function CountAlive(TeamName)
-		local Count = 0
-		for _, P in ipairs(SessionService.GetTeamPlayers(TeamName)) do
-			if SessionService.GetState(P) == "Normal" then
-				Count = Count + 1
-			end
-		end
-		return Count
-	end
-
 	local Team1Players = SessionService.GetTeamPlayers("Team1")
 	local Team2Players = SessionService.GetTeamPlayers("Team2")
-	local Alive1 = CountAlive("Team1")
-	local Alive2 = CountAlive("Team2")
 
-	-- Bù số lượng nếu đội nhỏ hơn
-	if #Team1Players < #Team2Players then
+	-- Xử lý đội rỗng (nếu 1 team out sạch server)
+	if #Team1Players == 0 and #Team2Players > 0 then return { WinTeam = "Team2" } end
+	if #Team2Players == 0 and #Team1Players > 0 then return { WinTeam = "Team1" } end
+
+	local Alive1 = SessionService.GetAliveCount("Team1")
+	local Alive2 = SessionService.GetAliveCount("Team2")
+
+	-- Chỉ bù 1 người sống ảo nếu đội ít người hơn thực sự còn ít nhất 1 người sống
+	if #Team1Players < #Team2Players and Alive1 > 0 then
 		Alive1 = Alive1 + 1
-	elseif #Team2Players < #Team1Players then
+	elseif #Team2Players < #Team1Players and Alive2 > 0 then
 		Alive2 = Alive2 + 1
 	end
 
 	if Alive1 > Alive2 then return { WinTeam = "Team1" } end
 	if Alive2 > Alive1 then return { WinTeam = "Team2" } end
 
-	-- Hòa: so sánh tổng Freeze + Thaw
-	local function TotalScore(TeamName)
-		local Score = 0
-		for _, P in ipairs(SessionService.GetTeamPlayers(TeamName)) do
-			local Stats = SessionService.GetStats(P) or {}
-			Score = Score + (Stats.Freezes or 0) + (Stats.Thaws or 0)
-		end
-		return Score
-	end
-
-	local Score1 = TotalScore("Team1")
-	local Score2 = TotalScore("Team2")
+	-- Hòa số người sống: so sánh tổng Freeze + Thaw
+	local Score1 = SessionService.GetTeamTotalScore("Team1")
+	local Score2 = SessionService.GetTeamTotalScore("Team2")
 	if Score1 > Score2 then return { WinTeam = "Team1" } end
 	if Score2 > Score1 then return { WinTeam = "Team2" } end
 
-	-- Vẫn hòa: random
-	return { WinTeam = math.random() < 0.5 and "Team1" or "Team2" }
+	-- Vẫn hòa: random 50/50
+	return { WinTeam = (math.random() < 0.5) and "Team1" or "Team2" }
 end
 
---- FFA: so sánh Freeze count của tất cả players khi hết giờ
+--- FFA: so sánh Freeze count của các player sống sót khi hết giờ, nếu không còn ai sống thì so toàn bộ
 local function ResolveWinnerFFA()
-	local function GetFreezeCount(P)
-		local Stats = SessionService.GetStats(P) or {}
-		return Stats.Freezes or 0
+	local NormalPlayers = SessionService.GetAllNormalPlayers()
+	local WinPlayer
+	if #NormalPlayers > 0 then
+		-- Ưu tiên người còn Normal
+		WinPlayer = SessionService.GetTopScorerFFA(NormalPlayers)
+	else
+		-- Không còn ai Normal: so toàn bộ participants
+		WinPlayer = SessionService.GetTopScorerFFA()
 	end
-
-	-- Lấy tất cả participants (có stats = đã từng trong trận)
-	local Participants = {}
-	for _, P in ipairs(Players:GetPlayers()) do
-		if SessionService.GetStats(P) then
-			table.insert(Participants, P)
-		end
-	end
-
-	if #Participants == 0 then return { WinPlayer = nil } end
-
-	-- Sắp xếp theo Freeze count giảm dần
-	table.sort(Participants, function(A, B)
-		return GetFreezeCount(A) > GetFreezeCount(B)
-	end)
-
-	local TopScore = GetFreezeCount(Participants[1])
-
-	-- Gom những người có điểm bằng nhau ở vị trí đầu
-	local Tied = {}
-	for _, P in ipairs(Participants) do
-		if GetFreezeCount(P) == TopScore then
-			table.insert(Tied, P)
-		end
-	end
-
-	-- Chỉ 1 người điểm cao nhất
-	if #Tied == 1 then return { WinPlayer = Tied[1] } end
-
-	-- Nhiều người cùng điểm: random
-	return { WinPlayer = Tied[math.random(1, #Tied)] }
+	return { WinPlayer = WinPlayer }
 end
 
 --- Xác định kết quả khi hết giờ (không ai kết thúc sớm)
@@ -225,12 +186,8 @@ local function GetTopPlayers(Result, MaxCount)
 	local Pool = {}
 
 	if WinCondition == "FFA" then
-		-- FFA: tất cả participants
-		for _, P in ipairs(Players:GetPlayers()) do
-			if SessionService.GetStats(P) then
-				table.insert(Pool, P)
-			end
-		end
+		-- FFA: chỉ các participants thực sự trong ván
+		Pool = SessionService.GetParticipants()
 		table.sort(Pool, function(A, B)
 			local SA = SessionService.GetStats(A) or {}
 			local SB = SessionService.GetStats(B) or {}
@@ -307,10 +264,10 @@ local function DistributeRewards(Result)
 	elseif WinCondition == "FFA" then
 		local WinPlayer = Result.WinPlayer
 
-		-- LastStanding: chỉ trao khi còn đúng 1 người Normal (thắng do last standing)
+		-- LastStanding: chỉ trao khi còn đúng 1 người Normal và người đó là người thắng
 		if GameModeHelper.AllowLastStanding(ModeKey) and WinPlayer then
 			local NormalCount = #SessionService.GetAllNormalPlayers()
-			if NormalCount <= 1 then
+			if NormalCount == 1 and SessionService.GetState(WinPlayer) == "Normal" then
 				SessionService.SetStat(WinPlayer, "LastStanding", true)
 				DataService.IncrementStat(WinPlayer, "TotalLastStanding")
 				local LastReward = RewardHelper.GetLastStandingReward()
@@ -319,10 +276,8 @@ local function DistributeRewards(Result)
 			end
 		end
 
-		-- Thưởng Win / Lose cho tất cả participants
-		for _, Player in ipairs(Players:GetPlayers()) do
-			if not SessionService.GetStats(Player) then continue end
-
+		-- Thưởng Win / Lose cho tất cả participants thực sự của ván đấu
+		for _, Player in ipairs(SessionService.GetParticipants()) do
 			local IsWinner = (Player == WinPlayer)
 			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
@@ -343,7 +298,9 @@ local function PrepareGameOverPayloads(Result)
 	local WinCondition = GameModeHelper.GetWinCondition(ModeKey)
 	local Payloads = {}
 
-	for _, Player in ipairs(Players:GetPlayers()) do
+	local TargetPlayers = (WinCondition == "FFA") and SessionService.GetParticipants() or Players:GetPlayers()
+
+	for _, Player in ipairs(TargetPlayers) do
 		local Stats = SessionService.GetStats(Player) or {}
 
 		local Won
@@ -351,6 +308,7 @@ local function PrepareGameOverPayloads(Result)
 			Won = (Player == Result.WinPlayer)
 		else
 			local PlayerTeam = SessionService.GetTeam(Player)
+			if not PlayerTeam then continue end
 			Won = (PlayerTeam == Result.WinTeam)
 		end
 
@@ -434,8 +392,9 @@ local function RunSetup()
 	-- Chọn mode cho vòng này
 	local ModeKey, Mode = PickMode()
 
-	-- Set Attribute "InMatch" để client biết player đang trong trận (dùng thay Team attribute ở FFA)
+	-- Set Attribute "InMatch" và Participant để nhận diện người chơi thực sự trong ván
 	for _, Player in ipairs(ActivePlayers) do
+		SessionService.SetParticipant(Player, true)
 		PlayerStateHelper.SetInMatch(Player, true)
 	end
 
