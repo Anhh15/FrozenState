@@ -42,11 +42,12 @@ local SetGameModeEvent
 -- PRIVATE: Helpers
 -- =========================================================
 
-local function BroadcastGameState(Phase, TimeRemaining, IsFrozenState)
+local function BroadcastGameState(Phase, TimeRemaining, IsFrozenState, WinnerInfo)
 	UpdateGameStateEvent:FireAllClients({
 		Phase         = Phase,
 		TimeRemaining = TimeRemaining,
 		IsFrozenState = IsFrozenState or false,
+		WinnerInfo    = WinnerInfo,
 	})
 end
 
@@ -576,9 +577,18 @@ local function RunGameOver(Result)
 	-- Thaw tất cả người bị đóng băng
 	FreezeService.ThawAll()
 
+	-- Chuẩn bị WinnerInfo gửi sớm cho client hiển thị GameOverAnnouncement
+	local WinnerInfo = {
+		WinTeam   = Result and Result.WinTeam,
+		WinPlayer = Result and Result.WinPlayer and {
+			Name   = Result.WinPlayer.DisplayName,
+			UserId = Result.WinPlayer.UserId,
+		} or nil,
+	}
+
 	-- Đếm ngược GameOverDuration (người chơi ở trong map xem kết quả ván đấu)
 	for t = Duration, 0, -1 do
-		BroadcastGameState("GameOver", t, false)
+		BroadcastGameState("GameOver", t, false, WinnerInfo)
 		if t == 0 then break end
 		task.wait(1)
 	end

@@ -1,6 +1,6 @@
 # GuiControllers
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống điều phối giao diện sảnh, menu và chuyển cảnh (MenuController, NavigationController, GameStateController, GameLoadingScreen, RoundLoadingScreen, ModeAnnouncement và các Menu con).
-> Cập nhật lần cuối: 21-08-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống điều phối giao diện sảnh, menu và chuyển cảnh (MenuController, NavigationController, GameStateController, GameLoadingScreen, RoundLoadingScreen, ModeAnnouncement, GameOverAnnouncement và các Menu con).
+> Cập nhật lần cuối: 26-08-2026
 
 ---
 
@@ -52,6 +52,15 @@
     với $\text{TimeProgress} = \min\left(1.0, \frac{\text{os.clock}() - \text{\_loadStartTime}}{\text{MinLoadingDuration}}\right)$. Giữ thời gian tối thiểu ($2.5\text{s}$) khi cache tức thì nhưng không làm nghẽn khi tải chậm.
   - *Pha kết thúc (Curtain Split)*: Chia đôi 2 container độc lập (`UpperContainer` trượt lên $-0.65$, `LowerContainer` trượt xuống $+0.65$) mở màn hình sảnh.
 - **File liên quan:** [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+
+### 8. Điều Phối Thông Báo Kết Thúc Trận Đấu (GameOverAnnouncementController & Symmetric Animation Sequence)
+- **Chi tiết:** Quản lý Frame `Special/GameOverAnnouncement` thông báo kết quả ván đấu ngay tại giây thứ 0 của phase `GameOver` (khi người chơi còn trong map thi đấu):
+  - *Truyền dữ liệu sớm:* `MatchService` đóng gói `WinnerInfo` (`WinTeam` / `WinPlayer`) gửi kèm trong `UpdateGameStateEvent` tại giây 0 của `GameOver`.
+  - *Chuỗi hoạt ảnh đối xứng (Symmetric Sequence):*
+    - **Pha Mở:** `Background` mở rộng ngang từ tâm sang 2 bên (`Split`, $Size.X: 0 \to \text{BaseWidth}$) $\rightarrow$ `AnnouncementText` bay vút (`Fly In`, $Y: 2.0 \to \text{BasePos}$) vào giữa nền.
+    - **Pha Đóng:** `AnnouncementText` bay vút lên đỉnh màn hình (`Fly Out`, $Y \to -1.0$) $\rightarrow$ Ngay sau đó `Background` co ngang về tâm ($Size.X \to 0$).
+  - *Dynamic RichText & Safe UTF-8 Truncate:* Format màu tương đối (Xanh nếu thắng, Đỏ nếu thua, Trắng nếu Spectator, Vàng Kim `#FFD700` cho FFA). Sử dụng `GuiHelper.TruncateText` cắt chuỗi an toàn bằng `utf8` ($\le 15$ ký tự) *trước khi* đưa vào thẻ `<font>` để chống lỗi hỏng thẻ XML.
+- **File liên quan:** [GameOverAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameOverAnnouncementController.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
 ---
 

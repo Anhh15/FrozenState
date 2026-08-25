@@ -675,4 +675,58 @@ function GuiHelper.GetGameLoadingAnimConfig()
 	}
 end
 
+--- Lấy cấu hình Animation GameOverAnnouncement (kết hợp Default và Overrides)
+--- @return table
+function GuiHelper.GetGameOverAnnouncementAnimConfig()
+	local AnimConfig = GuiConfig.Animations and GuiConfig.Animations.GameOverAnnouncement
+	local DefaultCfg = (AnimConfig and AnimConfig.Default) or {}
+
+	return {
+		DisplayDuration       = DefaultCfg.DisplayDuration       or 3.2,
+		SplitDuration         = DefaultCfg.SplitDuration         or 0.4,
+		FlyInDuration         = DefaultCfg.FlyInDuration         or 0.35,
+		FlyOutDuration        = DefaultCfg.FlyOutDuration        or 0.25,
+		CloseDuration         = DefaultCfg.CloseDuration         or 0.3,
+		FlyInStartPosYScale   = DefaultCfg.FlyInStartPosYScale   or 2.0,
+		FlyOutTargetPosYScale = DefaultCfg.FlyOutTargetPosYScale or -1.0,
+		SplitEasingStyle      = DefaultCfg.SplitEasingStyle      or Enum.EasingStyle.Back,
+		SplitEasingDir        = DefaultCfg.SplitEasingDir        or Enum.EasingDirection.Out,
+		FlyInEasingStyle      = DefaultCfg.FlyInEasingStyle      or Enum.EasingStyle.Back,
+		FlyInEasingDir        = DefaultCfg.FlyInEasingDir        or Enum.EasingDirection.Out,
+		FlyOutEasingStyle     = DefaultCfg.FlyOutEasingStyle     or Enum.EasingStyle.Quad,
+		FlyOutEasingDir       = DefaultCfg.FlyOutEasingDir       or Enum.EasingDirection.In,
+		CloseEasingStyle      = DefaultCfg.CloseEasingStyle      or Enum.EasingStyle.Quad,
+		CloseEasingDir        = DefaultCfg.CloseEasingDir        or Enum.EasingDirection.In,
+	}
+end
+
+--- Cắt ngắn chuỗi văn bản nếu vượt quá MaxLength (an toàn với UTF-8), thêm dấu "..."
+--- @param Text string
+--- @param MaxLength number?
+--- @return string
+function GuiHelper.TruncateText(Text, MaxLength)
+	if not Text or type(Text) ~= "string" then return "" end
+	local Limit = MaxLength or (GuiConfig.GameOver and GuiConfig.GameOver.MaxNameLength) or 15
+
+	local CharCount = utf8.len(Text)
+	if not CharCount then
+		-- Fallback nếu chuỗi không phải UTF-8 hợp lệ
+		if #Text > Limit then
+			return string.sub(Text, 1, Limit) .. "..."
+		end
+		return Text
+	end
+
+	if CharCount > Limit then
+		local ByteEnd = utf8.offset(Text, Limit + 1)
+		if ByteEnd then
+			return string.sub(Text, 1, ByteEnd - 1) .. "..."
+		else
+			return string.sub(Text, 1, Limit) .. "..."
+		end
+	end
+
+	return Text
+end
+
 return GuiHelper

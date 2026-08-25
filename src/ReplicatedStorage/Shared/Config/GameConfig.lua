@@ -8,7 +8,7 @@ local GameConfig = {
 	-- THỜI GIAN CÁC PHASE (đơn vị: giây)
 	-- =========================================================
 	Phase = {
-		IntermissionDuration = 15,   -- Thời gian nghỉ giữa các trận
+		IntermissionDuration = 7,   -- Thời gian nghỉ giữa các trận
 		ReadyDuration        = 3,   -- Đếm ngược trước khi bắt đầu
 		GameOverDuration     = 6,   -- Màn hình kết thúc
 		GameOverRevealDelay  = 2,   -- Delay trước khi hiện win/lose trong GameOver
@@ -20,7 +20,7 @@ local GameConfig = {
 	Match = {
 		MinPlayers           = 2,   -- Số người tối thiểu để bắt đầu trận
 		MaxPlayers           = 16,  -- Số người tối đa mỗi trận
-		SpecialRoundInterval = 5,   -- Cứ mỗi N vòng sẽ có 1 Special round (ví dụ: 3 = 2 Normal → 1 Special)
+		SpecialRoundInterval = 3,   -- Cứ mỗi N vòng sẽ có 1 Special round (ví dụ: 3 = 2 Normal → 1 Special)
 	},
 
 	-- =========================================================

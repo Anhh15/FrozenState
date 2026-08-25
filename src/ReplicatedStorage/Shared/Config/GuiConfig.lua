@@ -70,9 +70,18 @@ local GuiConfig = {
 	-- TÊN CÁC FRAME CHÍNH TRONG SCREENGUI SPECIAL
 	-- =========================================================
 	SpecialFrames = {
-		RoundLoadingScreen = "RoundLoadingScreen",
-		ItemReward         = "ItemReward",
-		ModeAnnouncement   = "ModeAnnouncement",
+		RoundLoadingScreen   = "RoundLoadingScreen",
+		ItemReward           = "ItemReward",
+		ModeAnnouncement     = "ModeAnnouncement",
+		GameOverAnnouncement = "GameOverAnnouncement",
+	},
+
+	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG FRAME GAMEOVERANNOUNCEMENT
+	-- =========================================================
+	GameOverAnnouncementElements = {
+		Background       = "Background",
+		AnnouncementText = "AnnouncementText",
 	},
 
 	-- =========================================================
@@ -118,6 +127,15 @@ local GuiConfig = {
 		EnemyColor        = Color3.fromHex("FF5151"),
 		InactiveColor     = Color3.fromHex("868686"), -- Màu xám khi người chơi Frozen hoặc Dead
 		DefaultImageColor = Color3.fromRGB(255, 255, 255),
+	},
+
+	-- =========================================================
+	-- CẤU HÌNH GAMEOVER ANNOUNCEMENT (MÀU SẮC & TEXT)
+	-- =========================================================
+	GameOver = {
+		FFAWinnerColor = Color3.fromHex("FFD700"),     -- Màu Vàng Kim vinh danh người chiến thắng FFA
+		SpectatorColor = Color3.fromRGB(255, 255, 255), -- Màu Trắng sáng cho khán giả không thuộc đội nào
+		MaxNameLength  = 15,                           -- Độ dài tối đa của DisplayName trước khi cắt thêm "..."
 	},
 
 	-- =========================================================
@@ -330,6 +348,28 @@ local GuiConfig = {
 				MinLoadingDuration  = 10,  -- Thời gian nạp tối thiểu (giây) để hiển thị đầy đủ hoạt ảnh
 				SafetyTimeout       = 10,   -- Timeout tối đa (giây) tự động hoàn tất nếu CDN rớt mạng
 				ProgressLerpSpeed   = 8,    -- Tốc độ lerp mượt mà của VisualProgress
+			},
+			Overrides = {},
+		},
+
+		-- 9. Cấu hình thông báo kết thúc trận đấu (Special/GameOverAnnouncement)
+		GameOverAnnouncement = {
+			Default = {
+				DisplayDuration       = 3.2,   -- Thời gian giữ hiển thị thông báo trước khi đóng (giây)
+				SplitDuration         = 0.6,   -- Thời gian mở rộng ngang Background từ tâm sang 2 bên (giây)
+				FlyInDuration         = 0.35,  -- Thời gian AnnouncementText bay từ dưới lên vị trí mặc định (giây)
+				FlyOutDuration        = 0.25,  -- Thời gian AnnouncementText bay ra khỏi màn hình trước khi đóng nền (giây)
+				CloseDuration         = 0.3,   -- Thời gian thu nhỏ Background khi kết thúc (giây)
+				FlyInStartPosYScale   = 2.0,   -- Vị trí Y ban đầu của AnnouncementText (dưới đáy màn hình)
+				FlyOutTargetPosYScale = -1.0,  -- Vị trí Y đích khi AnnouncementText bay ra ngoài (trên đỉnh màn hình)
+				SplitEasingStyle      = Enum.EasingStyle.Back,
+				SplitEasingDir        = Enum.EasingDirection.Out,
+				FlyInEasingStyle      = Enum.EasingStyle.Back,
+				FlyInEasingDir        = Enum.EasingDirection.Out,
+				FlyOutEasingStyle     = Enum.EasingStyle.Quad,
+				FlyOutEasingDir       = Enum.EasingDirection.In,
+				CloseEasingStyle      = Enum.EasingStyle.Quad,
+				CloseEasingDir        = Enum.EasingDirection.In,
 			},
 			Overrides = {},
 		},
