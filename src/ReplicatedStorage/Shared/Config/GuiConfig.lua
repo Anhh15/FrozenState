@@ -46,6 +46,21 @@ local GuiConfig = {
 		Buttons          = "Buttons",          -- Frame chứa các nút in-game
 		SpectateButton   = "SpectateButton",   -- Nút bật Spectate (chỉ hiện khi bị Frozen)
 		ScoreBoardButton = "ScoreBoardButton", -- Nút mở bảng điểm
+		Hotbar           = "Hotbar",           -- Frame chứa thanh phím tắt vũ khí
+	},
+
+	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG FRAME HOTBAR CỦA INGAMEGUI
+	-- =========================================================
+	HotbarElements = {
+		Hotbar          = "Hotbar",
+		Templates       = "Templates",
+		ItemSlot        = "ItemSlot",
+		ItemViewport    = "ItemViewport",
+		CooldownCurtain = "CooldownCurtain",
+		CooldownText    = "CooldownText",
+		IndexText       = "IndexText",
+		UIScale         = "UIScale",
 	},
 
 	-- =========================================================
@@ -370,6 +385,22 @@ local GuiConfig = {
 				FlyOutEasingDir       = Enum.EasingDirection.In,
 				CloseEasingStyle      = Enum.EasingStyle.Quad,
 				CloseEasingDir        = Enum.EasingDirection.In,
+			},
+			Overrides = {},
+		},
+
+		-- 10. Cấu hình Hotbar (InGameGui/Hotbar)
+		Hotbar = {
+			Default = {
+				InactiveScale           = 1.0,
+				ActiveScale             = 1.3,
+				ScaleDuration           = 0.15,
+				ScaleEasingStyle        = Enum.EasingStyle.Back,
+				ScaleEasingDir          = Enum.EasingDirection.Out,
+				InactiveBackgroundTrans = 0.8,
+				ActiveBackgroundTrans   = 0.4,
+				CooldownEasingStyle     = Enum.EasingStyle.Linear,
+				CooldownEasingDir       = Enum.EasingDirection.InOut,
 			},
 			Overrides = {},
 		},

@@ -729,4 +729,25 @@ function GuiHelper.TruncateText(Text, MaxLength)
 	return Text
 end
 
+--- Lấy cấu hình hoạt ảnh cho Hotbar (kết hợp Default và Overrides)
+--- @param SlotName string? Tùy chọn định danh slot (vd: "Icicle", "Slot1")
+--- @return table
+function GuiHelper.GetHotbarConfig(SlotName)
+	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Hotbar
+	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
+	local OverrideCfg = (SlotName and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[SlotName]) or {}
+
+	return {
+		InactiveScale           = OverrideCfg.InactiveScale           or DefaultCfg.InactiveScale           or 1.0,
+		ActiveScale             = OverrideCfg.ActiveScale             or DefaultCfg.ActiveScale             or 1.3,
+		ScaleDuration           = OverrideCfg.ScaleDuration           or DefaultCfg.ScaleDuration           or 0.15,
+		ScaleEasingStyle        = OverrideCfg.ScaleEasingStyle        or DefaultCfg.ScaleEasingStyle        or Enum.EasingStyle.Back,
+		ScaleEasingDir          = OverrideCfg.ScaleEasingDir          or DefaultCfg.ScaleEasingDir          or Enum.EasingDirection.Out,
+		InactiveBackgroundTrans = OverrideCfg.InactiveBackgroundTrans or DefaultCfg.InactiveBackgroundTrans or 0.8,
+		ActiveBackgroundTrans   = OverrideCfg.ActiveBackgroundTrans   or DefaultCfg.ActiveBackgroundTrans   or 0.4,
+		CooldownEasingStyle     = OverrideCfg.CooldownEasingStyle     or DefaultCfg.CooldownEasingStyle     or Enum.EasingStyle.Linear,
+		CooldownEasingDir       = OverrideCfg.CooldownEasingDir       or DefaultCfg.CooldownEasingDir       or Enum.EasingDirection.InOut,
+	}
+end
+
 return GuiHelper

@@ -64,6 +64,19 @@ local function GetNavigationController()
 	return _navigationController
 end
 
+-- Lazy-require HotbarController để quản lý hiển thị Hotbar khi chuyển phase
+local _hotbarController = nil
+local function GetHotbarController()
+	if not _hotbarController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("HotbarController")
+		if Module then
+			_hotbarController = require(Module)
+		end
+	end
+	return _hotbarController
+end
+
 -- =========================================================
 -- CONFIG
 -- =========================================================
@@ -169,6 +182,12 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	end
 	if ScoreBoardButton then
 		ScoreBoardButton.Visible = ShowGameplayHud and IsInMatch and (_scoreboardType ~= "Disabled")
+	end
+
+	-- Đồng bộ hiển thị Custom Hotbar
+	local HotbarCtrl = GetHotbarController()
+	if HotbarCtrl and HotbarCtrl.SetVisible then
+		HotbarCtrl.SetVisible(ShowGameplayHud and IsInMatch)
 	end
 end
 

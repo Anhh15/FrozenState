@@ -1,6 +1,6 @@
 # InGameExperience
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về trải nghiệm giao diện thi đấu trong trận (PlayerStatus, ScoreBoard, Accolades và Phân phối HUD theo GameMode).
-> Cập nhật lần cuối: 22-08-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về trải nghiệm giao diện thi đấu trong trận (PlayerStatus, ScoreBoard, Accolades, Custom Hotbar và Phân phối HUD theo GameMode).
+> Cập nhật lần cuối: 28-08-2026
 
 ---
 
@@ -43,6 +43,17 @@
   - `ButtonsFrame` (`ScoreBoardButton`, `SpectateButton`) và `ScoreBoard`: Ràng buộc chặt chẽ theo `IsInMatch(LocalPlayer) == true`.
   - `ScoreBoardController` đăng ký `ObserveMatchState` để tự động đóng ScoreBoard ngay khi người chơi bị loại (`State == "Dead"`, `IsInMatch == false`) và chặn toàn bộ phím tắt (`Ctrl`, `R1`, Mobile button) khi không còn trong trận.
 - **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+
+### 8. Kiến trúc Custom Hotbar & Vô Hiệu Hóa CoreGui Backpack Mặc Định
+- **Chi tiết:** Tắt hoàn toàn CoreGui Backpack của Roblox bằng pcall retry (`StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)`) để ngăn chặn việc người chơi mở kho đồ mặc định kéo thả/vứt vũ khí làm vỡ logic gameplay. Xây dựng controller độc lập `HotbarController` quản lý thanh hotbar trong `InGameGui`.
+- **Quản lý Vòng đời & Tương tác:** Tự động clone `ItemSlot` từ folder `Templates` cục bộ cho từng Tool trong Backpack/Character. Hỗ trợ phím tắt 1..9 (`UserInputService`) và Click/Touch để Toggle Equip/Unequip qua `Humanoid:EquipTool()` / `Humanoid:UnequipTools()`. Khi người chơi bị `Frozen` hoặc `Dead`, hệ thống khóa toàn bộ tương tác và tự động thu hồi vũ khí trên tay.
+- **Render Model 3D:** Sử dụng `ViewportManager.RenderItem()` để tự động render model 3D vào `ItemViewport` của từng slot, đồng bộ theo skin trang bị hiện tại.
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua)
+
+### 9. Phân Tách Thuộc Tính Thẩm Mỹ GUI (Studio First) và Đồng Bộ Hoạt Ảnh Cooldown
+- **Chi tiết:** Tuân thủ nguyên lý tách biệt trách nhiệm: 100% thuộc tính thẩm mỹ tĩnh (màu nền `BackgroundColor3`, màu rèm `CooldownCurtain`, viền `UIStroke`, bo góc `UICorner`, font chữ) được định hình trực tiếp trong Roblox Studio trên template `ItemSlot`. Code và `GuiConfig` chỉ quản lý tham số hoạt ảnh động (`InactiveScale = 1.0`, `ActiveScale = 1.3`, `ScaleDuration = 0.15s`, `InactiveBackgroundTrans = 0.8`, `ActiveBackgroundTrans = 0.4`).
+- **Cơ chế Cooldown Decoupled:** `IcicleScript` gán thuộc tính `IsOnCooldown` và `CooldownEndTime` lên Tool khi kích hoạt. `HotbarController` lắng nghe reactive qua `GetAttributeChangedSignal("IsOnCooldown")` để kích hoạt rèm `CooldownCurtain` neo ở đáy (`Size.Y.Scale = 1.0 -> 0.0`) kèm chữ đếm ngược số giây `CooldownText`.
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
 ---
 

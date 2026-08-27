@@ -194,10 +194,18 @@ end
 -- TOOL ACTIVATED
 -- =========================================================
 
+-- Khởi tạo attribute cooldown ban đầu
+Tool:SetAttribute("CooldownDuration", COOLDOWN)
+Tool:SetAttribute("IsOnCooldown", false)
+
 Tool.Activated:Connect(function()
 	-- Cooldown check
 	if _IsOnCooldown then return end
 	_IsOnCooldown = true
+
+	-- Gán attributes để UI Hotbar bắt tín hiệu đồng bộ hoạt ảnh Cooldown
+	Tool:SetAttribute("CooldownEndTime", os.clock() + COOLDOWN)
+	Tool:SetAttribute("IsOnCooldown", true)
 
 	local IcicleSkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player)
 
@@ -230,4 +238,5 @@ Tool.Activated:Connect(function()
 	-- Hồi chiêu
 	task.wait(COOLDOWN)
 	_IsOnCooldown = false
+	Tool:SetAttribute("IsOnCooldown", false)
 end)
