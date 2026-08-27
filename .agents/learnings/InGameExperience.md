@@ -86,3 +86,27 @@
   1. Gán điều kiện hiển thị `ShowGameplayHud and IsInMatch` cho `ButtonsFrame` và `ScoreBoardButton`.
   2. Dùng `PlayerStateHelper.IsInMatch(LocalPlayer)` làm điều kiện tiên quyết duy nhất cho `SetScoreBoardVisible` và tự động đóng board qua `ObserveMatchState`.
 - **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+
+### 5. Đóng Gói Template Cục Bộ (Frame Templates) Thay Vì Gom Chung Vào ScreenGui
+- **Vấn đề:** Phân vân giữa việc gom tất cả template của các frame trong `InGameGui` vào chung 1 folder `Templates` cấp ScreenGui hay giữ phân tán trong từng Frame.
+- **Nguyên nhân:** Gom chung vào ScreenGui làm mất tính đóng gói component (khi di chuyển/ẩn/hiện Frame thì template bị thất lạc), tăng nguy cơ xung đột tên (Name Collision giữa các thẻ generic như `ItemTemplate`) và phá vỡ cấu trúc của các controller hiện hữu (`PlayerStatus`, `ScoreBoard`).
+- **Giải pháp:** Mỗi Frame (`Hotbar`, `PlayerStatus`, `ScoreBoard`) tự quản lý folder `Templates`/`Template` cục bộ của riêng nó. Folder không phải là `GuiObject` nên `UIListLayout` tự động bỏ qua, không gây xáo trộn bố cục.
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [PlayerStatusController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua)
+
+### 6. Xung Đột Bố Cục UIListLayout và Thứ Tự Hiển Thị Khi Zoom Scale 1.3x
+- **Vấn đề:** Khi ô Hotbar chuyển sang trạng thái Active và zoom phóng to 1.3x (tăng 30% kích thước), ô có nguy cơ chèn đè lên mép các slot lân cận và bị các ô bên cạnh che khuất viền.
+- **Giải pháp:** Thiết lập `AnchorPoint = Vector2.new(0.5, 0.5)` cho `ItemSlot` để khi scale nở đều từ tâm mà không lệch trục; đặt `Padding` trong `UIListLayout` đủ rộng (tối thiểu 16px) và tự động nâng `ZIndex = 10` cho ô đang active (khôi phục `ZIndex = 1` khi Inactive).
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 7. Lỗi Giật Cục / Nhấp Nháy Hotbar Do Chu Kỳ UpdateDisplay 1s & Equip Transition
+- **Vấn đề:** Hotbar liên tục bị xóa và tạo lại mỗi giây, gây nhấp nháy, giật cục scale (1.0 $\rightarrow$ 1.3) và làm kẹt rèm/chữ Cooldown trên màn hình.
+- **Nguyên nhân:**
+  1. `GameStateController.UpdateDisplay` nhận event đếm ngược 1s từ Server và gọi `SetVisible(true)` mỗi giây. Hàm `SetVisible` không kiểm tra cờ Debounce (`_isVisible`) nên gọi `RefreshHotbar()` liên tục.
+  2. Khi Equip/Unequip, Tool đổi container giữa `Backpack` và `Character`, kích hoạt `ChildAdded`/`ChildRemoved` khiến toàn bộ Slot bị xóa và dựng lại.
+  3. Template trong Studio đang để `Visible = true` cho CooldownCurtain/Text nhưng code không ép ẩn ban đầu lúc clone.
+- **Giải pháp:**
+  1. Thêm cờ Debounce `if _isVisible == Visible then return end` trong `SetVisible`.
+  2. Thiết lập hàm `SyncTools()` chỉ tái tạo Hotbar khi danh sách Tool thực tế thay đổi (thêm mới/xóa hẳn). Chuyển động Equip/Unequip chỉ thuần túy kích hoạt `UpdateSlotActiveVisual` qua `Tool.AncestryChanged`.
+  3. Ép ẩn `CooldownCurtain.Visible = false`, `CooldownCurtain.Size = UDim2.new(1, 0, 0, 0)` và `CooldownText.Visible = false` ngay khi tạo slot.
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
+

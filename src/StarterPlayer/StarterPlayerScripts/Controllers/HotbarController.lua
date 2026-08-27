@@ -49,6 +49,7 @@ local _IsFrozen        = false
 local _IsDead          = false
 local _HotbarConfig    = nil
 local _InputConnection = nil
+local _isVisible       = false
 
 -- =========================================================
 -- PRIVATE HELPERS: CoreGui & Hierarchy
@@ -280,7 +281,7 @@ local function PlayCooldownAnimation(SlotData, Tool)
 				break
 			end
 			if CooldownText then
-				CooldownText.Text = string.format("%.1f", Remaining)
+				CooldownText.Text = string.format("%.2f", Remaining)
 			end
 			RunService.Heartbeat:Wait()
 		end
@@ -330,12 +331,29 @@ local function CreateSlotForTool(Tool, SlotIndex)
 	local Elements = GuiConfig.HotbarElements
 	local ViewportName = Elements and Elements.ItemViewport or "ItemViewport"
 	local IndexTextName = Elements and Elements.IndexText or "IndexText"
+	local CurtainName   = Elements and Elements.CooldownCurtain or "CooldownCurtain"
+	local TextName      = Elements and Elements.CooldownText or "CooldownText"
 
-	local ItemViewport = SlotFrame:FindFirstChild(ViewportName, true)
-	local IndexLabel   = SlotFrame:FindFirstChild(IndexTextName, true)
+	local ItemViewport    = SlotFrame:FindFirstChild(ViewportName, true)
+	local IndexLabel      = SlotFrame:FindFirstChild(IndexTextName, true)
+	local CooldownCurtain = SlotFrame:FindFirstChild(CurtainName, true)
+	local CooldownText    = SlotFrame:FindFirstChild(TextName, true)
 
 	if IndexLabel and IndexLabel:IsA("TextLabel") then
 		IndexLabel.Text = tostring(SlotIndex)
+	end
+
+	-- Khởi tạo ẩn ban đầu cho rèm Cooldown và Text đếm ngược
+	if CooldownCurtain then
+		CooldownCurtain.Visible = false
+		CooldownCurtain.AnchorPoint = Vector2.new(0, 1)
+		CooldownCurtain.Position = UDim2.new(0, 0, 1, 0)
+		CooldownCurtain.Size = UDim2.new(1, 0, 0, 0)
+	end
+
+	if CooldownText then
+		CooldownText.Visible = false
+		CooldownText.Text = ""
 	end
 
 	-- Render 3D Model
@@ -386,8 +404,25 @@ local function CreateSlotForTool(Tool, SlotIndex)
 
 	-- 3. Lắng nghe Cooldown attribute từ Tool (do IcicleScript phát ra)
 	local CooldownConn = Tool:GetAttributeChangedSignal("IsOnCooldown"):Connect(function()
-		if Tool:GetAttribute("IsOnCooldown") == true then
+		local IsOnCooldown = Tool:GetAttribute("IsOnCooldown") == true
+		if IsOnCooldown then
 			PlayCooldownAnimation(SlotData, Tool)
+		else
+			-- Hủy animation nếu cooldown kết thúc
+			if SlotData.CooldownThread then
+				task.cancel(SlotData.CooldownThread)
+				SlotData.CooldownThread = nil
+			end
+			local Curtain = SlotFrame:FindFirstChild(CurtainName, true)
+			local TextLbl = SlotFrame:FindFirstChild(TextName, true)
+			if Curtain then
+				Curtain.Visible = false
+				Curtain.Size = UDim2.new(1, 0, 0, 0)
+			end
+			if TextLbl then
+				TextLbl.Visible = false
+				TextLbl.Text = ""
+			end
 		end
 	end)
 	table.insert(SlotData.Connections, CooldownConn)
@@ -426,6 +461,54 @@ local function ClearAllSlots()
 	end
 	_ActiveSlots = {}
 	_KeySlotMap = {}
+end
+
+--- Kiểm tra danh sách tool thực tế có thay đổi so với _ActiveSlots không trước khi refresh
+local function SyncTools()
+	if not _HotbarFrame or not _TemplateSlot then return end
+
+	local ToolsList = {}
+	local Backpack = LocalPlayer:FindFirstChild("Backpack")
+	local Character = LocalPlayer.Character
+
+	if Character then
+		for _, Item in ipairs(Character:GetChildren()) do
+			if Item:IsA("Tool") then
+				table.insert(ToolsList, Item)
+			end
+		end
+	end
+
+	if Backpack then
+		for _, Item in ipairs(Backpack:GetChildren()) do
+			if Item:IsA("Tool") and not table.find(ToolsList, Item) then
+				table.insert(ToolsList, Item)
+			end
+		end
+	end
+
+	-- Kiểm tra xem có tool nào mới được cấp mà chưa có trong _ActiveSlots không
+	local HasChanged = false
+	for _, Tool in ipairs(ToolsList) do
+		if not _ActiveSlots[Tool] then
+			HasChanged = true
+			break
+		end
+	end
+
+	-- Kiểm tra xem có tool nào trong _ActiveSlots đã bị xóa hoàn toàn khỏi player không
+	if not HasChanged then
+		for Tool, _ in pairs(_ActiveSlots) do
+			if not table.find(ToolsList, Tool) then
+				HasChanged = true
+				break
+			end
+		end
+	end
+
+	if HasChanged then
+		HotbarController.RefreshHotbar()
+	end
 end
 
 -- =========================================================
@@ -474,6 +557,9 @@ end
 --- Ẩn / Hiện toàn bộ Frame Hotbar
 --- @param Visible boolean
 function HotbarController.SetVisible(Visible)
+	if _isVisible == Visible then return end
+	_isVisible = Visible
+
 	if _HotbarFrame then
 		_HotbarFrame.Visible = Visible
 		if Visible then
@@ -535,12 +621,12 @@ function HotbarController:Init()
 		if Backpack then
 			Backpack.ChildAdded:Connect(function(Child)
 				if Child:IsA("Tool") then
-					task.defer(HotbarController.RefreshHotbar)
+					task.defer(SyncTools)
 				end
 			end)
 			Backpack.ChildRemoved:Connect(function(Child)
 				if Child:IsA("Tool") then
-					task.defer(HotbarController.RefreshHotbar)
+					task.defer(SyncTools)
 				end
 			end)
 		end
@@ -548,12 +634,12 @@ function HotbarController:Init()
 		if Character then
 			Character.ChildAdded:Connect(function(Child)
 				if Child:IsA("Tool") then
-					task.defer(HotbarController.RefreshHotbar)
+					task.defer(SyncTools)
 				end
 			end)
 			Character.ChildRemoved:Connect(function(Child)
 				if Child:IsA("Tool") then
-					task.defer(HotbarController.RefreshHotbar)
+					task.defer(SyncTools)
 				end
 			end)
 		end
