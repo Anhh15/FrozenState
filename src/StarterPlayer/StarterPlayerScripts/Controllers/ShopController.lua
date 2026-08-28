@@ -33,6 +33,7 @@ local GuiConfig            = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController = require(script.Parent.PlayerDataController)
 local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper            = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local ItemCard             = require(ReplicatedStorage.Shared.Tools.ItemCard)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -58,12 +59,8 @@ local ChestScroll  = ChestList and ChestList:FindFirstChildOfClass("ScrollingFra
 local TemplatesFolder       = Shop and Shop:FindFirstChild("Templates")
 local ChestPreviewTemplate  = TemplatesFolder and TemplatesFolder:FindFirstChild("ChestPreview")
 
--- ItemTemplate dùng chung từ ReplicatedStorage/Assets/Gui
-local Assets       = ReplicatedStorage:FindFirstChild("Assets")
-local GuiFolder    = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
-local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
-
 -- Folder chứa model 3D rương
+local Assets       = ReplicatedStorage:FindFirstChild("Assets")
 local ChestsFolder = Assets and Assets:FindFirstChild("Chests")
 
 -- =========================================================
@@ -171,68 +168,22 @@ end
 local function LoadItemPreviews(Card, ChestEntry)
 	local ItemPreview  = Card:FindFirstChild("ItemPreview", true)
 	local ItemScroll   = ItemPreview and ItemPreview:FindFirstChildOfClass("ScrollingFrame")
-	if not ItemScroll or not ItemTemplate then return end
+	if not ItemScroll then return end
 
 	-- Dọn sạch item cũ (nếu có)
 	for _, Child in ipairs(ItemScroll:GetChildren()) do
 		if not Child:IsA("UIGridLayout") and not Child:IsA("UIListLayout") then
-			Child:Destroy()
+			ItemCard.Destroy(Child)
 		end
 	end
 
 	for _, ItemEntry in ipairs(ChestEntry.Items) do
-		-- Lấy thông tin đầy đủ từ ItemRegistry
-		local FullEntry   = ItemRegistry.GetItem(ItemEntry.ItemId, ChestEntry.Type)
-		local RarityEntry = RarityConfig[FullEntry.Rarity]
-
-		local Frame = ItemTemplate:Clone()
-		Frame.Visible = true
-
-		-- Cập nhật các label
-		local NameText    = Frame:FindFirstChild("NameText",     true)
-		local RarityText  = Frame:FindFirstChild("RarityText",   true)
-		local DropText    = Frame:FindFirstChild("DropRateText", true)
-		local Background  = Frame:FindFirstChild("Background",   true)
-		local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
-
-		if NameText   then NameText.Text  = FullEntry.Name end
-		if RarityText then
-			RarityText.Text = FullEntry.Rarity
-			if RarityEntry then
-				RarityText.TextColor3 = RarityEntry.Color
-			end
-		end
-		if DropText then
-			DropText.Visible = true
-			DropText.Text    = ("%d%%"):format(ItemEntry.DropRate)
-		end
-		if EquippedTag then
-			EquippedTag.Visible = false
-		end
-		if Background and RarityEntry then
-			Background.Image = RarityEntry.ImageId
-		end
-
-		-- Render item model vào ItemViewport (nếu có)
-		local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
-		if ItemViewport then
-			CleanViewport(ItemViewport)
-			local ItemPreviewFolder = ReplicatedStorage:FindFirstChild("Assets")
-				and ReplicatedStorage.Assets:FindFirstChild("ItemPreview")
-				and ReplicatedStorage.Assets.ItemPreview:FindFirstChild(
-					ChestEntry.Type == "Icicle" and "Icicles" or "Blocks"
-				)
-			if ItemPreviewFolder then
-				local ItemModel = ItemPreviewFolder:FindFirstChild(FullEntry.Id)
-				if ItemModel then
-					local Clone = ItemModel:Clone()
-					Clone.Parent = ItemViewport
-					ViewportManager.RenderItem(ItemViewport, Clone, FullEntry.Type, FullEntry.Id)
-				end
-			end
-		end
-
-		Frame.Parent = ItemScroll
+		ItemCard.Create(ItemScroll, ItemEntry.ItemId, ChestEntry.Type, {
+			ShowDropRate = true,
+			DropRate     = ItemEntry.DropRate,
+			ShowEquipped = false,
+			EnableHover  = false,
+		})
 	end
 end
 

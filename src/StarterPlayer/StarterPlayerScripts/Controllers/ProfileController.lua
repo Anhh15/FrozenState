@@ -35,6 +35,7 @@ local GameConfig            = require(ReplicatedStorage.Shared.Config.GameConfig
 local GuiConfig             = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper             = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local ItemCard              = require(ReplicatedStorage.Shared.Tools.ItemCard)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -86,11 +87,6 @@ local function GetStatValue(StatName)
 	return Frame and Frame:FindFirstChild("ValueText")
 end
 
--- ItemTemplate dùng chung từ ReplicatedStorage
-local Assets       = ReplicatedStorage:FindFirstChild("Assets")
-local GuiFolder    = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
-local ItemTemplate = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
-
 -- =========================================================
 -- STATE
 -- =========================================================
@@ -114,13 +110,7 @@ end
 --- Dọn dẹp các ItemFrame đã clone
 local function ClearItemList()
 	for _, Frame in ipairs(_renderedItems) do
-		if Frame and Frame.Parent then
-			local ItemViewport = Frame:FindFirstChild("ItemViewport")
-			if ItemViewport then
-				ViewportManager.CleanViewport(ItemViewport)
-			end
-			Frame:Destroy()
-		end
+		ItemCard.Destroy(Frame)
 	end
 	_renderedItems = {}
 end
@@ -129,66 +119,18 @@ end
 --- @param Entry table  — entry từ ItemRegistry
 --- @param LayoutOrder number
 local function RenderSingleItem(Entry, LayoutOrder)
-	if not ItemList or not ItemTemplate then return end
+	if not ItemList then return end
 
-	local Frame = ItemTemplate:Clone()
-	Frame.Name        = Entry.Id
-	Frame.Visible     = true
-	Frame.LayoutOrder = LayoutOrder
+	local Frame = ItemCard.Create(ItemList, Entry.Id, Entry.Type, {
+		LayoutOrder  = LayoutOrder,
+		ShowEquipped = false,
+		ShowDropRate = false,
+		EnableHover  = false,
+	})
 
-	-- Gán Background theo Rarity
-	local Background = Frame:FindFirstChild("Background")
-	local RarityCfg  = RarityConfig[Entry.Rarity]
-	if Background and RarityCfg then
-		if Background:IsA("ImageLabel") then
-			Background.Image       = RarityCfg.ImageId
-			Background.ImageColor3 = RarityCfg.Color
-		end
+	if Frame then
+		table.insert(_renderedItems, Frame)
 	end
-
-	-- RarityText
-	local RarityText = Frame:FindFirstChild("RarityText")
-	if RarityText and RarityCfg then
-		RarityText.Text       = Entry.Rarity
-		RarityText.TextColor3 = RarityCfg.Color
-	end
-
-	-- NameText
-	local NameText = Frame:FindFirstChild("NameText")
-	if NameText then
-		NameText.Text = Entry.Name
-	end
-
-	-- EquippedTag (ẩn trong profile view)
-	local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
-	if EquippedTag then
-		EquippedTag.Visible = false
-	end
-
-	-- ViewportFrame bên trong ItemFrame — dùng LoadPreviewModel pattern từ InventoryController
-	local ItemViewport = Frame:FindFirstChild("ItemViewport")
-	if ItemViewport then
-		local TypeFolder = (Entry.Type == "Icicle") and "Icicles" or "Blocks"
-		local PreviewFolder = ReplicatedStorage
-			:FindFirstChild("Assets")
-			and ReplicatedStorage.Assets
-			:FindFirstChild("ItemPreview")
-			and ReplicatedStorage.Assets.ItemPreview
-			:FindFirstChild(TypeFolder)
-
-		if PreviewFolder then
-			local ModelTemplate = PreviewFolder:FindFirstChild(Entry.Id)
-			if ModelTemplate then
-				local Model = ModelTemplate:Clone()
-				Model.Parent = ItemViewport
-				-- Tạo camera tự động qua ViewportManager
-				ViewportManager.RenderItem(ItemViewport, Model, Entry.Type, Entry.Id)
-			end
-		end
-	end
-
-	Frame.Parent = ItemList
-	table.insert(_renderedItems, Frame)
 end
 
 --- Render 2 skin đang trang bị (EquippedIcicle + EquippedIceBlock)

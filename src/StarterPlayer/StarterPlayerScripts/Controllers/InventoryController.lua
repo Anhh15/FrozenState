@@ -33,6 +33,7 @@ local GuiConfig             = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController  = require(script.Parent.PlayerDataController)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper             = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local ItemCard              = require(ReplicatedStorage.Shared.Tools.ItemCard)
 
 -- =========================================================
 -- GUI REFERENCES
@@ -53,9 +54,6 @@ local IciclesTab       = TabContainer and TabContainer:FindFirstChild("IciclesTa
 local BlocksTab        = TabContainer and TabContainer:FindFirstChild("BlocksTab")
 local ItemList         = Inventory and Inventory:FindFirstChild("ItemList", true)
 local ScrollingFrame   = ItemList and ItemList:FindFirstChildOfClass("ScrollingFrame")
-local Assets           = ReplicatedStorage:FindFirstChild("Assets")
-local GuiFolder        = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
-local ItemTemplate     = GuiFolder and GuiFolder:FindFirstChild("ItemTemplate")
 local ItemSelection    = Inventory and Inventory:FindFirstChild("ItemSelection", true)
 local SelectionViewport = ItemSelection and ItemSelection:FindFirstChild("ItemViewport")
 local SelectionName    = ItemSelection and ItemSelection:FindFirstChild("NameText")
@@ -171,11 +169,8 @@ local function UpdateEquippedTags()
 	local CurrentEquip = Data and Data[SlotKey] or "Default"
 
 	for _, Child in ipairs(ScrollingFrame:GetChildren()) do
-		if Child ~= ItemTemplate and Child:IsA("GuiObject") then
-			local EquippedTag = Child:FindFirstChild("EquippedText", true) or Child:FindFirstChild("Equipped", true)
-			if EquippedTag then
-				EquippedTag.Visible = (Child.Name == CurrentEquip)
-			end
+		if Child:IsA("GuiObject") and not Child:IsA("UIGridLayout") and not Child:IsA("UIListLayout") then
+			ItemCard.SetEquipped(Child, Child.Name == CurrentEquip)
 		end
 	end
 end
@@ -245,12 +240,12 @@ local function ClearItemList()
 	end
 	_listConnections = {}
 
-	-- Xóa toàn bộ item đã render (giữ lại template)
+	-- Xóa toàn bộ item đã render
 	if not ScrollingFrame then return end
 	for _, Child in ipairs(ScrollingFrame:GetChildren()) do
-		if Child ~= ItemTemplate and Child:IsA("GuiObject") then
+		if Child:IsA("GuiObject") and not Child:IsA("UIGridLayout") and not Child:IsA("UIListLayout") then
 			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
-			Child:Destroy()
+			ItemCard.Destroy(Child)
 		end
 	end
 end
@@ -259,8 +254,8 @@ end
 --- Chỉ hiển thị: item "Default" + item đã sở hữu (OwnedIcicles / OwnedBlocks)
 --- @param ItemType string — "Icicle" hoặc "Block"
 local function RenderList(ItemType)
-	if not ScrollingFrame or not ItemTemplate then
-		warn("[InventoryController] Thiếu ScrollingFrame hoặc ItemTemplate trong GUI.")
+	if not ScrollingFrame then
+		warn("[InventoryController] Thiếu ScrollingFrame trong GUI.")
 		return
 	end
 
@@ -316,66 +311,22 @@ local function RenderList(ItemType)
 		local IsOwned   = OwnedSet[Entry.Id]
 		if not IsDefault and not IsOwned then continue end
 
-		local Frame = ItemTemplate:Clone()
-		Frame.Name    = Entry.Id
-		Frame.Visible = true
-		Frame.LayoutOrder = LayoutOrder
-		LayoutOrder += 1
-
-		-- Gán trạng thái hiển thị Equipped tag
-		local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
-		if EquippedTag then
-			EquippedTag.Visible = (Entry.Id == CurrentEquip)
-		end
-
-		-- Gán Background theo Rarity
-		local Background = Frame:FindFirstChild("Background")
-		local RarityCfg  = RarityConfig[Entry.Rarity]
-		if Background and RarityCfg then
-			if Background:IsA("ImageLabel") then
-				Background.Image            = RarityCfg.ImageId
-				Background.ImageColor3      = RarityCfg.Color
-			end
-		end
-
-		-- Gán RarityText color
-		local RarityText = Frame:FindFirstChild("RarityText")
-		if RarityText and RarityCfg then
-			RarityText.Text       = Entry.Rarity
-			RarityText.TextColor3 = RarityCfg.Color
-		end
-
-		-- Gán NameText
-		local NameText = Frame:FindFirstChild("NameText")
-		if NameText then
-			NameText.Text = Entry.Name
-		end
-
-		-- Load model preview vào ViewportFrame của ItemFrame
-		local ItemViewport = Frame:FindFirstChild("ItemViewport")
-		if ItemViewport then
-			LoadPreviewModel(ItemViewport, Entry)
-		end
-
-		Frame.Parent = ScrollingFrame
-		table.insert(RenderedFrames, Frame)
-
-		-- Kết nối sự kiện click
 		local EntrySnapshot = Entry  -- closure capture
-		local ClickTarget = Frame:IsA("GuiButton") and Frame or Frame:FindFirstChildWhichIsA("GuiButton")
-		local Conn
-		if ClickTarget then
-			Conn = ClickTarget.MouseButton1Click:Connect(function()
+		local Frame = ItemCard.Create(ScrollingFrame, Entry.Id, Entry.Type, {
+			LayoutOrder  = LayoutOrder,
+			ShowEquipped = true,
+			IsEquipped   = (Entry.Id == CurrentEquip),
+			ShowDropRate = false,
+			EnableHover  = false,  -- StaggerPopOpen quản lý scale
+			OnClick      = function()
 				SelectItem(EntrySnapshot)
-			end)
-		else
-			Conn = Frame.InputBegan:Connect(function(Input)
-				if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-					SelectItem(EntrySnapshot)
-				end
-			end)
+			end,
+		})
+
+		if Frame then
+			LayoutOrder += 1
+			table.insert(RenderedFrames, Frame)
 		end
-		table.insert(_listConnections, Conn)
 	end
 
 	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop)

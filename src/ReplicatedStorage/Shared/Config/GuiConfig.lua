@@ -56,6 +56,7 @@ local GuiConfig = {
 		Hotbar          = "Hotbar",
 		Templates       = "Templates",
 		ItemSlot        = "ItemSlot",
+		Background      = "Background",
 		ItemViewport    = "ItemViewport",
 		CooldownCurtain = "CooldownCurtain",
 		CooldownText    = "CooldownText",

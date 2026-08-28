@@ -217,11 +217,16 @@ local function UpdateSlotActiveVisual(SlotFrame, IsEquipped)
 		ScaleTween:Play()
 	end
 
-	-- Tween BackgroundTransparency của Frame nền
-	local BgTween = TweenService:Create(SlotFrame, TweenInfo.new(Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		BackgroundTransparency = TargetTrans,
-	})
-	BgTween:Play()
+	-- Tìm Frame con Background bên trong ItemSlot (nếu có) để tween độ mờ, giữ nguyên thuộc tính của ItemSlot cha
+	local Elements = GuiConfig.HotbarElements
+	local BackgroundName = Elements and Elements.Background or "Background"
+	local BgFrame = SlotFrame:FindFirstChild(BackgroundName, true)
+	if BgFrame and BgFrame:IsA("GuiObject") then
+		local BgTween = TweenService:Create(BgFrame, TweenInfo.new(Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = TargetTrans,
+		})
+		BgTween:Play()
+	end
 end
 
 --- Kích hoạt hiệu ứng rèm Cooldown trắng rút dần và chữ đếm ngược số giây

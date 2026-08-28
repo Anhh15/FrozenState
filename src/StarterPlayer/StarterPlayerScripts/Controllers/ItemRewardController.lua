@@ -24,6 +24,7 @@ local AudioConfig     = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AudioHelper     = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local ViewportManager = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper       = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local ItemCard        = require(ReplicatedStorage.Shared.Tools.ItemCard)
 
 -- =========================================================
 -- GUI REFERENCES (set trong Init)
@@ -46,10 +47,7 @@ local ClickButton   = nil
 -- =========================================================
 
 local Assets            = ReplicatedStorage:FindFirstChild("Assets")
-local GuiFolder         = Assets and (Assets:FindFirstChild("Gui") or Assets:FindFirstChild("GUI"))
-local ItemTemplate      = GuiFolder  and GuiFolder:FindFirstChild("ItemTemplate")
-local ChestsFolder      = Assets     and Assets:FindFirstChild("Chests")
-local ItemPreviewFolder = Assets     and Assets:FindFirstChild("ItemPreview")
+local ChestsFolder      = Assets and Assets:FindFirstChild("Chests")
 
 -- =========================================================
 -- DEFAULTS (đọc từ GUI trong Init — không hardcode)
@@ -124,7 +122,7 @@ local function ClearItemFrame()
 		if not Child:IsA("UIGridLayout")
 			and not Child:IsA("UIListLayout")
 			and not Child:IsA("UIPadding") then
-			Child:Destroy()
+			ItemCard.Destroy(Child)
 		end
 	end
 end
@@ -149,10 +147,8 @@ end
 --- @param Items table  -- array of { ItemId: string, Type: string, ... }
 local function RenderItems(Items)
 	ClearItemFrame()
-	if not ItemTemplate then
-		warn("[ItemRewardController] Không tìm thấy ItemTemplate trong Assets — bỏ qua render item.")
-		return
-	end
+	if not ItemFrame then return end
+
 	for _, Entry in ipairs(Items) do
 		local ItemId   = Entry.ItemId
 		local ItemType = Entry.Type
@@ -161,54 +157,11 @@ local function RenderItems(Items)
 			continue
 		end
 
-		local FullEntry = ItemRegistry.GetItem(ItemId, ItemType)
-		if not FullEntry then
-			warn(("[ItemRewardController] Không tìm thấy item '%s'/'%s' trong ItemRegistry."):format(
-				tostring(ItemId), tostring(ItemType)
-			))
-			continue
-		end
-
-		local RarityEntry = RarityConfig[FullEntry.Rarity]
-		local Frame       = ItemTemplate:Clone()
-		Frame.Visible     = true
-
-		-- Cập nhật các label
-		local NameText    = Frame:FindFirstChild("NameText",     true)
-		local RarityText  = Frame:FindFirstChild("RarityText",   true)
-		local DropText    = Frame:FindFirstChild("DropRateText", true)
-		local ItemBg      = Frame:FindFirstChild("Background",   true)
-		local EquippedTag = Frame:FindFirstChild("EquippedText", true) or Frame:FindFirstChild("Equipped", true)
-
-		if NameText   then NameText.Text     = FullEntry.Name end
-		if RarityText then
-			RarityText.Text = FullEntry.Rarity
-			if RarityEntry then RarityText.TextColor3 = RarityEntry.Color end
-		end
-		if DropText    then DropText.Visible    = false end  -- Ẩn DropRate trong màn hình reward
-		if EquippedTag then EquippedTag.Visible = false end  -- Ẩn Equipped tag trong màn hình reward
-		if ItemBg and RarityEntry then
-			ItemBg.Image = RarityEntry.ImageId
-		end
-
-		-- Render item 3D preview (nếu template có ItemViewport)
-		local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
-		if ItemViewport then
-			ViewportManager.CleanViewport(ItemViewport)
-			local TypeSubFolder = ItemPreviewFolder and ItemPreviewFolder:FindFirstChild(
-				ItemType == "Icicle" and "Icicles" or "Blocks"
-			)
-			if TypeSubFolder then
-				local ItemModel = TypeSubFolder:FindFirstChild(FullEntry.Id)
-				if ItemModel then
-					local ModelClone = ItemModel:Clone()
-					ModelClone.Parent = ItemViewport
-					ViewportManager.RenderItem(ItemViewport, ModelClone, FullEntry.Type, FullEntry.Id)
-				end
-			end
-		end
-
-		Frame.Parent = ItemFrame
+		ItemCard.Create(ItemFrame, ItemId, ItemType, {
+			ShowEquipped = false,
+			ShowDropRate = false,
+			EnableHover  = false,
+		})
 	end
 end
 

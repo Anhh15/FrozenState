@@ -1,6 +1,6 @@
 # ItemRegistry
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport và cơ chế hiển thị Avatar (ItemRegistry, RarityConfig, ViewportManager, 2D CDN Avatar và Lazy Rendering).
-> Cập nhật lần cuối: 21-08-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard và cơ chế hiển thị Avatar (ItemRegistry, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar và Lazy Rendering).
+> Cập nhật lần cuối: 28-08-2026
 
 ---
 
@@ -11,20 +11,26 @@
 - **Chuỗi Fallback An Toàn:** Khi truy vấn thông tin skin: `DataService` $\rightarrow$ `ItemRegistry` $\rightarrow$ `Cấu hình Default`, đi kèm cảnh báo lỗi chi tiết khi thiếu cấu hình.
 - **File liên quan:** [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
-### 2. Thiết Kế UI Template Động qua RarityConfig
-- **Chi tiết:** Thay vì tạo nhiều template UI cho từng loại vật phẩm, hệ thống sử dụng duy nhất một `ItemTemplate` chung kết hợp với `RarityConfig.lua` chứa thông số màu sắc, stroke và hình ảnh nền đặc thù cho từng độ hiếm (Common, Rare, Epic, Legendary). Client tự động gán thuộc tính động từ Config khi render.
-- **File liên quan:** [RarityConfig.lua](../../src/ReplicatedStorage/Shared/Config/RarityConfig.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
+### 2. Đóng Gói UI Template qua Functional Component Helper (ItemCard.lua)
+- **Chi tiết:** Thay vì để từng Controller (`Inventory`, `Shop`, `Profile`, `ItemReward`) tự clone `ItemTemplate` và thao tác trực tiếp với các node con (dễ gây lệch màu Rarity, quên ẩn thẻ `EquippedText`/`DropRateText`, hoặc lặp code), toàn bộ logic hiển thị thẻ vật phẩm được chuẩn hóa thành Functional Helper `ItemCard.lua` (`ReplicatedStorage/Shared/Tools/ItemCard.lua`).
+- **API Đóng Gói & Cập Nhật In-Place:**
+  - `ItemCard.Create(Parent, ItemId, ItemType, Options)`: Tự động gán thông số từ `ItemRegistry`, `RarityConfig`, tải 3D qua `ViewportManager`, gắn click và scale hover.
+  - `ItemCard.SetEquipped(Frame, IsEquipped)`: Cập nhật in-place thẻ trang bị trong $O(1)$ mà không cần re-render toàn bộ danh sách.
+  - `ItemCard.SetDropRate(Frame, DropRate)`: Cập nhật in-place nhãn tỉ lệ rơi.
+  - `ItemCard.Destroy(Frame)`: Tự động dọn dẹp camera và model 3D trong `ViewportFrame` trước khi hủy instance, triệt tiêu rò rỉ bộ nhớ.
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 
 ### 3. Tự Động Hóa Camera ViewportFrame qua Bounding Box và ViewportConfig
 - **Chi tiết:** Tự động hóa tính toán camera hiển thị mô hình 3D trong `ViewportFrame` bằng `ViewportManager.lua` dựa trên Bounding Box của mô hình. Hỗ trợ ghi đè góc nhìn (Pitch, Yaw, FOV, Padding) qua cấu hình phân tầng `ViewportConfig.lua` (`Default` $\rightarrow$ `Type` $\rightarrow$ `ItemId`) trên tất cả các tab Inventory, Shop và Profile.
 - **File liên quan:** [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua)
 
-### 4. Quy Tắc Phân Vùng Lưu Trữ Template GUI
+### 4. Quy Tắc Phân Vùng Lưu Trữ Template GUI & Khai Tử Dead Asset ChestTemplate
 - **Chi tiết:**
-  - **Template dùng chung giữa nhiều controller** (như `ItemTemplate` dùng bởi Shop, Inventory, Profile, ItemReward): Đặt tại `ReplicatedStorage.Assets.Gui`.
-  - **Template riêng của một GUI duy nhất** (như `ChestPreview` chỉ dùng bởi ShopController): Đặt trong chính GUI đó (`Menu/Shop/Templates`).
+  - **Template dùng chung giữa nhiều controller** (`ItemTemplate` dùng bởi Shop, Inventory, Profile, ItemReward): Đặt tại `ReplicatedStorage.Assets.Gui`.
+  - **Template riêng của một GUI duy nhất** (`ChestPreview` chỉ dùng bởi ShopController): Đặt trong chính GUI đó (`Menu/Shop/Templates`).
+  - **Khai tử `ChestTemplate`:** Xác nhận asset `ChestTemplate.rbxmx` trong `ReplicatedStorage/Assets/Gui` là tài nguyên thừa từ bản thiết kế cũ (roadmap 1), đã được thay thế hoàn toàn bởi component co-location `ChestPreview`.
 - **Lợi ích:** Dễ chỉnh sửa trong Studio đúng ngữ cảnh, không bị Rojo sync xóa và tuân thủ nguyên tắc co-location.
-- **File liên quan:** [default.project.json](../../default.project.json), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+- **File liên quan:** [default.project.json](../../default.project.json), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua)
 
 ### 5. Chuyển Đổi Toàn Diện Hiển Thị Avatar từ 3D Viewport sang 2D CDN (rbxthumb://)
 - **Chi tiết:** Thay thế hoàn toàn mô hình 3D trên `ViewportFrame` ở các bảng giao diện bằng `ImageLabel` 2D trực tiếp từ Roblox CDN qua giao thức `rbxthumb://`:
@@ -48,10 +54,10 @@
 - **Giải pháp:** Bọc (wrap) 100% tất cả các asset preview dạng Part/MeshPart thành Model trong Roblox Studio để bảo toàn tính đồng nhất của hệ thống nạp mô hình.
 - **File liên quan:** [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua)
 
-### 2. Rò Rỉ Bộ Nhớ (Memory Leak) Khi Chuyển Đổi Danh Sách GUI
-- **Vấn đề:** Khi chuyển đổi giữa các tab danh sách (như Icicles và Blocks) hoặc đóng GUI, các đối tượng Model và Camera bên trong `ViewportFrame` vẫn tồn tại trong bộ nhớ Client gây lãng phí tài nguyên.
-- **Giải pháp:** Xây dựng hàm dọn dẹp (Cleanup) chủ động ngắt kết nối (`Disconnect`) các sự kiện xoay và gọi phương thức `:Destroy()` cho các Model, Camera trước khi khởi tạo danh sách mới.
-- **File liên quan:** [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+### 2. Rò Rỉ Bộ Nhớ (Memory Leak) và Phân Mảnh Logic Render do Naked Template
+- **Vấn đề:** Khi clone thủ công `ItemTemplate` ở nhiều controller, các đối tượng Model và Camera bên trong `ViewportFrame` dễ bị bỏ quên khi dọn dẹp hoặc chuyển tab. Đồng thời mỗi controller tự viết lại ~50 dòng code để tìm node con, gán màu Rarity và ẩn hiện tag thừa.
+- **Giải pháp:** Ủy quyền toàn bộ việc tạo, cập nhật và dọn dẹp cho `ItemCard.lua`. Hàm `ItemCard.Destroy(Frame)` tự động gọi `ViewportManager.CleanViewport(ItemViewport)` trước khi `Frame:Destroy()`, đảm bảo an toàn bộ nhớ tuyệt đối và tập trung hóa 100% logic UI.
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### 3. Ngăn Ngừa Trang Bị Skin Giả Mạo Từ Client (Server Validation)
 - **Vấn đề:** Người chơi có thể can thiệp client để gửi yêu cầu trang bị các skin hiếm mà họ chưa thực sự sở hữu trong dữ liệu.
