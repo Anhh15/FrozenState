@@ -1,6 +1,6 @@
 # GuiControllers
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống điều phối giao diện sảnh, menu và chuyển cảnh (MenuController, NavigationController, GameStateController, GameLoadingScreen, RoundLoadingScreen, ModeAnnouncement, GameOverAnnouncement và các Menu con).
-> Cập nhật lần cuối: 26-08-2026
+> Cập nhật lần cuối: 28-08-2026
 
 ---
 
@@ -62,6 +62,15 @@
   - *Dynamic RichText & Safe UTF-8 Truncate:* Format màu tương đối (Xanh nếu thắng, Đỏ nếu thua, Trắng nếu Spectator, Vàng Kim `#FFD700` cho FFA). Sử dụng `GuiHelper.TruncateText` cắt chuỗi an toàn bằng `utf8` ($\le 15$ ký tự) *trước khi* đưa vào thẻ `<font>` để chống lỗi hỏng thẻ XML.
 - **File liên quan:** [GameOverAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameOverAnnouncementController.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
+### 9. Cơ chế Trì hoãn Nạp Đồ họa 3D theo Vùng Nhìn Thấy (Lazy Render Viewport Engine)
+- **Chi tiết:** Nhằm ngăn chặn hiện tượng giật khung hình (lag spike) và tối ưu hóa bộ nhớ khi danh sách chứa nhiều phần tử 3D trong ScrollingFrame (Shop, Inventory):
+  - *Decoupled 3D Lifecycle*: Tách biệt logic tạo thẻ UI (`ItemCard.Create`) khỏi tác vụ nạp model 3D (`ItemCard.LoadViewport`). `ItemCard.Create` hỗ trợ cờ `LazyViewport = true` để chỉ sinh cấu trúc 2D ban đầu.
+  - *Viewport Collision Window*: Lưu các phần tử chờ nạp vào `_LazyRenderQueue`, lắng nghe `CanvasPosition` của `ScrollingFrame` và kiểm tra giao cắt trong khoảng đệm:
+    $$\text{VisibleTop} = \text{CanvasY} - \text{Buffer}, \quad \text{VisibleBottom} = \text{CanvasY} + \text{ScrollHeight} + \text{Buffer}$$
+  - *Initial Frame Defer*: Kích hoạt `task.defer(CheckLazyQueue)` sau khi render danh sách để engine Roblox hoàn tất tính toán `AbsolutePosition`, nạp tức thì các thẻ trong trang đầu mà không cần người chơi cuộn.
+  - *Zero Magic Numbers*: Khoảng đệm `LazyRenderBuffer` được cấu hình độc lập qua `ShopConfig.lua` và `InventoryConfig.lua`.
+- **File liên quan:** [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [InventoryConfig.lua](../../src/ReplicatedStorage/Shared/Config/InventoryConfig.lua), [ShopConfig.lua](../../src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -108,3 +117,11 @@
 - **Nguyên nhân:** Khung chứa hoặc đối tượng con đặt `Size` bằng `UDim2.Scale`. Tỉ lệ màn hình $16:9$ khiến $1\%$ chiều rộng lớn hơn $1\%$ chiều cao tính theo pixel thực tế, khi `UIScale` nhân hệ số lên sẽ khuyếch đại độ lệch này.
 - **Giải pháp:** Gắn đối tượng `UIAspectRatioConstraint` với `AspectRatio = 1.0` và `AspectType = Enum.AspectType.Fit` trực tiếp vào phần tử UI, ép Roblox luôn duy trì tỉ lệ pixel $1:1$ vuông hoàn hảo trên mọi kích thước màn hình.
 - **File liên quan:** [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 8. Lỗi Rò rỉ Hàng đợi và Nạp Đồ họa lên Instance GUI đã Hủy khi Spam Chuyển Tab Menu
+- **Vấn đề:** Khi người chơi spam chuyển đổi nhanh giữa các tab (Icicle / Block) hoặc đóng menu trong lúc hàng đợi Lazy Render đang chờ xử lý, các thẻ cũ bị hủy khỏi DOM nhưng vẫn còn trong `_LazyRenderQueue`. Khi cuộn hoặc timer kích hoạt, script cố nạp 3D model lên instance chết gây warning/error console hoặc rò rỉ bộ nhớ.
+- **Nguyên nhân:** Hàm dọn dẹp `ClearItemList` chỉ hủy các Frame con trong `ScrollingFrame` mà quên ngắt kết nối sự kiện `CanvasPosition` và không làm sạch `_LazyRenderQueue`.
+- **Giải pháp:**
+  1. Trong hàm dọn dẹp `ClearItemList`/`ClearChestList`, chủ động gọi `_ScrollConn:Disconnect()` và `table.clear(_LazyRenderQueue)`.
+  2. Trong vòng lặp `CheckLazyQueue`, bổ sung guard clause: nếu `not Frame.Parent` thì xóa ngay phần tử khỏi queue (`table.remove(_LazyRenderQueue, Index)`) và bỏ qua `continue`.
+- **File liên quan:** [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)

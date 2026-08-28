@@ -47,6 +47,30 @@ end
 -- PUBLIC API
 -- =========================================================
 
+--- Nạp 3D model vào ViewportFrame của ItemCard
+--- @param Frame Instance — Thẻ ItemCard
+--- @param ItemId string — Id vật phẩm
+--- @param ItemType string — "Icicle" hoặc "Block"
+function ItemCard.LoadViewport(Frame, ItemId, ItemType)
+	if not Frame or not Frame:IsA("GuiObject") then return end
+	if Frame:GetAttribute("ViewportLoaded") then return end
+
+	local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
+	if not ItemViewport then return end
+
+	ViewportManager.CleanViewport(ItemViewport)
+	local PreviewFolder = GetItemPreviewFolder(ItemType)
+	if PreviewFolder then
+		local ItemModel = PreviewFolder:FindFirstChild(ItemId)
+		if ItemModel then
+			local ModelClone = ItemModel:Clone()
+			ModelClone.Parent = ItemViewport
+			ViewportManager.RenderItem(ItemViewport, ModelClone, ItemType, ItemId)
+			Frame:SetAttribute("ViewportLoaded", true)
+		end
+	end
+end
+
 --- Khởi tạo và render hoàn chỉnh một thẻ ItemCard từ template
 --- @param Parent Instance — Container chứa thẻ (ScrollingFrame / Frame)
 --- @param ItemId string — Id vật phẩm (ví dụ: "Default", "BlueBlock")
@@ -125,19 +149,9 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 		end
 	end
 
-	-- 8. Nạp Model 3D vào ViewportFrame
-	local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
-	if ItemViewport then
-		ViewportManager.CleanViewport(ItemViewport)
-		local PreviewFolder = GetItemPreviewFolder(FullEntry.Type)
-		if PreviewFolder then
-			local ItemModel = PreviewFolder:FindFirstChild(FullEntry.Id)
-			if ItemModel then
-				local ModelClone = ItemModel:Clone()
-				ModelClone.Parent = ItemViewport
-				ViewportManager.RenderItem(ItemViewport, ModelClone, FullEntry.Type, FullEntry.Id)
-			end
-		end
+	-- 8. Nạp Model 3D vào ViewportFrame (hoặc hoãn lại nếu bật LazyViewport)
+	if not Options.LazyViewport then
+		ItemCard.LoadViewport(Frame, FullEntry.Id, FullEntry.Type)
 	end
 
 	-- 9. Gắn sự kiện Click & tương tác

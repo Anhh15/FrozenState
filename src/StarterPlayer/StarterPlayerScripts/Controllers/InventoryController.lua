@@ -30,6 +30,7 @@ local ItemRegistry          = require(ReplicatedStorage.Shared.Config.ItemRegist
 local RarityConfig          = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local AudioConfig           = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig             = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local InventoryConfig       = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local PlayerDataController  = require(script.Parent.PlayerDataController)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper             = require(ReplicatedStorage.Shared.Tools.GuiHelper)
@@ -64,17 +65,19 @@ local EquipButton      = ItemSelection and ItemSelection:FindFirstChild("EquipBu
 -- STATE
 -- =========================================================
 
-local _currentTab     = "Icicle"   -- Tab đang chọn: "Icicle" hoặc "Block"
-local _selectedEntry  = nil        -- Entry item đang được chọn trong ItemSelection
-local _selectionModel = nil        -- Model đang render trong ItemSelection ViewportFrame
-local _listConnections = {}        -- Kết nối RenderItem (dọn dẹp khi re-render)
-local _staggerThread  = nil        -- Thread animation stagger danh sách item
+local _CurrentTab      = "Icicle"   -- Tab đang chọn: "Icicle" hoặc "Block"
+local _SelectedEntry   = nil        -- Entry item đang được chọn trong ItemSelection
+local _SelectionModel  = nil        -- Model đang render trong ItemSelection ViewportFrame
+local _ListConnections = {}        -- Kết nối RenderItem (dọn dẹp khi re-render)
+local _StaggerThread   = nil        -- Thread animation stagger danh sách item
+local _LazyRenderQueue = {}        -- { Frame, Entry } — cards chờ render viewport
+local _ScrollConn      = nil       -- Connection theo dõi ScrollingFrame.CanvasPosition
 
 --- Dừng animation stagger đang chạy dở
 local function StopStaggerAnimation()
-	if _staggerThread then
-		task.cancel(_staggerThread)
-		_staggerThread = nil
+	if _StaggerThread then
+		task.cancel(_StaggerThread)
+		_StaggerThread = nil
 	end
 end
 
@@ -88,16 +91,16 @@ end
 -- =========================================================
 
 --- Lazy-require MenuController để điều phối mở/đóng cửa sổ
-local _menuController = nil
+local _MenuController = nil
 local function GetMenuController()
-	if not _menuController then
+	if not _MenuController then
 		local Controllers = script.Parent
 		local Module = Controllers:FindFirstChild("MenuController")
 		if Module then
-			_menuController = require(Module)
+			_MenuController = require(Module)
 		end
 	end
-	return _menuController
+	return _MenuController
 end
 
 --- Dọn dẹp toàn bộ nội dung ViewportFrame để tránh memory leak
@@ -142,12 +145,12 @@ end
 
 --- Cập nhật trạng thái EquipButton dựa trên item đang được chọn
 local function RefreshEquipButton()
-	if not EquipButton or not _selectedEntry then return end
+	if not EquipButton or not _SelectedEntry then return end
 
 	local Data          = PlayerDataController.GetData()
-	local SlotKey       = (_selectedEntry.Type == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
+	local SlotKey       = (_SelectedEntry.Type == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
 	local CurrentEquip  = Data and Data[SlotKey] or "Default"
-	local IsEquipped    = (CurrentEquip == _selectedEntry.Id)
+	local IsEquipped    = (CurrentEquip == _SelectedEntry.Id)
 
 	local StatusText = EquipButton:FindFirstChild("StatusText")
 	if StatusText then
@@ -165,7 +168,7 @@ local function UpdateEquippedTags()
 	if not ScrollingFrame then return end
 
 	local Data         = PlayerDataController.GetData()
-	local SlotKey      = (_currentTab == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
+	local SlotKey      = (_CurrentTab == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
 	local CurrentEquip = Data and Data[SlotKey] or "Default"
 
 	for _, Child in ipairs(ScrollingFrame:GetChildren()) do
@@ -178,7 +181,7 @@ end
 --- Cập nhật ItemSelection panel khi chọn một item
 --- @param Entry table — entry từ ItemRegistry
 local function SelectItem(Entry)
-	_selectedEntry = Entry
+	_SelectedEntry = Entry
 
 	-- Cập nhật text thông tin
 	if SelectionName   then SelectionName.Text   = Entry.Name   end
@@ -193,7 +196,7 @@ local function SelectItem(Entry)
 	-- Cập nhật model preview lớn
 	if SelectionViewport then
 		LoadPreviewModel(SelectionViewport, Entry)
-		_selectionModel = SelectionViewport:FindFirstChildWhichIsA("Model")
+		_SelectionModel = SelectionViewport:FindFirstChildWhichIsA("Model")
 	end
 
 	-- Cập nhật trạng thái nút Equip
@@ -202,26 +205,26 @@ end
 
 --- Xử lý trang bị item khi bấm EquipButton
 local function EquipCurrentItem()
-	if not _selectedEntry then return end
+	if not _SelectedEntry then return end
 
-	local SlotName = (_selectedEntry.Type == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
+	local SlotName = (_SelectedEntry.Type == "Icicle") and "EquippedIcicle" or "EquippedIceBlock"
 
 	-- Disable tạm thời để tránh spam
 	if EquipButton then EquipButton.Active = false end
 
 	local EquipItemFn = RemoteDefinitions.GetFunction("EquipItem")
 	local Success, Result = pcall(function()
-		return EquipItemFn:InvokeServer(SlotName, _selectedEntry.Id)
+		return EquipItemFn:InvokeServer(SlotName, _SelectedEntry.Id)
 	end)
 
 	if Success and Result then
 		-- Cập nhật cache local
 		local Data = PlayerDataController.GetData()
 		if Data then
-			Data[SlotName] = _selectedEntry.Id
+			Data[SlotName] = _SelectedEntry.Id
 		end
 		UpdateEquippedTags()
-		print(("[InventoryController] Đã trang bị '%s' vào slot '%s'"):format(_selectedEntry.Id, SlotName))
+		print(("[InventoryController] Đã trang bị '%s' vào slot '%s'"):format(_SelectedEntry.Id, SlotName))
 	else
 		warn(("[InventoryController] EquipItem thất bại: %s"):format(tostring(Result)))
 	end
@@ -230,15 +233,65 @@ local function EquipCurrentItem()
 	RefreshEquipButton()
 end
 
+-- =========================================================
+-- LAZY RENDER
+-- =========================================================
+
+--- Kiểm tra queue và render các card đang nằm trong (hoặc gần) vùng nhìn thấy của ScrollingFrame
+local function CheckLazyQueue()
+	if not ScrollingFrame or #_LazyRenderQueue == 0 then return end
+
+	local Buffer       = InventoryConfig.LazyRenderBuffer
+	local CanvasY      = ScrollingFrame.CanvasPosition.Y
+	local ScrollHeight = ScrollingFrame.AbsoluteSize.Y
+	local ScrollTop    = ScrollingFrame.AbsolutePosition.Y
+
+	local VisibleTop    = CanvasY - Buffer
+	local VisibleBottom = CanvasY + ScrollHeight + Buffer
+
+	-- Duyệt ngược để an toàn khi xóa phần tử
+	for Index = #_LazyRenderQueue, 1, -1 do
+		local QueueItem = _LazyRenderQueue[Index]
+		local Frame     = QueueItem.Frame
+
+		-- Nếu card đã bị destroy (ví dụ: đổi tab), bỏ qua
+		if not Frame.Parent then
+			table.remove(_LazyRenderQueue, Index)
+			continue
+		end
+
+		-- Tính vị trí card trong canvas coordinate
+		local CardTop    = Frame.AbsolutePosition.Y - ScrollTop + CanvasY
+		local CardBottom = CardTop + Frame.AbsoluteSize.Y
+
+		if CardBottom >= VisibleTop and CardTop <= VisibleBottom then
+			-- Card trong vùng nhìn thấy → render 3D Viewport
+			ItemCard.LoadViewport(Frame, QueueItem.Entry.Id, QueueItem.Entry.Type)
+			table.remove(_LazyRenderQueue, Index)
+		end
+	end
+end
+
 --- Dọn dẹp toàn bộ ItemFrame cũ trong ScrollingFrame
 local function ClearItemList()
 	StopStaggerAnimation()
 
 	-- Hủy kết nối sự kiện click cũ
-	for _, Conn in ipairs(_listConnections) do
-		Conn:Disconnect()
+	for _, Conn in ipairs(_ListConnections) do
+		if Conn and Conn.Connected then
+			Conn:Disconnect()
+		end
 	end
-	_listConnections = {}
+	table.clear(_ListConnections)
+
+	-- Ngắt connection theo dõi scroll
+	if _ScrollConn and _ScrollConn.Connected then
+		_ScrollConn:Disconnect()
+		_ScrollConn = nil
+	end
+
+	-- Reset state lazy render
+	table.clear(_LazyRenderQueue)
 
 	-- Xóa toàn bộ item đã render
 	if not ScrollingFrame then return end
@@ -261,8 +314,8 @@ local function RenderList(ItemType)
 
 	ClearItemList()
 	CleanViewport(SelectionViewport)
-	_selectedEntry = nil
-	_selectionModel = nil
+	_SelectedEntry = nil
+	_SelectionModel = nil
 
 	-- Reset ItemSelection panel
 	if SelectionName   then SelectionName.Text   = "" end
@@ -318,6 +371,7 @@ local function RenderList(ItemType)
 			IsEquipped   = (Entry.Id == CurrentEquip),
 			ShowDropRate = false,
 			EnableHover  = true,
+			LazyViewport = true,
 			OnClick      = function()
 				SelectItem(EntrySnapshot)
 			end,
@@ -326,11 +380,20 @@ local function RenderList(ItemType)
 		if Frame then
 			LayoutOrder += 1
 			table.insert(RenderedFrames, Frame)
+			table.insert(_LazyRenderQueue, { Frame = Frame, Entry = EntrySnapshot })
 		end
 	end
 
 	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop)
-	_staggerThread = GuiHelper.StaggerPopOpen(RenderedFrames)
+	_StaggerThread = GuiHelper.StaggerPopOpen(RenderedFrames)
+
+	-- Kết nối scroll để trigger lazy render khi cuộn
+	_ScrollConn = ScrollingFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(CheckLazyQueue)
+	table.insert(_ListConnections, _ScrollConn)
+
+	-- Render ngay các card đang trong vùng nhìn thấy ban đầu (không chờ người dùng scroll)
+	-- Dùng task.defer để đảm bảo AbsolutePosition đã được tính bởi engine
+	task.defer(CheckLazyQueue)
 end
 
 -- =========================================================
@@ -338,7 +401,7 @@ end
 -- =========================================================
 
 local function SwitchTab(ItemType)
-	_currentTab = ItemType
+	_CurrentTab = ItemType
 
 	-- Highlight tab đang chọn bằng màu nền (Active: FFFFFF, Inactive: 2F2F2F)
 	if ItemType == "Icicle" then
@@ -359,12 +422,12 @@ end
 local function OpenInventory()
 	if not Inventory then return end
 
-	SwitchTab(_currentTab)
+	SwitchTab(_CurrentTab)
 
 	-- Tải dữ liệu mới bất đồng bộ từ Server để hiển thị các skin mới nhất
 	task.spawn(function()
 		PlayerDataController.RefreshData()
-		SwitchTab(_currentTab)
+		SwitchTab(_CurrentTab)
 	end)
 end
 
