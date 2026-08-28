@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiAnimConfig     = require(ReplicatedStorage.Shared.Config.GuiAnimConfig)
 
 -- =========================================================
 -- CONFIG
@@ -64,11 +65,11 @@ local function UpdateAvatarCardVisual(UserId, State)
 	Data.State = State or "Normal"
 	local IsInactive = (Data.State == "Frozen" or Data.State == "Dead")
 
-	local StatusCfg = GuiConfig.PlayerStatus or {}
-	local InactiveColor     = StatusCfg.InactiveColor     or Color3.fromHex("868686")
-	local AllyColor         = StatusCfg.AllyColor         or Color3.fromHex("009DFF")
-	local EnemyColor        = StatusCfg.EnemyColor        or Color3.fromHex("FF5151")
-	local DefaultImageColor = StatusCfg.DefaultImageColor or Color3.fromRGB(255, 255, 255)
+	local StatusCfg         = GuiAnimConfig.PlayerStatus
+	local InactiveColor     = StatusCfg.InactiveColor
+	local AllyColor         = StatusCfg.AllyColor
+	local EnemyColor        = StatusCfg.EnemyColor
+	local DefaultImageColor = StatusCfg.DefaultImageColor
 
 	if IsInactive then
 		Data.Card.BackgroundColor3 = InactiveColor
@@ -91,10 +92,10 @@ end
 local function SpawnAvatarCard(UserId, IsAlly)
 	if not _Template then return end
 
-	local StatusCfg = GuiConfig.PlayerStatus or {}
-	local AllyColor         = StatusCfg.AllyColor         or Color3.fromHex("009DFF")
-	local EnemyColor        = StatusCfg.EnemyColor        or Color3.fromHex("FF5151")
-	local DefaultImageColor = StatusCfg.DefaultImageColor or Color3.fromRGB(255, 255, 255)
+	local StatusCfg         = GuiAnimConfig.PlayerStatus
+	local AllyColor         = StatusCfg.AllyColor
+	local EnemyColor        = StatusCfg.EnemyColor
+	local DefaultImageColor = StatusCfg.DefaultImageColor
 
 	local Clone = _Template:Clone()
 	Clone.Name    = tostring(UserId)

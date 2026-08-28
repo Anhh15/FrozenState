@@ -22,6 +22,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiAnimConfig     = require(ReplicatedStorage.Shared.Config.GuiAnimConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
@@ -113,10 +114,10 @@ local function FormatAnnouncementText(WinnerInfo)
 		return "Game over, Draw!"
 	end
 
-	local AllyHex      = GuiConfig.PlayerStatus.AllyColor:ToHex()
-	local EnemyHex     = GuiConfig.PlayerStatus.EnemyColor:ToHex()
-	local FFAWinnerHex = (GuiConfig.GameOver and GuiConfig.GameOver.FFAWinnerColor and GuiConfig.GameOver.FFAWinnerColor:ToHex()) or "FFD700"
-	local SpectatorHex = (GuiConfig.GameOver and GuiConfig.GameOver.SpectatorColor and GuiConfig.GameOver.SpectatorColor:ToHex()) or "FFFFFF"
+	local AllyHex      = GuiAnimConfig.PlayerStatus.AllyColor:ToHex()
+	local EnemyHex     = GuiAnimConfig.PlayerStatus.EnemyColor:ToHex()
+	local FFAWinnerHex = GuiAnimConfig.GameOver.FFAWinnerColor:ToHex()
+	local SpectatorHex = GuiAnimConfig.GameOver.SpectatorColor:ToHex()
 
 	if WinnerInfo.WinTeam then
 		local WinTeam         = WinnerInfo.WinTeam
@@ -136,7 +137,7 @@ local function FormatAnnouncementText(WinnerInfo)
 
 	elseif WinnerInfo.WinPlayer then
 		local RawName   = WinnerInfo.WinPlayer.Name or "Player"
-		local MaxLen    = (GuiConfig.GameOver and GuiConfig.GameOver.MaxNameLength) or 15
+		local MaxLen    = GuiAnimConfig.GameOver.MaxNameLength
 		local SafeName  = GuiHelper.TruncateText(RawName, MaxLen)
 
 		return string.format('Game over, <font color="#%s">%s</font> wins!', FFAWinnerHex, SafeName)

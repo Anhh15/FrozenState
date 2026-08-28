@@ -1,6 +1,6 @@
 # GuiArchitecture
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về nền tảng GUI (UIScale Animation Engine, Phân tầng Cấu hình Default/Overrides, Stagger Pop, Dynamic GUI Resolver và Quản lý Vòng đời ScreenGui).
-> Cập nhật lần cuối: 21-08-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về nền tảng GUI (UIScale Animation Engine, Phân tầng Cấu hình Default/Overrides, Stagger Pop, Dynamic GUI Resolver, Phân tách GuiConfig/GuiAnimConfig và Quản lý Vòng đời ScreenGui).
+> Cập nhật lần cuối: 28-08-2026
 
 ---
 
@@ -17,12 +17,12 @@
   - `BindAllNavButtonsAnimation(Container)`: Tự động gom toàn bộ sự kiện từ các nút con cháu về scale item gốc trong container.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
-### 2. Kiến trúc 2 Tầng Cấu Hình (Default & Overrides) Cho Toàn Bộ UI
-- **Chi tiết:** Chuẩn hóa 100% cấu hình hoạt ảnh trong game sang mô hình 2 tầng trong `GuiConfig.Animations`:
-  - `Default`: Chứa các tham số mặc định (Thời lượng `OpenDuration`, `CloseDuration`, Kiểu easing `EasingStyle`, Tỷ lệ scale `HoverScale`, `PressScale`).
-  - `Overrides`: Chứa các cấu hình ghi đè đặc thù cho từng menu/nút cụ thể (`Shop`, `Inventory`, `Profile`, `Quest`, `GameStatistic`, `Accolades`).
-- **Resolver tự động:** `GuiHelper` cung cấp các hàm giải quyết cấu hình (`GetPopAnimConfig`, `GetButtonAnimConfig`, `GetStaggerAnimConfig`, `GetItemRewardAnimConfig`...) tự động hòa trộn `Overrides` với `Default`, triệt tiêu hoàn toàn magic numbers và hardcode trong các Controller.
-- **File liên quan:** [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+### 2. Kiến trúc 2 Tầng Cấu Hình (Default & Overrides) Cho Toàn Bộ UI Animation
+- **Chi tiết:** Chuẩn hóa 100% cấu hình hoạt ảnh trong game sang mô hình 2 tầng trong `GuiAnimConfig.Animations`:
+  - `Default`: Chứa các tham số mặc định (`OpenDuration`, `CloseDuration`, `EasingStyle`, `HoverScale`, `PressScale`...).
+  - `Overrides`: Chứa các cấu hình ghi đè đặc thù cho từng menu/nút cụ thể theo key (`"Shop"`, `"Inventory"`, `"TopPlayersStats"`...).
+- **Resolver:** `GuiAnimConfig` cung cấp public getters (`GetPopConfig`, `GetButtonScaleConfig`, `GetStaggerConfig`, `GetItemRewardAnimConfig`...) tự động hòa trộn `Overrides` với `Default` qua helper private `Resolve(AnimKey, OverrideKey)`. `GuiHelper` giữ các proxy 1 dòng sang `GuiAnimConfig` để Controllers không phải thay đổi call site.
+- **File liên quan:** [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
 ### 3. Hoạt họa Xuất hiện Nối tiếp Phân tầng (Staggered Pop Animation)
 - **Chi tiết:** Khi hiển thị danh sách các thẻ item/nhiệm vụ trong `ScrollingFrame`, áp dụng `GuiHelper.StaggerPopOpen` để kích hoạt hiệu ứng bung nở nối tiếp với độ trễ `DelayStep` (`0.03s`) thay vì hiện thô cứng toàn bộ cùng lúc.
@@ -37,10 +37,13 @@
   - Chu kỳ làm mới ngầm định kỳ gọi với `TriggerStagger = false` để thực hiện cập nhật in-place các thuộc tính text, progress bar và nút bấm, giữ nguyên vị trí cuộn `CanvasPosition` mà không bị gián đoạn hay chớp nháy UI.
 - **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
-### 5. Single Source of Truth cho Đường dẫn Cấu trúc UI (Decoupled GUI Paths)
-- **Chi tiết:** Toàn bộ tên ScreenGui, Frame, Container, Button và Stats keys được tập trung trong `GuiConfig.lua`.
-- **Truy xuất an toàn qua GuiHelper:** `GuiHelper` cung cấp các tiện ích `GetScreenGui`, `GetNavButton` (tìm kiếm đệ quy an toàn), `GetMoneyLabel`, `HideOtherMenuFrames`, và `BindAllNavButtonsSound` (dùng `GetDescendants()` để tự động gắn âm thanh hover/click cho mọi nút bấm con/cháu). Các controller hoàn toàn độc lập với cấu trúc cây phân cấp thực tế trong Roblox Studio.
-- **File liên quan:** [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+### 5. Single Source of Truth — Phân Tách GuiConfig (Tên) và GuiAnimConfig (Thông Số)
+- **Chi tiết:** GUI config được tách thành 2 file với trách nhiệm rõ ràng:
+  - **[GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua):** Chỉ chứa tên phần tử (strings) — `ScreenGuis`, `NavContainers`, `NavButtons`, `MenuFrames`, `HotbarElements`... và `Timeouts`. Không có Enum, Color3 hay giá trị animation.
+  - **[GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua):** Chứa `PlayerStatus` (màu sắc HUD), `GameOver` (màu, MaxNameLength) và toàn bộ `Animations` block (10 animation types) + public getters.
+- **Lý do:** Hai loại dữ liệu có tính chất khác nhau hoàn toàn — tên instance trong Roblox Studio (static, không đổi) vs thông số hành vi runtime (hay điều chỉnh). Tách ra giúp locate nhanh khi cần sửa.
+- **Cả 2 file đều nằm trong `ReplicatedStorage/Shared/Config/`** để Server (`MatchService`) và Client đều có thể require trực tiếp.
+- **File liên quan:** [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
 ### 6. Mẫu Truy Xuất Động GUI (Dynamic GUI Resolver Pattern)
 - **Chi tiết:** Trong kiến trúc Single-Controller Client, các controller sử dụng hàm resolver động (`ResolveScreenElements` / `ResolveElements`) để luôn truy xuất trực tiếp instance GuiObject đang active trong `PlayerGui` thay vì cache biến tĩnh lúc `Init()`.
@@ -50,6 +53,15 @@
 ### 7. Chuẩn hóa Phân cấp Animation trên Phần tử con Background trong ScreenGui Đặc biệt
 - **Chi tiết:** Thay vì tween trực tiếp trên Frame cha (`RoundLoadingScreen`, `ItemReward`) làm phá vỡ cấu trúc container toàn màn hình, chuyển 100% các animation nền (fade in/out, flash trắng chuyển pha) sang phần tử con `Background` (`Frame`/`ImageLabel`). Frame cha giữ `BackgroundTransparency = 1` và thuần túy quản lý `Visible` và vòng đời hiển thị.
 - **File liên quan:** [RoundLoadingScreenController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 8. Kiến trúc Phân quyền Tương tác Nút Bấm & Bộ lọc Tự động (Selective AutoBind & Component Authority Pattern)
+- **Chi tiết:** Phân tách ranh giới rõ ràng giữa **Auto-Binding toàn cục** (`GuiHelper.AutoBindButtons`) và **Component-Level Binding** (`ItemCard`, custom UI elements):
+  - `GuiHelper.AutoBindButtons`: Quét và tự động gán Scale Animation + SFX cho toàn bộ `GuiButton` trong container qua `DescendantAdded`.
+  - **Cơ chế Loại trừ 3 Tầng (Selective Filter):**
+    1. *Đã xử lý:* Kiểm tra `_BoundButtons[Button]` (được đánh dấu bởi `GuiHelper.MarkBound` hoặc các hàm bind trực tiếp).
+    2. *Attribute bỏ qua:* Kiểm tra thuộc tính `IgnoreAutoBind == true` hoặc `AutoBind == false` trên nút hoặc trên bất kỳ Frame tổ tiên nào (cho phép tắt theo từng nhánh component).
+    3. *Khu vực Template:* Tự động bỏ qua mọi phần tử con nằm trong container/folder có tên `"Templates"`.
+- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua)
 
 ---
 
@@ -76,3 +88,17 @@
   1. Đặt `AnchorPoint = Vector2.new(0.5, 1)` cho các nút con và đổi `UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom` để layout tự động căn đáy và bung lên trên khi scale.
   2. Tắt `ClipsDescendants = false` trên container `Buttons` và ScreenGui cha.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua)
+
+### 4. Silent Value Divergence — Fallback Hardcode trong Helper Lệch Giá Trị Config
+- **Vấn đề:** Khi getter của `GuiHelper` (trước khi tách) tự resolve Default+Override và đặt fallback hardcode cuối mỗi trường (`or 0.12`), nếu giá trị Default trong config bị sửa nhưng fallback không được cập nhật đồng bộ, code chạy đúng về mặt logic (không có lỗi runtime) nhưng sử dụng giá trị sai một cách âm thầm. Ví dụ thực tế: `Phase1DotBlinkTime` trong `GuiHelper.GetGameLoadingAnimConfig` fallback `= 0.12` trong khi `GuiConfig` khai báo `= 0.4`.
+- **Nguyên nhân gốc:** Logic resolve Default+Override bị đặt trong Helper thay vì trong Config module — tạo ra 2 nơi cần đồng bộ giá trị.
+- **Giải pháp:** Di chuyển toàn bộ logic resolve và getters vào `GuiAnimConfig.lua`. `GuiHelper` chỉ giữ proxy 1 dòng (`return GuiAnimConfig.GetXxx(...)`). Khi Default trong `GuiAnimConfig` thay đổi, Helper tự động phản ánh — không còn chỗ để diverge.
+- **File liên quan:** [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+
+### 5. Ghi đè Tương tác & Lãng phí Hiệu năng do DescendantAdded trong AutoBindButtons
+- **Vấn đề:** Khi clone các thẻ hiển thị tĩnh (như `ItemTemplate` trong `Shop` Chest Preview hay `Profile` Equipped Items với `EnableHover = false`), các thẻ này vẫn bị phóng to và phát SFX khi di chuột qua.
+- **Nguyên nhân:** `AutoBindButtons` gắn trên Frame cha (`Shop`, `Profile`) lắng nghe `DescendantAdded`. Khi `ItemCard.Create` clone template và gán `.Parent`, `DescendantAdded` bắt được `GuiButton` con và tự động gắn đè `BindButtonScale` và `BindButtonSound`, vô hiệu hóa cấu hình `EnableHover = false`.
+- **Giải pháp:**
+  1. `ItemCard` gọi `GuiHelper.MarkBound(Frame)` cho toàn bộ các nút con và gán `SetIgnoreAutoBind(Frame, true)` trước khi set `.Parent`.
+  2. `AutoBindButtons` tích hợp hàm kiểm tra `ShouldIgnoreAutoBind` để tôn trọng quyền cấu hình riêng của từng component và bỏ qua toàn bộ folder `Templates`.
+- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)

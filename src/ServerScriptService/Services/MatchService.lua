@@ -17,6 +17,7 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local GameModeConfig    = require(ReplicatedStorage.Shared.Config.GameModeConfig)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiAnimConfig     = require(ReplicatedStorage.Shared.Config.GuiAnimConfig)
 local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
 local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
@@ -438,11 +439,11 @@ local function RunSetup()
 
 	-- Nếu là Special Round: chờ thêm thời gian để client hiển thị ModeAnnouncement
 	if GameModeHelper.IsSpecialRound(ModeKey) then
-		local AnnouncementDuration = (GuiConfig.Animations.ModeAnnouncement and GuiConfig.Animations.ModeAnnouncement.DisplayDuration) or 4.0
+		local AnnouncementDuration = GuiAnimConfig.GetModeAnnouncementAnimConfig(ModeKey).DisplayDuration
 		task.wait(AnnouncementDuration)
 	end
 
-	local FadeInDuration = (GuiConfig.Animations.RoundLoadingScreen and GuiConfig.Animations.RoundLoadingScreen.FadeInDuration) or 1.0
+	local FadeInDuration = GuiAnimConfig.GetRoundLoadingAnimConfig(ModeKey).FadeInDuration
 	task.wait(FadeInDuration)
 	task.wait(0.5)  -- buffer nhỏ để map load xong
 

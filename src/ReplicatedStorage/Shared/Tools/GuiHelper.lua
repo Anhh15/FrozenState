@@ -1,15 +1,16 @@
 -- GuiHelper.lua
 -- Công cụ hỗ trợ truy xuất và quản lý giao diện (GUI) an toàn cho Client
--- Sử dụng GuiConfig làm Single Source of Truth
+-- Sử dụng GuiConfig (tên phần tử) và GuiAnimConfig (thông số animation) làm Single Source of Truth
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
 local Debris            = game:GetService("Debris")
 
-local GuiConfig   = require(ReplicatedStorage.Shared.Config.GuiConfig)
-local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
-local AudioHelper = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local GuiConfig     = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiAnimConfig = require(ReplicatedStorage.Shared.Config.GuiAnimConfig)
+local AudioConfig   = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local AudioHelper   = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
@@ -137,12 +138,62 @@ function GuiHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 	return AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 end
 
+--- Đánh dấu một GuiObject / GuiButton đã được xử lý bind để AutoBindButtons bỏ qua
+--- @param GuiObject GuiObject
+function GuiHelper.MarkBound(GuiObject)
+	if not GuiObject then return end
+	_BoundButtons[GuiObject] = true
+end
+
+--- Gán cờ bỏ qua AutoBindButtons cho một Instance hoặc Container (kể cả toàn bộ con cháu)
+--- @param Target Instance
+--- @param Ignored boolean? -- Mặc định là true
+function GuiHelper.SetIgnoreAutoBind(Target, Ignored)
+	if not Target then return end
+	local Value = (Ignored ~= false)
+	local AttrName = (GuiConfig.Attributes and GuiConfig.Attributes.IgnoreAutoBind) or "IgnoreAutoBind"
+	Target:SetAttribute(AttrName, Value)
+end
+
+--- Kiểm tra xem một GuiButton hoặc tổ tiên của nó có bị loại trừ khỏi AutoBindButtons hay không
+--- @param Button Instance
+--- @param Container Instance?
+--- @return boolean
+local function ShouldIgnoreAutoBind(Button, Container)
+	if not Button then return true end
+	if _BoundButtons[Button] then return true end
+
+	local IgnoreAttr = (GuiConfig.Attributes and GuiConfig.Attributes.IgnoreAutoBind) or "IgnoreAutoBind"
+	local AutoBindAttr = (GuiConfig.Attributes and GuiConfig.Attributes.AutoBind) or "AutoBind"
+
+	if Button:GetAttribute(IgnoreAttr) == true or Button:GetAttribute(AutoBindAttr) == false then
+		return true
+	end
+
+	local Curr = Button.Parent
+	while Curr and Curr ~= game and (not Container or Curr ~= Container.Parent) do
+		if Curr.Name == "Templates" then
+			return true
+		end
+		if Curr:GetAttribute(IgnoreAttr) == true or Curr:GetAttribute(AutoBindAttr) == false then
+			return true
+		end
+		if Container and Curr == Container then
+			break
+		end
+		Curr = Curr.Parent
+	end
+
+	return false
+end
+
 --- Gắn hiệu ứng âm thanh (Hover/Click) cho một GuiButton
 --- @param Button GuiButton
 --- @param ClickEntryOrId (table | number | string)?
 --- @param HoverEntryOrId (table | number | string)?
 function GuiHelper.BindButtonSound(Button, ClickEntryOrId, HoverEntryOrId)
 	if not Button or not Button:IsA("GuiButton") then return end
+	_BoundButtons[Button] = true
 
 	local ClickAudio = ClickEntryOrId or AudioConfig.GetGuiAudio("ButtonClick")
 	local HoverAudio = HoverEntryOrId or AudioConfig.GetGuiAudio("MouseEnter")
@@ -173,7 +224,8 @@ function GuiHelper.AutoBindButtons(Container, Options)
 	local EnableSound = (Opts.EnableSound ~= false)
 
 	local function BindSingleButton(Button)
-		if not Button or not Button:IsA("GuiButton") or _BoundButtons[Button] then return end
+		if not Button or not Button:IsA("GuiButton") then return end
+		if ShouldIgnoreAutoBind(Button, Container) then return end
 		_BoundButtons[Button] = true
 
 		-- 1. Gắn Scale Animation nếu được bật
@@ -249,23 +301,83 @@ function GuiHelper.CancelTween(Target)
 	end
 end
 
---- Lấy cấu hình Scale của Button dựa theo tên nút (kết hợp Default và Overrides)
+-- =========================================================
+-- CONFIG GETTERS (proxy sang GuiAnimConfig)
+-- =========================================================
+
+--- Lấy cấu hình Scale của Button dựa theo tên (kết hợp Default và Overrides)
 --- @param ButtonName string?
 --- @return table
 function GuiHelper.GetButtonScaleConfig(ButtonName)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.ButtonScale
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
-	local OverrideCfg = (ButtonName and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ButtonName]) or {}
-
-	return {
-		Duration     = OverrideCfg.Duration     or DefaultCfg.Duration     or 0.15,
-		EasingStyle  = OverrideCfg.EasingStyle  or DefaultCfg.EasingStyle  or Enum.EasingStyle.Back,
-		EasingDir    = OverrideCfg.EasingDir    or DefaultCfg.EasingDir    or Enum.EasingDirection.Out,
-		DefaultScale = OverrideCfg.DefaultScale or DefaultCfg.DefaultScale or 1.0,
-		HoverScale   = OverrideCfg.HoverScale   or DefaultCfg.HoverScale   or 1.15,
-		PressScale   = OverrideCfg.PressScale   or DefaultCfg.PressScale   or 0.92,
-	}
+	return GuiAnimConfig.GetButtonScaleConfig(ButtonName)
 end
+
+--- Lấy cấu hình Pop của Frame dựa theo tên (kết hợp Default và Overrides)
+--- @param FrameName string?
+--- @return table
+function GuiHelper.GetPopConfig(FrameName)
+	return GuiAnimConfig.GetPopConfig(FrameName)
+end
+
+--- Lấy cấu hình Stagger của danh sách (kết hợp Default và Overrides)
+--- @param Identifier string?
+--- @return table
+function GuiHelper.GetStaggerConfig(Identifier)
+	return GuiAnimConfig.GetStaggerConfig(Identifier)
+end
+
+--- Lấy cấu hình Animation ItemReward (kết hợp Default và Overrides theo ChestId)
+--- @param ChestId string?
+--- @return table
+function GuiHelper.GetItemRewardAnimConfig(ChestId)
+	return GuiAnimConfig.GetItemRewardAnimConfig(ChestId)
+end
+
+--- Lấy cấu hình Animation ModeAnnouncement (kết hợp Default và Overrides theo ModeKey)
+--- @param ModeKey string?
+--- @return table
+function GuiHelper.GetModeAnnouncementAnimConfig(ModeKey)
+	return GuiAnimConfig.GetModeAnnouncementAnimConfig(ModeKey)
+end
+
+--- Lấy cấu hình Animation RoundLoadingScreen (kết hợp Default và Overrides theo ModeKey)
+--- @param ModeKey string?
+--- @return table
+function GuiHelper.GetRoundLoadingAnimConfig(ModeKey)
+	return GuiAnimConfig.GetRoundLoadingAnimConfig(ModeKey)
+end
+
+--- Lấy cấu hình Animation Accolades (kết hợp Default và Overrides theo AccoladeType)
+--- @param AccoladeType string?
+--- @return table
+function GuiHelper.GetAccoladesAnimConfig(AccoladeType)
+	return GuiAnimConfig.GetAccoladesAnimConfig(AccoladeType)
+end
+
+--- Lấy cấu hình Animation GameLoadingScreen (kết hợp Default và Overrides theo VariantKey)
+--- @param VariantKey string?
+--- @return table
+function GuiHelper.GetGameLoadingAnimConfig(VariantKey)
+	return GuiAnimConfig.GetGameLoadingAnimConfig(VariantKey)
+end
+
+--- Lấy cấu hình Animation GameOverAnnouncement (kết hợp Default và Overrides theo VariantKey)
+--- @param VariantKey string?
+--- @return table
+function GuiHelper.GetGameOverAnnouncementAnimConfig(VariantKey)
+	return GuiAnimConfig.GetGameOverAnnouncementAnimConfig(VariantKey)
+end
+
+--- Lấy cấu hình hoạt ảnh cho Hotbar (kết hợp Default và Overrides)
+--- @param SlotName string?
+--- @return table
+function GuiHelper.GetHotbarConfig(SlotName)
+	return GuiAnimConfig.GetHotbarConfig(SlotName)
+end
+
+-- =========================================================
+-- TWEEN HELPERS
+-- =========================================================
 
 --- Tween thuộc tính UIScale của một GuiObject đến giá trị chỉ định
 --- @param TargetObject GuiObject
@@ -283,7 +395,7 @@ function GuiHelper.TweenScale(TargetObject, TargetScale, Duration, Style, Direct
 
 	GuiHelper.CancelTween(UiScale)
 
-	local Cfg           = GuiHelper.GetButtonScaleConfig(TargetObject.Name)
+	local Cfg           = GuiAnimConfig.GetButtonScaleConfig(TargetObject.Name)
 	local TweenDuration = Duration  or Cfg.Duration
 	local EasingStyle   = Style     or Cfg.EasingStyle
 	local EasingDir     = Direction or Cfg.EasingDir
@@ -305,26 +417,6 @@ function GuiHelper.TweenScale(TargetObject, TargetScale, Duration, Style, Direct
 	return Tween
 end
 
---- Lấy cấu hình Pop của Frame dựa theo tên (kết hợp Default và Overrides)
---- @param FrameName string?
---- @return table
-function GuiHelper.GetPopConfig(FrameName)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Pop
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
-	local OverrideCfg = (FrameName and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[FrameName]) or {}
-
-	return {
-		OpenDuration     = OverrideCfg.OpenDuration     or DefaultCfg.OpenDuration     or 0.25,
-		CloseDuration    = OverrideCfg.CloseDuration    or DefaultCfg.CloseDuration    or 0.2,
-		OpenEasingStyle  = OverrideCfg.OpenEasingStyle  or DefaultCfg.OpenEasingStyle  or Enum.EasingStyle.Back,
-		OpenEasingDir    = OverrideCfg.OpenEasingDir    or DefaultCfg.OpenEasingDir    or Enum.EasingDirection.Out,
-		CloseEasingStyle = OverrideCfg.CloseEasingStyle or DefaultCfg.CloseEasingStyle or Enum.EasingStyle.Quad,
-		CloseEasingDir   = OverrideCfg.CloseEasingDir   or DefaultCfg.CloseEasingDir   or Enum.EasingDirection.In,
-		InitialScale     = OverrideCfg.InitialScale     or DefaultCfg.InitialScale     or 0,
-		TargetScale      = OverrideCfg.TargetScale      or DefaultCfg.TargetScale      or 1,
-	}
-end
-
 --- Mở một cửa sổ GUI kèm hiệu ứng Zoom Pop nảy nhẹ
 --- @param GuiObject GuiObject Frame hoặc container cần mở
 --- @param CustomConfig table? { Duration: number?, EasingStyle: Enum.EasingStyle?, EasingDir: Enum.EasingDirection?, TargetScale: number?, InitialScale: number? }
@@ -333,7 +425,7 @@ end
 function GuiHelper.PopOpen(GuiObject, CustomConfig, OnComplete)
 	if not GuiObject or not GuiObject:IsA("GuiObject") then return nil end
 
-	local PopConfig = GuiHelper.GetPopConfig(GuiObject.Name)
+	local PopConfig = GuiAnimConfig.GetPopConfig(GuiObject.Name)
 	local Duration  = (CustomConfig and CustomConfig.Duration) or (PopConfig and PopConfig.OpenDuration) or 0.25
 	local Style     = (CustomConfig and CustomConfig.EasingStyle) or (PopConfig and PopConfig.OpenEasingStyle) or Enum.EasingStyle.Back
 	local Direction = (CustomConfig and CustomConfig.EasingDir) or (PopConfig and PopConfig.OpenEasingDir) or Enum.EasingDirection.Out
@@ -380,7 +472,7 @@ function GuiHelper.PopClose(GuiObject, CustomConfig, OnComplete)
 		return nil
 	end
 
-	local PopConfig = GuiHelper.GetPopConfig(GuiObject.Name)
+	local PopConfig = GuiAnimConfig.GetPopConfig(GuiObject.Name)
 	local Duration  = (CustomConfig and CustomConfig.Duration) or (PopConfig and PopConfig.CloseDuration) or 0.2
 	local Style     = (CustomConfig and CustomConfig.EasingStyle) or (PopConfig and PopConfig.CloseEasingStyle) or Enum.EasingStyle.Quad
 	local Direction = (CustomConfig and CustomConfig.EasingDir) or (PopConfig and PopConfig.CloseEasingDir) or Enum.EasingDirection.In
@@ -423,12 +515,13 @@ end
 --- @param CustomScaleConfig table? { Duration: number?, HoverScale: number?, PressScale: number?, DefaultScale: number? }
 function GuiHelper.BindButtonScale(Button, TargetElement, CustomScaleConfig)
 	if not Button or not Button:IsA("GuiButton") then return end
+	_BoundButtons[Button] = true
 
 	local Target = TargetElement or Button
 	if not Target or not Target:IsA("GuiObject") then return end
 
 	local ButtonName   = (Target.Name ~= "" and Target.Name) or Button.Name
-	local ButtonConfig = GuiHelper.GetButtonScaleConfig(ButtonName)
+	local ButtonConfig = GuiAnimConfig.GetButtonScaleConfig(ButtonName)
 
 	local Duration     = (CustomScaleConfig and CustomScaleConfig.Duration) or ButtonConfig.Duration
 	local Style        = (CustomScaleConfig and CustomScaleConfig.EasingStyle) or ButtonConfig.EasingStyle
@@ -475,40 +568,21 @@ end
 --- @return string?
 local function ResolveAncestorMenuName(Object)
 	if not Object then return nil end
-	local Overrides  = GuiConfig.Animations and GuiConfig.Animations.Stagger and GuiConfig.Animations.Stagger.Overrides
-	local MenuFrames = GuiConfig.MenuFrames or {}
-	local Curr       = Object.Parent
+	local StaggerOverrides = GuiAnimConfig.Animations and GuiAnimConfig.Animations.Stagger and GuiAnimConfig.Animations.Stagger.Overrides
+	local MenuFrames       = GuiConfig.MenuFrames or {}
+	local Curr             = Object.Parent
 	while Curr and Curr.Parent and not Curr:IsA("ScreenGui") do
 		-- 1. Ưu tiên nếu tên trùng với MenuFrames ("Inventory", "Shop", "Quest", "Profile", "Spectate")
 		if MenuFrames[Curr.Name] then
 			return Curr.Name
 		end
 		-- 2. Hoặc trùng với bất kỳ key nào đã đăng ký trong Overrides
-		if Overrides and Overrides[Curr.Name] then
+		if StaggerOverrides and StaggerOverrides[Curr.Name] then
 			return Curr.Name
 		end
 		Curr = Curr.Parent
 	end
 	return nil
-end
-
---- Lấy cấu hình Stagger của danh sách (kết hợp Default và Overrides)
---- @param Identifier string? Tên menu hoặc container (vd: "Inventory", "Shop", "Quest")
---- @return table
-function GuiHelper.GetStaggerConfig(Identifier)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Stagger
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
-	local OverrideCfg = (Identifier and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[Identifier]) or {}
-
-	return {
-		DelayStep    = OverrideCfg.DelayStep    or DefaultCfg.DelayStep    or 0.03,
-		Duration     = OverrideCfg.Duration     or DefaultCfg.Duration     or 0.2,
-		EasingStyle  = OverrideCfg.EasingStyle  or DefaultCfg.EasingStyle  or Enum.EasingStyle.Back,
-		EasingDir    = OverrideCfg.EasingDir    or DefaultCfg.EasingDir    or Enum.EasingDirection.Out,
-		InitialScale = OverrideCfg.InitialScale or DefaultCfg.InitialScale or 0.0,
-		TargetScale  = OverrideCfg.TargetScale  or DefaultCfg.TargetScale  or 1.0,
-		ItemSoundId  = OverrideCfg.ItemSoundId  or DefaultCfg.ItemSoundId,
-	}
 end
 
 --- Hiển thị danh sách phần tử (Template cards/items) xuất hiện lần lượt với hiệu ứng Pop nảy nhẹ
@@ -557,7 +631,7 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 		ResolvedId = ResolveAncestorMenuName(ItemsList[1]) or (ItemsList[1].Parent and ItemsList[1].Parent.Name)
 	end
 
-	local StaggerConfig = GuiHelper.GetStaggerConfig(ResolvedId)
+	local StaggerConfig = GuiAnimConfig.GetStaggerConfig(ResolvedId)
 	local Cfg           = ResolvedConfig or {}
 	local DelayStep     = Cfg.DelayStep    or StaggerConfig.DelayStep    or 0.03
 	local Duration      = Cfg.Duration     or StaggerConfig.Duration     or 0.2
@@ -631,145 +705,13 @@ function GuiHelper.StaggerPopOpen(ItemsList, CustomConfig, OnComplete, Identifie
 	return StaggerThread
 end
 
---- Lấy cấu hình Animation ItemReward (kết hợp Default và Overrides theo ChestId)
---- @param ChestId string?
---- @return table
-function GuiHelper.GetItemRewardAnimConfig(ChestId)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.ItemReward
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
-	local OverrideCfg = (ChestId and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ChestId]) or {}
-
-	return {
-		ChestZoomDuration   = OverrideCfg.ChestZoomDuration   or DefaultCfg.ChestZoomDuration   or 0.4,
-		RotationSpeed       = OverrideCfg.RotationSpeed       or DefaultCfg.RotationSpeed       or 36,
-		ChestShrinkDuration = OverrideCfg.ChestShrinkDuration or DefaultCfg.ChestShrinkDuration or 0.15,
-		ChestExpandDuration = OverrideCfg.ChestExpandDuration or DefaultCfg.ChestExpandDuration or 0.25,
-		FlashDuration       = OverrideCfg.FlashDuration       or DefaultCfg.FlashDuration       or 0.4,
-		FadeDuration        = OverrideCfg.FadeDuration        or DefaultCfg.FadeDuration        or 0.4,
-		ZoomEasingStyle     = OverrideCfg.ZoomEasingStyle     or DefaultCfg.ZoomEasingStyle     or Enum.EasingStyle.Back,
-		ZoomEasingDir       = OverrideCfg.ZoomEasingDir       or DefaultCfg.ZoomEasingDir       or Enum.EasingDirection.Out,
-		ShrinkEasingStyle   = OverrideCfg.ShrinkEasingStyle   or DefaultCfg.ShrinkEasingStyle   or Enum.EasingStyle.Quad,
-		ShrinkEasingDir     = OverrideCfg.ShrinkEasingDir     or DefaultCfg.ShrinkEasingDir     or Enum.EasingDirection.Out,
-		ExpandEasingStyle   = OverrideCfg.ExpandEasingStyle   or DefaultCfg.ExpandEasingStyle   or Enum.EasingStyle.Back,
-		ExpandEasingDir     = OverrideCfg.ExpandEasingDir     or DefaultCfg.ExpandEasingDir     or Enum.EasingDirection.Out,
-	}
-end
-
---- Lấy cấu hình Animation ModeAnnouncement (kết hợp Default và Overrides theo ModeKey)
---- @param ModeKey string?
---- @return table
-function GuiHelper.GetModeAnnouncementAnimConfig(ModeKey)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.ModeAnnouncement
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
-	local OverrideCfg = (ModeKey and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ModeKey]) or {}
-
-	return {
-		DisplayDuration = OverrideCfg.DisplayDuration or DefaultCfg.DisplayDuration or 4.0,
-		FadeInDuration  = OverrideCfg.FadeInDuration  or DefaultCfg.FadeInDuration  or 0.5,
-		EasingStyle     = OverrideCfg.EasingStyle     or DefaultCfg.EasingStyle     or Enum.EasingStyle.Quad,
-		EasingDir       = OverrideCfg.EasingDir       or DefaultCfg.EasingDir       or Enum.EasingDirection.Out,
-	}
-end
-
---- Lấy cấu hình Animation RoundLoadingScreen (kết hợp Default và Overrides theo ModeKey)
---- @param ModeKey string?
---- @return table
-function GuiHelper.GetRoundLoadingAnimConfig(ModeKey)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.RoundLoadingScreen
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
-	local OverrideCfg = (ModeKey and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[ModeKey]) or {}
-
-	return {
-		FadeInDuration     = OverrideCfg.FadeInDuration     or DefaultCfg.FadeInDuration     or 1.0,
-		HoldDuration       = OverrideCfg.HoldDuration       or DefaultCfg.HoldDuration       or 1.0,
-		FadeOutDuration    = OverrideCfg.FadeOutDuration    or DefaultCfg.FadeOutDuration    or 0.5,
-		FadeInEasingStyle  = OverrideCfg.FadeInEasingStyle  or DefaultCfg.FadeInEasingStyle  or Enum.EasingStyle.Quad,
-		FadeInEasingDir    = OverrideCfg.FadeInEasingDir    or DefaultCfg.FadeInEasingDir    or Enum.EasingDirection.Out,
-		FadeOutEasingStyle = OverrideCfg.FadeOutEasingStyle or DefaultCfg.FadeOutEasingStyle or Enum.EasingStyle.Quad,
-		FadeOutEasingDir   = OverrideCfg.FadeOutEasingDir   or DefaultCfg.FadeOutEasingDir   or Enum.EasingDirection.In,
-	}
-end
-
---- Lấy cấu hình Animation Accolades (kết hợp Default và Overrides theo AccoladeType)
---- @param AccoladeType string?
---- @return table
-function GuiHelper.GetAccoladesAnimConfig(AccoladeType)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Accolades
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or {}
-	local OverrideCfg = (AccoladeType and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[AccoladeType]) or {}
-
-	return {
-		OpenDuration     = OverrideCfg.OpenDuration     or DefaultCfg.OpenDuration     or 0.25,
-		CloseDuration    = OverrideCfg.CloseDuration    or DefaultCfg.CloseDuration    or 0.2,
-		DisplayDuration  = OverrideCfg.DisplayDuration  or DefaultCfg.DisplayDuration  or 1.5,
-		OpenEasingStyle  = OverrideCfg.OpenEasingStyle  or DefaultCfg.OpenEasingStyle  or Enum.EasingStyle.Back,
-		OpenEasingDir    = OverrideCfg.OpenEasingDir    or DefaultCfg.OpenEasingDir    or Enum.EasingDirection.Out,
-		CloseEasingStyle = OverrideCfg.CloseEasingStyle or DefaultCfg.CloseEasingStyle or Enum.EasingStyle.Quad,
-		CloseEasingDir   = OverrideCfg.CloseEasingDir   or DefaultCfg.CloseEasingDir   or Enum.EasingDirection.In,
-		InitialScale     = OverrideCfg.InitialScale     or DefaultCfg.InitialScale     or 0,
-		TargetScale      = OverrideCfg.TargetScale      or DefaultCfg.TargetScale      or 1,
-	}
-end
-
---- Lấy cấu hình Animation GameLoadingScreen
---- @return table
-function GuiHelper.GetGameLoadingAnimConfig()
-	local AnimConfig = GuiConfig.Animations and GuiConfig.Animations.GameLoadingScreen
-	local DefaultCfg = (AnimConfig and AnimConfig.Default) or {}
-
-	return {
-		DotWaveDuration     = DefaultCfg.DotWaveDuration     or 0.5,
-		DotMinScale         = DefaultCfg.DotMinScale         or 1.0,
-		DotMaxScale         = DefaultCfg.DotMaxScale         or 1.5,
-		DotEasingStyle      = DefaultCfg.DotEasingStyle      or Enum.EasingStyle.Sine,
-		DotEasingDir        = DefaultCfg.DotEasingDir        or Enum.EasingDirection.InOut,
-		TitleMinScale       = DefaultCfg.TitleMinScale       or 1.0,
-		TitleLoadMaxScale   = DefaultCfg.TitleLoadMaxScale   or 1.4,
-		TitlePopScale       = DefaultCfg.TitlePopScale       or 1.6,
-		Phase1PopDuration   = DefaultCfg.Phase1PopDuration   or 0.35,
-		Phase1DotBlinkCount = DefaultCfg.Phase1DotBlinkCount or 2,
-		Phase1DotBlinkTime  = DefaultCfg.Phase1DotBlinkTime  or 0.12,
-		Phase2Duration      = DefaultCfg.Phase2Duration      or 0.65,
-		Phase2EasingStyle   = DefaultCfg.Phase2EasingStyle   or Enum.EasingStyle.Quad,
-		Phase2EasingDir     = DefaultCfg.Phase2EasingDir     or Enum.EasingDirection.InOut,
-		MinLoadingDuration  = DefaultCfg.MinLoadingDuration  or 2.5,
-		SafetyTimeout       = DefaultCfg.SafetyTimeout       or 10,
-		ProgressLerpSpeed   = DefaultCfg.ProgressLerpSpeed   or 8,
-	}
-end
-
---- Lấy cấu hình Animation GameOverAnnouncement (kết hợp Default và Overrides)
---- @return table
-function GuiHelper.GetGameOverAnnouncementAnimConfig()
-	local AnimConfig = GuiConfig.Animations and GuiConfig.Animations.GameOverAnnouncement
-	local DefaultCfg = (AnimConfig and AnimConfig.Default) or {}
-
-	return {
-		DisplayDuration       = DefaultCfg.DisplayDuration       or 3.2,
-		SplitDuration         = DefaultCfg.SplitDuration         or 0.4,
-		FlyInDuration         = DefaultCfg.FlyInDuration         or 0.35,
-		FlyOutDuration        = DefaultCfg.FlyOutDuration        or 0.25,
-		CloseDuration         = DefaultCfg.CloseDuration         or 0.3,
-		FlyInStartPosYScale   = DefaultCfg.FlyInStartPosYScale   or 2.0,
-		FlyOutTargetPosYScale = DefaultCfg.FlyOutTargetPosYScale or -1.0,
-		SplitEasingStyle      = DefaultCfg.SplitEasingStyle      or Enum.EasingStyle.Back,
-		SplitEasingDir        = DefaultCfg.SplitEasingDir        or Enum.EasingDirection.Out,
-		FlyInEasingStyle      = DefaultCfg.FlyInEasingStyle      or Enum.EasingStyle.Back,
-		FlyInEasingDir        = DefaultCfg.FlyInEasingDir        or Enum.EasingDirection.Out,
-		FlyOutEasingStyle     = DefaultCfg.FlyOutEasingStyle     or Enum.EasingStyle.Quad,
-		FlyOutEasingDir       = DefaultCfg.FlyOutEasingDir       or Enum.EasingDirection.In,
-		CloseEasingStyle      = DefaultCfg.CloseEasingStyle      or Enum.EasingStyle.Quad,
-		CloseEasingDir        = DefaultCfg.CloseEasingDir        or Enum.EasingDirection.In,
-	}
-end
-
 --- Cắt ngắn chuỗi văn bản nếu vượt quá MaxLength (an toàn với UTF-8), thêm dấu "..."
 --- @param Text string
 --- @param MaxLength number?
 --- @return string
 function GuiHelper.TruncateText(Text, MaxLength)
 	if not Text or type(Text) ~= "string" then return "" end
-	local Limit = MaxLength or (GuiConfig.GameOver and GuiConfig.GameOver.MaxNameLength) or 15
+	local Limit = MaxLength or GuiAnimConfig.GameOver.MaxNameLength or 15
 
 	local CharCount = utf8.len(Text)
 	if not CharCount then
@@ -790,27 +732,6 @@ function GuiHelper.TruncateText(Text, MaxLength)
 	end
 
 	return Text
-end
-
---- Lấy cấu hình hoạt ảnh cho Hotbar (kết hợp Default và Overrides)
---- @param SlotName string? Tùy chọn định danh slot (vd: "Icicle", "Slot1")
---- @return table
-function GuiHelper.GetHotbarConfig(SlotName)
-	local AnimConfig  = GuiConfig.Animations and GuiConfig.Animations.Hotbar
-	local DefaultCfg  = (AnimConfig and AnimConfig.Default) or AnimConfig or {}
-	local OverrideCfg = (SlotName and AnimConfig and AnimConfig.Overrides and AnimConfig.Overrides[SlotName]) or {}
-
-	return {
-		InactiveScale           = OverrideCfg.InactiveScale           or DefaultCfg.InactiveScale           or 1.0,
-		ActiveScale             = OverrideCfg.ActiveScale             or DefaultCfg.ActiveScale             or 1.3,
-		ScaleDuration           = OverrideCfg.ScaleDuration           or DefaultCfg.ScaleDuration           or 0.15,
-		ScaleEasingStyle        = OverrideCfg.ScaleEasingStyle        or DefaultCfg.ScaleEasingStyle        or Enum.EasingStyle.Back,
-		ScaleEasingDir          = OverrideCfg.ScaleEasingDir          or DefaultCfg.ScaleEasingDir          or Enum.EasingDirection.Out,
-		InactiveBackgroundTrans = OverrideCfg.InactiveBackgroundTrans or DefaultCfg.InactiveBackgroundTrans or 0.8,
-		ActiveBackgroundTrans   = OverrideCfg.ActiveBackgroundTrans   or DefaultCfg.ActiveBackgroundTrans   or 0.4,
-		CooldownEasingStyle     = OverrideCfg.CooldownEasingStyle     or DefaultCfg.CooldownEasingStyle     or Enum.EasingStyle.Linear,
-		CooldownEasingDir       = OverrideCfg.CooldownEasingDir       or DefaultCfg.CooldownEasingDir       or Enum.EasingDirection.InOut,
-	}
 end
 
 return GuiHelper

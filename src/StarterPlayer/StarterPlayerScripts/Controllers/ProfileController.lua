@@ -126,6 +126,7 @@ local function RenderSingleItem(Entry, LayoutOrder)
 		ShowEquipped = false,
 		ShowDropRate = false,
 		EnableHover  = false,
+		EnableSound  = false,
 	})
 
 	if Frame then
@@ -256,7 +257,11 @@ function ProfileController:Init()
 		})
 	end
 
-	-- Tự động gắn Scale & SFX cho toàn bộ nút trong Profile
+	-- Tự động gắn Scale & SFX cho toàn bộ nút trong Profile (bỏ qua ItemList chứa skin trang bị)
+	if ItemList then
+		GuiHelper.SetIgnoreAutoBind(ItemList, true)
+	end
+
 	GuiHelper.AutoBindButtons(Profile, { MenuName = "Profile" })
 
 	-- Nút đóng Profile
