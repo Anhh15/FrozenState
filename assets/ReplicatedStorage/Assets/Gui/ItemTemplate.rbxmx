@@ -2,13 +2,54 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="Frame" referent="RBX240A589473A944FDA4D37434E2C4A37C">
+	<Item class="ImageButton" referent="RBXC5C56001F792481690D93D24A24A9E76">
 		<Properties>
+			<Content name="HoverImage"><null></null></Content>
+			<Content name="Image"><null></null></Content>
+			<Color3 name="ImageColor3">
+				<R>1</R>
+				<G>1</G>
+				<B>1</B>
+			</Color3>
+			<Vector2 name="ImageRectOffset">
+				<X>0</X>
+				<Y>0</Y>
+			</Vector2>
+			<Vector2 name="ImageRectSize">
+				<X>0</X>
+				<Y>0</Y>
+			</Vector2>
+			<float name="ImageTransparency">0</float>
+			<Content name="PressedImage"><null></null></Content>
+			<token name="ResampleMode">0</token>
+			<token name="ScaleType">0</token>
+			<Rect2D name="SliceCenter">
+				<min>
+					<X>0</X>
+					<Y>0</Y>
+				</min>
+				<max>
+					<X>0</X>
+					<Y>0</Y>
+				</max>
+			</Rect2D>
+			<float name="SliceScale">1</float>
+			<UDim2 name="TileSize">
+				<XS>1</XS>
+				<XO>0</XO>
+				<YS>1</YS>
+				<YO>0</YO>
+			</UDim2>
+			<bool name="AutoButtonColor">true</bool>
+			<Ref name="HoverHapticEffect">null</Ref>
+			<bool name="Modal">false</bool>
+			<Ref name="PressHapticEffect">null</Ref>
+			<bool name="Selected">false</bool>
 			<token name="Style">0</token>
 			<bool name="Active">false</bool>
 			<Vector2 name="AnchorPoint">
-				<X>0</X>
-				<Y>0</Y>
+				<X>0.5</X>
+				<Y>0.5</Y>
 			</Vector2>
 			<token name="AutomaticSize">0</token>
 			<Color3 name="BackgroundColor3">
@@ -34,9 +75,9 @@
 			<Ref name="NextSelectionRight">null</Ref>
 			<Ref name="NextSelectionUp">null</Ref>
 			<UDim2 name="Position">
-				<XS>0</XS>
+				<XS>0.153737664</XS>
 				<XO>0</XO>
-				<YS>0</YS>
+				<YS>0.0879032239</YS>
 				<YO>0</YO>
 			</UDim2>
 			<float name="Rotation">0</float>
@@ -64,9 +105,9 @@
 			<bool name="DefinesCapabilities">false</bool>
 			<string name="Name">ItemTemplate</string>
 			<int64 name="SourceAssetId">-1</int64>
-			<BinaryString name="Tags"></BinaryString>
+			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 		</Properties>
-		<Item class="ImageLabel" referent="RBX284424E4EC7D434D9E66C96BE3762A9B">
+		<Item class="ImageLabel" referent="RBXD23F814515684134BD63F1FE7B8AEEAC">
 			<Properties>
 				<Content name="Image"><url>rbxassetid://96508573886609</url></Content>
 				<Color3 name="ImageColor3">
@@ -161,10 +202,10 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Background</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
 		</Item>
-		<Item class="TextLabel" referent="RBX7DF06ABC1D1E47298FABFF2E7E741139">
+		<Item class="TextLabel" referent="RBXC48D3ADE489A452BB90ED5F85DCED557">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -256,9 +297,9 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">NameText</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="UIStroke" referent="RBX84CE05083EF243F7B325ABBF78529AA3">
+			<Item class="UIStroke" referent="RBX18127D9F7CC841BD9D36D5E15771207B">
 				<Properties>
 					<token name="ApplyStrokeMode">0</token>
 					<UDim name="BorderOffset">
@@ -282,11 +323,11 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">UIStroke</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="TextLabel" referent="RBX778A3AAD174840CB812662A66F165E27">
+		<Item class="TextLabel" referent="RBXF0CB49A5EF64430CA3B9F0F5651DFAE8">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -378,9 +419,9 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">RarityText</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="UIStroke" referent="RBX0B73B82E36964623AC0DB07DA48015CC">
+			<Item class="UIStroke" referent="RBXC314407CA6FD4CAEB23A3245BE8E274D">
 				<Properties>
 					<token name="ApplyStrokeMode">0</token>
 					<UDim name="BorderOffset">
@@ -404,11 +445,11 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">UIStroke</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="UIAspectRatioConstraint" referent="RBX03AE27818C1E4536AC351C22F569BD4C">
+		<Item class="UIAspectRatioConstraint" referent="RBX4D10228C58BC41AC9D3CB8A70B0C2DF5">
 			<Properties>
 				<float name="AspectRatio">1</float>
 				<token name="AspectType">0</token>
@@ -418,10 +459,10 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">UIAspectRatioConstraint</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
 		</Item>
-		<Item class="ViewportFrame" referent="RBX33A97DB0C59B4EABA1298C2A83EA10B3">
+		<Item class="ViewportFrame" referent="RBXA39A034CED484364A923C6D20BA42E33">
 			<Properties>
 				<Color3 name="Ambient">
 					<R>1</R>
@@ -455,9 +496,9 @@
 					<B>1</B>
 				</Color3>
 				<Vector3 name="LightDirection">
-					<X>-1</X>
-					<Y>-1</Y>
-					<Z>-1</Z>
+					<X>1</X>
+					<Y>1</Y>
+					<Z>2</Z>
 				</Vector3>
 				<bool name="Active">false</bool>
 				<Vector2 name="AnchorPoint">
@@ -518,10 +559,10 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">ItemViewport</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
 		</Item>
-		<Item class="TextLabel" referent="RBX9E413D161CA449B4BF2F18594EB6308D">
+		<Item class="TextLabel" referent="RBX48F64BC0C99243AAA9E4A1ABC67A83C9">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -613,9 +654,9 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Equipped</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="UICorner" referent="RBX891BDDFA772A4988AECFB586EEA4D930">
+			<Item class="UICorner" referent="RBXA9BC389963C44C3B96CE793939A019A6">
 				<Properties>
 					<UDim name="BottomLeftRadius">
 						<S>0.5</S>
@@ -638,11 +679,11 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">UICorner</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="TextLabel" referent="RBXF102F999D11D491E80C02D11628321F5">
+		<Item class="TextLabel" referent="RBXE3B9D731E3AF497DA039C2437C60257C">
 			<Properties>
 				<Font name="FontFace">
 					<Family><url>rbxasset://fonts/families/FredokaOne.json</url></Family>
@@ -734,9 +775,9 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">DropRateText</string>
 				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
+				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 			</Properties>
-			<Item class="UIStroke" referent="RBXB8297A1F492F46F19DD13D0120E8B163">
+			<Item class="UIStroke" referent="RBX0E37F2FB4D214EFD9C61A29D3C70AA2A">
 				<Properties>
 					<token name="ApplyStrokeMode">0</token>
 					<UDim name="BorderOffset">
@@ -760,9 +801,12 @@
 					<bool name="DefinesCapabilities">false</bool>
 					<string name="Name">UIStroke</string>
 					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
+					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 				</Properties>
 			</Item>
 		</Item>
 	</Item>
+	<SharedStrings>
+		<SharedString md5="yuZpQdnvvUBOTYh1jqZ2cA=="></SharedString>
+	</SharedStrings>
 </roblox>

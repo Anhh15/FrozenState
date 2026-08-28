@@ -216,6 +216,11 @@ local GuiConfig = {
 					HoverScale = 1.15,
 					PressScale = 0.9,
 				},
+				["ItemTemplate"] = {
+					HoverScale = 1.05,
+					PressScale = 0.95,
+					Duration   = 0.15,
+				},
 			},
 		},
 

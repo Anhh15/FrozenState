@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ItemRegistry    = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig    = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local GuiConfig       = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local AudioConfig     = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local ViewportManager = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper       = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
@@ -139,16 +140,28 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 		end
 	end
 
-	-- 9. Gắn sự kiện Click (nếu có)
-	if Options.OnClick then
+	-- 9. Gắn sự kiện Click & tương tác
+	local IsClickable = (Options.OnClick ~= nil)
+	local ShouldEnableHover = (Options.EnableHover ~= nil) and Options.EnableHover or IsClickable
+	local ShouldEnableSound = (Options.EnableSound ~= nil) and Options.EnableSound or IsClickable
+
+	if IsClickable then
 		ItemCard.BindClick(Frame, function()
 			Options.OnClick(FullEntry)
 		end)
 	end
 
 	-- 10. Gắn Hover Animation qua UIScale (nếu được bật)
-	if Options.EnableHover == true then
-		GuiHelper.BindButtonScale(Frame)
+	if ShouldEnableHover then
+		local ScaleConfig = GuiHelper.GetButtonScaleConfig("ItemTemplate")
+		GuiHelper.BindButtonScale(Frame, nil, ScaleConfig)
+	end
+
+	-- 11. Gắn âm thanh Hover & Click (nếu được bật)
+	if ShouldEnableSound then
+		local ClickSound = Options.ClickSoundId or (AudioConfig.Gui and AudioConfig.Gui.ButtonClick)
+		local HoverSound = Options.HoverSoundId or (AudioConfig.Gui and AudioConfig.Gui.MouseEnter)
+		GuiHelper.BindButtonSound(Frame, ClickSound, HoverSound)
 	end
 
 	if Parent then
@@ -185,7 +198,7 @@ function ItemCard.SetDropRate(Frame, DropRate)
 	end
 end
 
---- Gắn sự kiện click an toàn cho Card (hỗ trợ cả GuiButton và Frame InputBegan)
+--- Gắn sự kiện click an toàn cho Card (ưu tiên GuiButton.Activated, fallback MouseButton1Click / InputBegan)
 --- @param Frame Instance — Thẻ ItemCard
 --- @param Callback function — Hàm xử lý khi click
 --- @return RBXScriptConnection?
@@ -194,7 +207,11 @@ function ItemCard.BindClick(Frame, Callback)
 
 	local ClickTarget = Frame:IsA("GuiButton") and Frame or Frame:FindFirstChildWhichIsA("GuiButton")
 	if ClickTarget then
-		return ClickTarget.MouseButton1Click:Connect(Callback)
+		if ClickTarget.Activated then
+			return ClickTarget.Activated:Connect(Callback)
+		else
+			return ClickTarget.MouseButton1Click:Connect(Callback)
+		end
 	else
 		return Frame.InputBegan:Connect(function(Input)
 			if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then

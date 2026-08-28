@@ -317,7 +317,7 @@ local function RenderList(ItemType)
 			ShowEquipped = true,
 			IsEquipped   = (Entry.Id == CurrentEquip),
 			ShowDropRate = false,
-			EnableHover  = false,  -- StaggerPopOpen quản lý scale
+			EnableHover  = true,
 			OnClick      = function()
 				SelectItem(EntrySnapshot)
 			end,

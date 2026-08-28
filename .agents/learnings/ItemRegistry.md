@@ -13,12 +13,12 @@
 
 ### 2. Đóng Gói UI Template qua Functional Component Helper (ItemCard.lua)
 - **Chi tiết:** Thay vì để từng Controller (`Inventory`, `Shop`, `Profile`, `ItemReward`) tự clone `ItemTemplate` và thao tác trực tiếp với các node con (dễ gây lệch màu Rarity, quên ẩn thẻ `EquippedText`/`DropRateText`, hoặc lặp code), toàn bộ logic hiển thị thẻ vật phẩm được chuẩn hóa thành Functional Helper `ItemCard.lua` (`ReplicatedStorage/Shared/Tools/ItemCard.lua`).
-- **API Đóng Gói & Cập Nhật In-Place:**
-  - `ItemCard.Create(Parent, ItemId, ItemType, Options)`: Tự động gán thông số từ `ItemRegistry`, `RarityConfig`, tải 3D qua `ViewportManager`, gắn click và scale hover.
+- **API Đóng Gói & Tương Tác Tự Động:**
+  - `ItemCard.Create(Parent, ItemId, ItemType, Options)`: Tự động gán thông số từ `ItemRegistry`, `RarityConfig`, tải 3D qua `ViewportManager`, gắn click qua `Activated`, tự động nạp hiệu ứng Hover Scale (`GuiHelper.BindButtonScale`) và âm thanh SFX (`GuiHelper.BindButtonSound`) theo cấu hình tập trung `GuiConfig.Animations.ButtonScale.Overrides.ItemTemplate`.
   - `ItemCard.SetEquipped(Frame, IsEquipped)`: Cập nhật in-place thẻ trang bị trong $O(1)$ mà không cần re-render toàn bộ danh sách.
   - `ItemCard.SetDropRate(Frame, DropRate)`: Cập nhật in-place nhãn tỉ lệ rơi.
   - `ItemCard.Destroy(Frame)`: Tự động dọn dẹp camera và model 3D trong `ViewportFrame` trước khi hủy instance, triệt tiêu rò rỉ bộ nhớ.
-- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 
 ### 3. Tự Động Hóa Camera ViewportFrame qua Bounding Box và ViewportConfig
 - **Chi tiết:** Tự động hóa tính toán camera hiển thị mô hình 3D trong `ViewportFrame` bằng `ViewportManager.lua` dựa trên Bounding Box của mô hình. Hỗ trợ ghi đè góc nhìn (Pitch, Yaw, FOV, Padding) qua cấu hình phân tầng `ViewportConfig.lua` (`Default` $\rightarrow$ `Type` $\rightarrow$ `ItemId`) trên tất cả các tab Inventory, Shop và Profile.
@@ -63,3 +63,11 @@
 - **Vấn đề:** Người chơi có thể can thiệp client để gửi yêu cầu trang bị các skin hiếm mà họ chưa thực sự sở hữu trong dữ liệu.
 - **Giải pháp:** Server khi nhận yêu cầu RemoteEvent phải đối chiếu danh sách `OwnedIcicles`/`OwnedBlocks` trong `DataStore` (hoặc Session Data) của người chơi. Chỉ cho phép trang bị và đồng bộ lại Client nếu hợp lệ.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
+### 4. Bắt Nhầm Click Khi Vuốt Cuộn ScrollingFrame và Bất Cập Khi Bọc Button Trong Thẻ Item
+- **Vấn đề:** `ItemTemplate` dùng root `Frame` khiến việc bắt click phải fallback qua `Frame.InputBegan` hoặc `MouseButton1Click`, dễ bị kích hoạt nhầm khi người chơi chạm màn hình vuốt cuộn `ScrollingFrame` trên thiết bị di động (Mobile/Tablet); đồng thời `GuiHelper.BindButtonScale` không thể nhận diện được nếu không phải `GuiButton`. Nếu bọc thêm `TextButton` con bên ngoài sẽ làm tăng số lượng instance và dễ xung đột lớp Z-Index.
+- **Giải pháp:**
+  1. Chuyển đổi trực tiếp Root của `ItemTemplate` thành `ImageButton` (`BackgroundTransparency = 1`, `AutoButtonColor = false`, `AnchorPoint = Vector2.new(0.5, 0.5)`).
+  2. Chuẩn hóa `ItemCard.BindClick` ưu tiên sự kiện `Button.Activated` (Roblox engine tự động phân biệt giữa chạm bấm Tap/Click và vuốt cuộn Drag, đồng thời hỗ trợ mượt mà cả PC, Mobile và Gamepad).
+  3. Cấu hình scale riêng cho `ItemTemplate` (`HoverScale = 1.05`, `PressScale = 0.95`) trong `GuiConfig.Animations.ButtonScale.Overrides` để thẻ bung nở từ tâm đối xứng mà không bị che đè lấn các ô lân cận trong `UIGridLayout`.
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
