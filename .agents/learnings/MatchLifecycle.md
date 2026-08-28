@@ -1,6 +1,6 @@
 # MatchLifecycle
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về vòng đời trận đấu (State Machine, Player State, WinCondition, Special Round, Death/Disconnect Lifecycle và Map Management).
-> Cập nhật lần cuối: 26-08-2026
+> Cập nhật lần cuối: 28-08-2026
 
 ---
 
@@ -135,6 +135,12 @@
 - **Vấn đề:** Khi cả 2 đội cùng Wipe hoặc hết giờ hòa mạng sống, `GetTeamTotalScore` phụ thuộc vào `GetTeamPlayers` (chỉ lọc người online), làm mất toàn bộ điểm số `Freeze + Thaw` mà người chơi đã đóng góp nếu họ bị rớt mạng/thoát game. Đồng thời logic `CheckWinCondition` bị duplicate giữa `FreezeService` và `PlayerRemoving`.
 - **Giải pháp:** Tích lũy trực tiếp điểm đội vào `_teamScores = { Team1 = 0, Team2 = 0 }` trong `SessionService.IncrementStat` để lấy $O(1)$ và bảo toàn điểm suốt ván đấu. Đồng thời đưa toàn bộ logic kiểm tra vào `SessionService.CheckWinCondition()`, loại bỏ biểu thức ternary dư thừa khi wipe.
 - **File liên quan:** [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua)
+
+### 13. Khóa Thao Tác Vũ Khí Sau Trận Đấu Do Thiếu Broadcast Trạng Thái Normal Đầu Ván Mới
+- **Vấn đề:** Người chơi bị đóng băng (`Frozen`) hoặc bị loại (`Dead`) ở trận trước không thể bấm phím 1..9 hay click chuột để trang bị vũ khí ở các trận kế tiếp dù đã được cấp Tool.
+- **Nguyên nhân:** Trong `RunSetup()`, Server chỉ gán `SessionService.SetState(Player, "Normal")` trong bộ nhớ Server mà không phát RemoteEvent `UpdatePlayerStateEvent` xuống Client. Các controller ở Client (`HotbarController`) vẫn lưu cờ `_IsFrozen = true` hoặc `_IsDead = true`, khóa toàn bộ tương tác vũ khí qua `ToggleEquipTool`.
+- **Giải pháp:** Trong `MatchService.RunSetup()`, Server duyệt qua toàn bộ `ActivePlayers` và phát `UpdatePlayerStateEvent:FireAllClients(...)` với `State = "Normal"` để xóa sạch cờ đóng băng/chết trên toàn bộ Client.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua)
 
 
 

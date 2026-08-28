@@ -37,6 +37,7 @@ local ShowGameOverEvent
 local UpdateSpectateListEvent
 local RequestSpectateTargetEvent
 local SetGameModeEvent
+local UpdatePlayerStateEvent
 
 -- =========================================================
 -- PRIVATE: Helpers
@@ -406,6 +407,14 @@ local function RunSetup()
 
 	for _, Player in ipairs(ActivePlayers) do
 		SessionService.SetState(Player, "Normal")
+		if UpdatePlayerStateEvent then
+			UpdatePlayerStateEvent:FireAllClients({
+				PlayerId = Player.UserId,
+				State    = "Normal",
+				Freezes  = 0,
+				Thaws    = 0,
+			})
+		end
 	end
 
 	-- Broadcast GameMode TRƯỚC (client cần biết mode trước khi nhận team data)
@@ -668,6 +677,7 @@ function MatchService:Init()
 	UpdateSpectateListEvent    = RemoteDefinitions.GetEvent("UpdateSpectateList")
 	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
 	SetGameModeEvent           = RemoteDefinitions.GetEvent("SetGameMode")
+	UpdatePlayerStateEvent     = RemoteDefinitions.GetEvent("UpdatePlayerState")
 
 	-- Đăng ký lắng nghe MatchEndSignal xuyên suốt vòng đời Service
 	SessionService.MatchEndSignal.Event:Connect(function(Result)

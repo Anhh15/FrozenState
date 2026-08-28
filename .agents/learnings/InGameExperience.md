@@ -101,12 +101,22 @@
 ### 7. Lỗi Giật Cục / Nhấp Nháy Hotbar Do Chu Kỳ UpdateDisplay 1s & Equip Transition
 - **Vấn đề:** Hotbar liên tục bị xóa và tạo lại mỗi giây, gây nhấp nháy, giật cục scale (1.0 $\rightarrow$ 1.3) và làm kẹt rèm/chữ Cooldown trên màn hình.
 - **Nguyên nhân:**
-  1. `GameStateController.UpdateDisplay` nhận event đếm ngược 1s từ Server và gọi `SetVisible(true)` mỗi giây. Hàm `SetVisible` không kiểm tra cờ Debounce (`_isVisible`) nên gọi `RefreshHotbar()` liên tục.
-  2. Khi Equip/Unequip, Tool đổi container giữa `Backpack` và `Character`, kích hoạt `ChildAdded`/`ChildRemoved` khiến toàn bộ Slot bị xóa và dựng lại.
-  3. Template trong Studio đang để `Visible = true` cho CooldownCurtain/Text nhưng code không ép ẩn ban đầu lúc clone.
+  1. Khi Equip/Unequip, Tool đổi container giữa `Backpack` và `Character`, kích hoạt `ChildAdded`/`ChildRemoved` khiến toàn bộ Slot bị xóa và dựng lại liên tục.
+  2. Template trong Studio đang để `Visible = true` cho CooldownCurtain/Text nhưng code không ép ẩn ban đầu lúc clone.
 - **Giải pháp:**
-  1. Thêm cờ Debounce `if _isVisible == Visible then return end` trong `SetVisible`.
-  2. Thiết lập hàm `SyncTools()` chỉ tái tạo Hotbar khi danh sách Tool thực tế thay đổi (thêm mới/xóa hẳn). Chuyển động Equip/Unequip chỉ thuần túy kích hoạt `UpdateSlotActiveVisual` qua `Tool.AncestryChanged`.
-  3. Ép ẩn `CooldownCurtain.Visible = false`, `CooldownCurtain.Size = UDim2.new(1, 0, 0, 0)` và `CooldownText.Visible = false` ngay khi tạo slot.
+  1. Thiết lập hàm `SyncTools()` chỉ tái tạo Hotbar khi danh sách Tool thực tế thay đổi (thêm mới/xóa hẳn). Chuyển động Equip/Unequip chỉ thuần túy kích hoạt `UpdateSlotActiveVisual` qua `Tool.AncestryChanged`.
+  2. Ép ẩn `CooldownCurtain.Visible = false`, `CooldownCurtain.Size = UDim2.new(1, 0, 0, 0)` và `CooldownText.Visible = false` ngay khi tạo slot.
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
+
+### 8. Lỗi Mất Hotbar Slot & Rò Rỉ Event Listener Giữa Các Vòng Đấu
+- **Vấn đề:** Sang trận thứ 2, Hotbar không render Slot dù Tool đã được cấp vào Balo, hoặc sau khi nhân vật respawn thì Hotbar bị mất kết nối.
+- **Nguyên nhân:**
+  1. `HotbarController` bật từ phase `Ready` khi Balo rỗng. Đến phase `InGame`, cờ debounce `_isVisible == true` chặn `SetVisible` quét lại Tool.
+  2. `_InGameGui` thiếu `ResetOnSpawn = false` khiến tham chiếu GUI bị hỏng khi nhân vật hồi sinh.
+  3. `BindCharacter` không dọn dẹp kết nối `Backpack.ChildAdded` cũ khi nhân vật hồi sinh, gây duplicate listener hoặc mất kết nối.
+- **Giải pháp:**
+  1. Luôn thực thi `RefreshHotbar()` khi `SetVisible(true)` và tự động refresh khi Tool xuất hiện trong `Backpack.ChildAdded` / `Character.ChildAdded`.
+  2. Thêm `_InGameGui.ResetOnSpawn = false` và hàm `HotbarController.ResetState()` tự động gọi khi đổi phase (`Setup`, `Ready`, `InGame`, `Intermission`).
+  3. Quản lý toàn bộ listeners của `Backpack`/`Character` qua mảng `_characterConnections` và ngắt kết nối an toàn (`Disconnect`) trước khi bind nhân vật mới.
 - **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 

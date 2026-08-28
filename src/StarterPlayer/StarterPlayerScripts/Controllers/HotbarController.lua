@@ -47,9 +47,10 @@ local _ActiveSlots     = {}  -- [Tool] = { SlotFrame = Frame, Connections = {}, 
 local _KeySlotMap      = {}  -- [KeyCode] = Tool
 local _IsFrozen        = false
 local _IsDead          = false
-local _HotbarConfig    = nil
-local _InputConnection = nil
-local _isVisible       = false
+local _HotbarConfig         = nil
+local _InputConnection      = nil
+local _isVisible            = false
+local _characterConnections = {}
 
 -- =========================================================
 -- PRIVATE HELPERS: CoreGui & Hierarchy
@@ -82,6 +83,7 @@ local function ResolveGuiReferences()
 		warn("[HotbarController] Không tìm thấy ScreenGui InGameGui.")
 		return false
 	end
+	_InGameGui.ResetOnSpawn = false
 
 	local Elements = GuiConfig.HotbarElements or {
 		Hotbar       = "Hotbar",
@@ -522,6 +524,12 @@ end
 
 local HotbarController = {}
 
+--- Đặt lại trạng thái Frozen / Dead về mặc định (chưa bị đóng băng, còn sống)
+function HotbarController.ResetState()
+	_IsFrozen = false
+	_IsDead   = false
+end
+
 --- Quét Backpack và Character của LocalPlayer để xây dựng lại danh sách Slot
 function HotbarController.RefreshHotbar()
 	ClearAllSlots()
@@ -562,7 +570,6 @@ end
 --- Ẩn / Hiện toàn bộ Frame Hotbar
 --- @param Visible boolean
 function HotbarController.SetVisible(Visible)
-	if _isVisible == Visible then return end
 	_isVisible = Visible
 
 	if _HotbarFrame then
@@ -621,36 +628,54 @@ function HotbarController:Init()
 
 	-- 5. Lắng nghe CharacterAdded để bind lại Backpack / Character listeners khi respawn
 	local function BindCharacter(Character)
+		for _, Conn in ipairs(_characterConnections) do
+			Conn:Disconnect()
+		end
+		_characterConnections = {}
+
 		local Backpack = LocalPlayer:WaitForChild("Backpack", 5)
 
 		if Backpack then
-			Backpack.ChildAdded:Connect(function(Child)
+			local AddedConn = Backpack.ChildAdded:Connect(function(Child)
+				if Child:IsA("Tool") then
+					task.defer(function()
+						SyncTools()
+						if _isVisible then
+							HotbarController.RefreshHotbar()
+						end
+					end)
+				end
+			end)
+			local RemovedConn = Backpack.ChildRemoved:Connect(function(Child)
 				if Child:IsA("Tool") then
 					task.defer(SyncTools)
 				end
 			end)
-			Backpack.ChildRemoved:Connect(function(Child)
-				if Child:IsA("Tool") then
-					task.defer(SyncTools)
-				end
-			end)
+			table.insert(_characterConnections, AddedConn)
+			table.insert(_characterConnections, RemovedConn)
 		end
 
 		if Character then
-			Character.ChildAdded:Connect(function(Child)
+			local AddedConn = Character.ChildAdded:Connect(function(Child)
+				if Child:IsA("Tool") then
+					task.defer(function()
+						SyncTools()
+						if _isVisible then
+							HotbarController.RefreshHotbar()
+						end
+					end)
+				end
+			end)
+			local RemovedConn = Character.ChildRemoved:Connect(function(Child)
 				if Child:IsA("Tool") then
 					task.defer(SyncTools)
 				end
 			end)
-			Character.ChildRemoved:Connect(function(Child)
-				if Child:IsA("Tool") then
-					task.defer(SyncTools)
-				end
-			end)
+			table.insert(_characterConnections, AddedConn)
+			table.insert(_characterConnections, RemovedConn)
 		end
 
-		_IsFrozen = false
-		_IsDead = false
+		HotbarController.ResetState()
 		task.defer(HotbarController.RefreshHotbar)
 	end
 
@@ -664,13 +689,21 @@ function HotbarController:Init()
 		HotbarController.RefreshHotbar()
 	end)
 
-	-- 7. Lắng nghe vòng đời trận đấu để làm sạch Hotbar khi về sảnh (Intermission)
+	-- 7. Lắng nghe vòng đời trận đấu để làm sạch Hotbar khi về sảnh (Intermission) và đồng bộ state
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
 		if not Data then return end
 		local Phase = Data.Phase or "Intermission"
 		if Phase == "Intermission" then
+			HotbarController.ResetState()
 			ClearAllSlots()
+		elseif Phase == "Setup" or Phase == "Ready" then
+			HotbarController.ResetState()
+		elseif Phase == "InGame" then
+			HotbarController.ResetState()
+			if _isVisible then
+				task.defer(HotbarController.RefreshHotbar)
+			end
 		end
 	end)
 

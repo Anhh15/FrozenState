@@ -9,7 +9,7 @@ local GameConfig = {
 	-- =========================================================
 	Phase = {
 		IntermissionDuration = 7,   -- Thời gian nghỉ giữa các trận
-		ReadyDuration        = 3,   -- Đếm ngược trước khi bắt đầu
+		ReadyDuration        = 4,   -- Đếm ngược trước khi bắt đầu
 		GameOverDuration     = 6,   -- Màn hình kết thúc
 		GameOverRevealDelay  = 2,   -- Delay trước khi hiện win/lose trong GameOver
 	},
