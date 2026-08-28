@@ -502,43 +502,31 @@ function SpectateController:Init()
 
 	-- Gắn sự kiện click và âm thanh SFX cho các nút điều khiển (không kèm animation scale theo quy định)
 	if CloseButton then
+		GuiHelper.BindButtonSound(CloseButton, AudioConfig.GetGuiAudio("CloseButtonClick", "Spectate"))
 		CloseButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			SpectateController.SetVisible(false)
-		end)
-		CloseButton.MouseEnter:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.MouseEnter)
 		end)
 	end
 
 	if NextButton then
+		GuiHelper.BindButtonSound(NextButton, AudioConfig.GetGuiAudio("ButtonClick", "Spectate"))
 		NextButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			CycleNext()
-		end)
-		NextButton.MouseEnter:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.MouseEnter)
 		end)
 	end
 
 	if BackButton then
+		GuiHelper.BindButtonSound(BackButton, AudioConfig.GetGuiAudio("ButtonClick", "Spectate"))
 		BackButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			CycleBack()
-		end)
-		BackButton.MouseEnter:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.MouseEnter)
 		end)
 	end
 
 	-- Gắn click cho SpectateButton trong InGameGui
 	if InGameSpectateButton then
+		GuiHelper.BindButtonSound(InGameSpectateButton, AudioConfig.GetGuiAudio("ButtonClick"))
 		InGameSpectateButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			SpectateController.SetVisible(true)
-		end)
-		InGameSpectateButton.MouseEnter:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.MouseEnter)
 		end)
 	end
 

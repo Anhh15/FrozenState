@@ -56,17 +56,17 @@ local UpdateGameStateEvent
 -- PRIVATE
 -- =========================================================
 
---- Xác định nhạc cần phát và Key định danh dựa trên trạng thái hiện tại
---- @return number?, string? — SoundId cần phát và MusicKey tương ứng
-local function ResolveMusicId()
+--- Xác định Key định danh bản nhạc dựa trên trạng thái hiện tại
+--- @return string
+local function ResolveMusicKey()
 	-- 1. Nếu chưa tải xong màn hình GameLoadingScreen ban đầu
 	if not _IsGameLoaded then
-		return AudioConfig.Music and AudioConfig.Music.GameLoading, "GameLoading"
+		return "GameLoading"
 	end
 
 	-- 2. Đang ở phase GameOver (thông báo kết thúc trận đấu)
 	if _CurrentPhase == "GameOver" then
-		return AudioConfig.Music and AudioConfig.Music.GameOver, "GameOver"
+		return "GameOver"
 	end
 
 	-- 3. Đang trong trận đấu (InMatch)
@@ -74,33 +74,29 @@ local function ResolveMusicId()
 	if IsInMatch then
 		if _CurrentPhase == "InGame" then
 			if _IsFrozenState then
-				return AudioConfig.Music.FrozenState, "FrozenState"
+				return "FrozenState"
 			else
-				return AudioConfig.Music.InGame, "InGame"
+				return "InGame"
 			end
 		elseif _CurrentPhase == "Ready" then
-			local ReadyMusicId = AudioConfig.Music and AudioConfig.Music.Ready
-			if ReadyMusicId then
-				return ReadyMusicId, "Ready"
-			else
-				return AudioConfig.Music.Lobby, "Lobby"
-			end
+			return "Ready"
 		else
-			return AudioConfig.Music.Lobby, "Lobby"
+			return "Lobby"
 		end
 	else
 		-- Spectator / Người chơi ở Sảnh
-		return AudioConfig.Music.Lobby, "Lobby"
+		return "Lobby"
 	end
 end
 
---- Áp dụng nhạc nền theo SoundId và MusicKey
+--- Áp dụng nhạc nền theo MusicKey
 --- Tự động cập nhật âm lượng cơ sở tương ứng cho từng track
 --- Hỗ trợ SoundId là nil/0 để dừng nhạc an toàn
---- @param SoundId number?
---- @param MusicKey string?
-local function ApplyMusic(SoundId, MusicKey)
-	local TargetVolume = AudioConfig.GetMusicVolume(MusicKey)
+--- @param MusicKey string
+local function ApplyMusic(MusicKey)
+	local Track = AudioConfig.GetMusicAudio(MusicKey)
+	local SoundId = Track and Track.Id
+	local TargetVolume = (Track and Track.Volume) or AudioConfig.Music.DefaultVolume or 0.3
 
 	if not SoundId or SoundId == 0 then
 		_CurrentSoundId = nil
@@ -125,8 +121,8 @@ end
 
 --- Cập nhật nhạc dựa trên trạng thái mới nhất
 local function UpdateMusic()
-	local SoundId, MusicKey = ResolveMusicId()
-	ApplyMusic(SoundId, MusicKey)
+	local MusicKey = ResolveMusicKey()
+	ApplyMusic(MusicKey)
 end
 
 -- =========================================================

@@ -8,12 +8,14 @@ local TweenService      = game:GetService("TweenService")
 local Debris            = game:GetService("Debris")
 
 local GuiConfig   = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AudioHelper = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local _ActiveTweens = {}
+local _BoundButtons = {}
 
 local GuiHelper = {}
 
@@ -129,30 +131,91 @@ function GuiHelper.GetMoneyLabel(Timeout)
 end
 
 --- Phát âm thanh GUI cục bộ
---- @param SoundId number | string
---- @param Volume number?
-function GuiHelper.PlayGuiSound(SoundId, Volume)
-	return AudioHelper.PlayGuiSound(SoundId, Volume)
+--- @param AudioEntryOrId table | number | string
+--- @param VolumeOverride number?
+function GuiHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
+	return AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 end
 
 --- Gắn hiệu ứng âm thanh (Hover/Click) cho một GuiButton
 --- @param Button GuiButton
---- @param ClickSoundId number?
---- @param HoverSoundId number?
-function GuiHelper.BindButtonSound(Button, ClickSoundId, HoverSoundId)
+--- @param ClickEntryOrId (table | number | string)?
+--- @param HoverEntryOrId (table | number | string)?
+function GuiHelper.BindButtonSound(Button, ClickEntryOrId, HoverEntryOrId)
 	if not Button or not Button:IsA("GuiButton") then return end
 
-	if HoverSoundId then
+	local ClickAudio = ClickEntryOrId or AudioConfig.GetGuiAudio("ButtonClick")
+	local HoverAudio = HoverEntryOrId or AudioConfig.GetGuiAudio("MouseEnter")
+
+	if HoverAudio then
 		Button.MouseEnter:Connect(function()
-			GuiHelper.PlayGuiSound(HoverSoundId)
+			GuiHelper.PlayGuiSound(HoverAudio)
 		end)
 	end
 
-	if ClickSoundId then
+	if ClickAudio then
 		Button.MouseButton1Click:Connect(function()
-			GuiHelper.PlayGuiSound(ClickSoundId)
+			GuiHelper.PlayGuiSound(ClickAudio)
 		end)
 	end
+end
+
+--- Tự động quét và gắn Scale Animation cùng SFX (Hover & Click) cho toàn bộ GuiButton trong Container
+--- Lắng nghe DescendantAdded để tự động hỗ trợ các phần tử sinh ra động
+--- @param Container Instance
+--- @param Options table? -- { MenuName: string?, EnableScale: boolean?, EnableSound: boolean?, CustomClickEntry: any, CustomHoverEntry: any }
+function GuiHelper.AutoBindButtons(Container, Options)
+	if not Container then return end
+
+	local Opts = Options or {}
+	local MenuName = Opts.MenuName
+	local EnableScale = (Opts.EnableScale ~= false)
+	local EnableSound = (Opts.EnableSound ~= false)
+
+	local function BindSingleButton(Button)
+		if not Button or not Button:IsA("GuiButton") or _BoundButtons[Button] then return end
+		_BoundButtons[Button] = true
+
+		-- 1. Gắn Scale Animation nếu được bật
+		if EnableScale then
+			GuiHelper.BindButtonScale(Button)
+		end
+
+		-- 2. Gắn SFX nếu được bật
+		if EnableSound then
+			local ButtonNameLower = string.lower(Button.Name)
+			local ClickEntry = Opts.CustomClickEntry
+
+			if not ClickEntry then
+				if string.find(ButtonNameLower, "close") then
+					ClickEntry = AudioConfig.GetGuiAudio("CloseButtonClick", MenuName)
+				else
+					ClickEntry = AudioConfig.GetGuiAudio("ButtonClick", MenuName)
+				end
+			end
+
+			local HoverEntry = Opts.CustomHoverEntry or AudioConfig.GetGuiAudio("MouseEnter", MenuName)
+			GuiHelper.BindButtonSound(Button, ClickEntry, HoverEntry)
+		end
+	end
+
+	-- Quét các nút hiện có
+	if Container:IsA("GuiButton") then
+		BindSingleButton(Container)
+	end
+
+	for _, Descendant in ipairs(Container:GetDescendants()) do
+		if Descendant:IsA("GuiButton") then
+			BindSingleButton(Descendant)
+		end
+	end
+
+	-- Lắng nghe các nút sinh ra động
+	Container.DescendantAdded:Connect(function(Descendant)
+		if Descendant:IsA("GuiButton") then
+			BindSingleButton(Descendant)
+		end
+	end)
 end
 
 

@@ -1,6 +1,6 @@
 -- AudioHelper.lua
 -- Module tiện ích dùng chung (Shared) cho Client & Server để phát và quản lý vòng đời âm thanh
--- Đảm bảo tự động dọn dẹp Sound instance (chống memory leak) và tối ưu độ trễ âm thanh
+-- Đảm bảo tự động dọn dẹp Sound instance (chống memory leak), hỗ trợ AudioEntry đa hình và tối ưu độ trễ
 
 local SoundService    = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
@@ -15,22 +15,56 @@ local AudioHelper = {}
 local _guiSoundPool = {}
 
 -- =========================================================
+-- PRIVATE HELPERS
+-- =========================================================
+
+--- Phân giải đầu vào đa hình (AudioEntry table hoặc SoundId thuần)
+--- @param Input table | number | string
+--- @param OverrideVolume number?
+--- @param OverrideMaxDistance number?
+--- @return number | string | nil, number, number
+local function ResolveAudioEntry(Input, OverrideVolume, OverrideMaxDistance)
+	if not Input then return nil, 1, 60 end
+
+	local SoundId = nil
+	local Volume = OverrideVolume
+	local MaxDistance = OverrideMaxDistance
+
+	if type(Input) == "table" then
+		if Input.Id then
+			SoundId = Input.Id
+		elseif type(Input.Ids) == "table" and #Input.Ids > 0 then
+			SoundId = Input.Ids[math.random(1, #Input.Ids)]
+		end
+		Volume = Volume or Input.Volume or 1
+		MaxDistance = MaxDistance or Input.MaxDistance or 60
+	else
+		SoundId = Input
+		Volume = Volume or 1
+		MaxDistance = MaxDistance or 60
+	end
+
+	return SoundId, Volume, MaxDistance
+end
+
+-- =========================================================
 -- 2D AUDIO (GUI / MUSIC / NOTIFICATION)
 -- =========================================================
 
 --- Phát âm thanh 2D (không phụ thuộc vị trí không gian)
 --- Tự động dọn dẹp khi âm thanh kết thúc
---- @param SoundId number | string
---- @param Volume number? -- Mặc định là 1
+--- @param AudioEntryOrId table | number | string
+--- @param VolumeOverride number? -- Ghi đè âm lượng tùy chọn
 --- @param Parent Instance? -- Mặc định là SoundService hoặc PlayerGui
 --- @return Sound?
-function AudioHelper.Play2DSound(SoundId, Volume, Parent)
+function AudioHelper.Play2DSound(AudioEntryOrId, VolumeOverride, Parent)
+	local SoundId, Volume = ResolveAudioEntry(AudioEntryOrId, VolumeOverride)
 	if not SoundId then return nil end
 
 	local Sound = Instance.new("Sound")
 	Sound.Name = "SFX_2D_" .. tostring(SoundId)
 	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
-	Sound.Volume = Volume or 1
+	Sound.Volume = Volume
 
 	local TargetParent = Parent or SoundService
 	if not TargetParent then
@@ -55,10 +89,11 @@ function AudioHelper.Play2DSound(SoundId, Volume, Parent)
 end
 
 --- Phát âm thanh GUI bằng cơ chế Sound Pool tái sử dụng để triệt tiêu độ trễ và không tạo rác bộ nhớ
---- @param SoundId number | string
---- @param Volume number?
+--- @param AudioEntryOrId table | number | string
+--- @param VolumeOverride number?
 --- @return Sound?
-function AudioHelper.PlayGuiSound(SoundId, Volume)
+function AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
+	local SoundId, Volume = ResolveAudioEntry(AudioEntryOrId, VolumeOverride)
 	if not SoundId then return nil end
 
 	local Sound = _guiSoundPool[SoundId]
@@ -70,7 +105,7 @@ function AudioHelper.PlayGuiSound(SoundId, Volume)
 		_guiSoundPool[SoundId] = Sound
 	end
 
-	Sound.Volume = Volume or 1
+	Sound.Volume = Volume
 	Sound.TimePosition = 0
 	Sound:Play()
 	return Sound
@@ -83,12 +118,15 @@ end
 --- Phát âm thanh 3D Spatial tại một BasePart / Model trong thế giới
 --- Roblox tự động replicate Sound instance nếu tạo từ Server đến Client
 --- @param ParentInstance Instance
---- @param SoundId number | string
---- @param Volume number? -- Mặc định là 1
---- @param MaxDistance number? -- Mặc định là 60 studs
+--- @param AudioEntryOrId table | number | string
+--- @param VolumeOverride number?
+--- @param MaxDistanceOverride number?
 --- @return Sound?
-function AudioHelper.PlaySpatialSound(ParentInstance, SoundId, Volume, MaxDistance)
-	if not ParentInstance or not SoundId then return nil end
+function AudioHelper.PlaySpatialSound(ParentInstance, AudioEntryOrId, VolumeOverride, MaxDistanceOverride)
+	if not ParentInstance then return nil end
+
+	local SoundId, Volume, MaxDistance = ResolveAudioEntry(AudioEntryOrId, VolumeOverride, MaxDistanceOverride)
+	if not SoundId then return nil end
 
 	local TargetPart = ParentInstance
 	if ParentInstance:IsA("Model") then
@@ -102,8 +140,8 @@ function AudioHelper.PlaySpatialSound(ParentInstance, SoundId, Volume, MaxDistan
 	local Sound = Instance.new("Sound")
 	Sound.Name = "SpatialSFX_" .. tostring(SoundId)
 	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
-	Sound.Volume = Volume or 1
-	Sound.RollOffMaxDistance = MaxDistance or 60
+	Sound.Volume = Volume
+	Sound.RollOffMaxDistance = MaxDistance
 	Sound.Parent = TargetPart
 
 	Sound.Ended:Once(function()
@@ -127,17 +165,28 @@ end
 
 --- Tạo một bảng Sound Pool cố định trong Parent để tái sử dụng mà không tạo/xóa liên tục
 --- @param ParentInstance Instance
---- @param AudioIds table -- { number, ... }
+--- @param AudioIdsOrEntry table -- { number, ... } hoặc { Ids = { number, ... }, Volume = 1, MaxDistance = 60 }
 --- @param Config table? -- { Volume = 1, MaxDistance = 60 }
 --- @return table -- { [AudioId] = Sound }
-function AudioHelper.CreateSoundPool(ParentInstance, AudioIds, Config)
-	if not ParentInstance or not AudioIds then return {} end
+function AudioHelper.CreateSoundPool(ParentInstance, AudioIdsOrEntry, Config)
+	if not ParentInstance or not AudioIdsOrEntry then return {} end
 
 	local Pool = {}
+	local IdsList = {}
 	local Volume = (Config and Config.Volume) or 1
 	local MaxDistance = (Config and Config.MaxDistance) or 60
 
-	for _, AudioId in ipairs(AudioIds) do
+	if type(AudioIdsOrEntry) == "table" then
+		if AudioIdsOrEntry.Ids then
+			IdsList = AudioIdsOrEntry.Ids
+			Volume = (Config and Config.Volume) or AudioIdsOrEntry.Volume or Volume
+			MaxDistance = (Config and Config.MaxDistance) or AudioIdsOrEntry.MaxDistance or MaxDistance
+		else
+			IdsList = AudioIdsOrEntry
+		end
+	end
+
+	for _, AudioId in ipairs(IdsList) do
 		local Sound = Instance.new("Sound")
 		Sound.Name = "PoolSFX_" .. tostring(AudioId)
 		Sound.SoundId = "rbxassetid://" .. tostring(AudioId)

@@ -256,10 +256,12 @@ function ProfileController:Init()
 		})
 	end
 
+	-- Tự động gắn Scale & SFX cho toàn bộ nút trong Profile
+	GuiHelper.AutoBindButtons(Profile, { MenuName = "Profile" })
+
 	-- Nút đóng Profile
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			local MenuC = GetMenuController()
 			if MenuC then
 				MenuC.CloseCurrentTab()

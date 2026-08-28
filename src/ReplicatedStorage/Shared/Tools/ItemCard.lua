@@ -173,8 +173,8 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 
 	-- 11. Gắn âm thanh Hover & Click (nếu được bật)
 	if ShouldEnableSound then
-		local ClickSound = Options.ClickSoundId or (AudioConfig.Gui and AudioConfig.Gui.ButtonClick)
-		local HoverSound = Options.HoverSoundId or (AudioConfig.Gui and AudioConfig.Gui.MouseEnter)
+		local ClickSound = Options.ClickSoundId or AudioConfig.GetGuiAudio("ButtonClick")
+		local HoverSound = Options.HoverSoundId or AudioConfig.GetGuiAudio("MouseEnter")
 		GuiHelper.BindButtonSound(Frame, ClickSound, HoverSound)
 	end
 

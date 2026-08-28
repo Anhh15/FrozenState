@@ -242,8 +242,7 @@ local function ExecuteBuy(ChestEntry, Amount)
 	local Result = BuyChestFn:InvokeServer(ChestEntry.Id, Amount)
 
 	if Result and Result.Success then
-		local BuyVolume = AudioConfig.Shop.ChestBuyVolume or 5
-		PlayGuiSound(AudioConfig.Shop.ChestBuy, BuyVolume)
+		PlayGuiSound(AudioConfig.Shop.ChestBuy)
 		-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
 		local RewardCtrl = GetItemRewardController()
 		if RewardCtrl and Result.ReceivedItems then
@@ -441,10 +440,14 @@ function ShopController:Init()
 		})
 	end
 
+	-- ─── AUTO BIND BUTTONS (Scale & SFX cho toàn bộ nút trong Shop) ─────────
+	if Shop then
+		GuiHelper.AutoBindButtons(Shop, { MenuName = "Shop" })
+	end
+
 	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ──────────────────────────
 	if ShopClose then
 		ShopClose.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			local MenuC = GetMenuController()
 			if MenuC then
 				MenuC.CloseCurrentTab()
@@ -458,7 +461,6 @@ function ShopController:Init()
 	if IciclesTab then
 		IciclesTab.MouseButton1Click:Connect(function()
 			if _CurrentTab == "Icicle" then return end
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			_CurrentTab = "Icicle"
 			UpdateTabHighlight("Icicle")
 			RenderChestList("Icicle")
@@ -468,7 +470,6 @@ function ShopController:Init()
 	if BlocksTab then
 		BlocksTab.MouseButton1Click:Connect(function()
 			if _CurrentTab == "Block" then return end
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			_CurrentTab = "Block"
 			UpdateTabHighlight("Block")
 			RenderChestList("Block")

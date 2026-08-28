@@ -447,9 +447,10 @@ function ItemRewardController:Init()
 			_ClickCount = _ClickCount + 1
 
 			-- Phát âm thanh click rương với âm lượng tăng dần theo từng lần click
-			local Volumes = AudioConfig.ItemReward.ChestClickVolumes
+			local ChestClickEntry = AudioConfig.ItemReward.ChestClick
+			local Volumes = (ChestClickEntry and ChestClickEntry.Volumes) or AudioConfig.ItemReward.ChestClickVolumes
 			local SoundVolume = (Volumes and Volumes[_ClickCount]) or 1
-			PlaySound(AudioConfig.ItemReward.ChestClick, SoundVolume)
+			PlaySound(ChestClickEntry, SoundVolume)
 
 			-- Nếu đang animation thì reset animation (bắt đầu lại từ đầu shrink)
 			PlayClickAnimation()

@@ -40,8 +40,7 @@ local _HideThread = nil
 
 --- Phát SFX Accolade qua Sound Pool trong GuiHelper (zero-latency, không rác bộ nhớ)
 local function PlayAccoladeSound()
-	local Volume = (AudioConfig.Accolades and AudioConfig.Accolades.AnnouncementVolume) or 3
-	GuiHelper.PlayGuiSound(AudioConfig.Accolades.Announcement, Volume)
+	GuiHelper.PlayGuiSound(AudioConfig.Accolades.Announcement)
 end
 
 --- Hiển thị Announcement với animation Pop nảy nhẹ (UIScale)

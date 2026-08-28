@@ -1,190 +1,241 @@
 -- AudioConfig.lua
 -- Cấu hình âm thanh toàn game FrozenState
--- Hệ thống 2 tầng: Default (mặc định) + Overrides (theo SkinId của Icicle hoặc Block)
+-- Chuẩn hóa dữ liệu theo AudioEntry: { Id = number, Volume = number, ... }
+-- Hệ thống 2 tầng: Default (mặc định) + Overrides (theo MenuName hoặc SkinId)
 -- Nằm trong ReplicatedStorage để cả Server lẫn Client đều require được
 
 local AudioConfig = {
 
 	-- =========================================================
-	-- NHẠC NỀN (BGM)
+	-- 1. ÂM THANH GIAO DIỆN (GUI)
 	-- =========================================================
-	Music = {
-		Lobby          = 1846271108,      -- Nhạc khi ở lobby (không tham gia trận)
-		Ready          = 140401222967075,  -- Nhạc đếm ngược chuẩn bị vào trận (Ready phase)
-		InGame         = 92288659295773,  -- Nhạc khi đang trong trận
-		FrozenState    = 135654634674766, -- Nhạc khi kích hoạt Frozen State (45 giây cuối)
-		GameOver       = 132515049116690, -- Nhạc nền khi kết thúc trận (GameOver phase)
-		GameLoading    = 127066705522583, -- Nhạc nền màn hình tải game (nil = im lặng)
-		DefaultVolume  = 0.3,             -- Âm lượng mặc định cho nhạc nền
-
-		-- Âm lượng cơ sở riêng cho từng bản nhạc (0.0 -> 1.0)
-		Volumes = {
-			Lobby       = 0.3,
-			Ready       = 0.3,
-			InGame      = 0.3,
-			FrozenState = 0.3,
-			GameOver    = 0.6,
-			GameLoading = 0.25,
+	Gui = {
+		Default = {
+			ButtonClick      = { Id = 7249903719,       Volume = 0.8 },
+			MouseEnter       = { Id = 137872392480008,  Volume = 0.35 }, -- Âm lượng hover dịu nhẹ
+			CloseButtonClick = { Id = 103307955424380,  Volume = 0.8 },
+		},
+		-- Ghi đè âm thanh theo từng Menu cụ thể nếu cần
+		Overrides = {
+			-- Ví dụ: Shop = { ButtonClick = { Id = ..., Volume = ... } }
 		},
 	},
 
 	-- =========================================================
-	-- ÂM THANH ITEM REWARD (HIỆU ỨNG MỞ RƯƠNG VÀ PHẦN THƯỞNG)
+	-- 2. NHẠC NỀN (BGM)
+	-- =========================================================
+	Music = {
+		DefaultVolume = 0.3,
+		Tracks = {
+			Lobby       = { Id = 1846271108,      Volume = 0.3 },
+			Ready       = { Id = 140401222967075,  Volume = 0.3 },
+			InGame      = { Id = 92288659295773,  Volume = 0.3 },
+			FrozenState = { Id = 135654634674766, Volume = 0.3 },
+			GameOver    = { Id = 132515049116690, Volume = 0.6 },
+			GameLoading = { Id = 127066705522583, Volume = 0.25 },
+		},
+	},
+
+	-- =========================================================
+	-- 3. ÂM THANH ITEM REWARD (HIỆU ỨNG MỞ RƯƠNG VÀ PHẦN THƯỞNG)
 	-- =========================================================
 	ItemReward = {
-		ChestClick        = 74139702398034,  -- Âm thanh phát mỗi lần nhấn rương ở Pha 1
-		Phase2Transition  = 4612378086,      -- Âm thanh chuyển sang Pha 2 (hiển thị item)
-		ChestClickVolumes = {1, 3, 5},       -- Mức âm lượng tăng dần qua 3 lần nhấn
+		ChestClick        = { Id = 74139702398034, Volumes = { 0.5, 0.75, 1.0 } },
+		Phase2Transition  = { Id = 4612378086,     Volume = 0.9 },
 	},
 
 	-- =========================================================
-	-- ÂM THANH MÀN HÌNH ĐẶC BIỆT (SPECIAL GUI)
+	-- 4. ÂM THANH MÀN HÌNH ĐẶC BIỆT (SPECIAL GUI)
 	-- =========================================================
 	Special = {
-		ModeAnnouncement       = 75713209190949,  -- Âm thanh thông báo chế độ chơi đặc biệt
-		ModeAnnouncementVolume = 3,               -- Âm lượng phát thông báo chế độ
+		ModeAnnouncement  = { Id = 75713209190949, Volume = 1.0 },
 	},
 
 	-- =========================================================
-	-- ÂM THANH GIAO DIỆN (GUI)
-	-- =========================================================
-	Gui = {
-		ButtonClick      = 7249903719,       -- Âm thanh khi nhấn nút thông thường
-		MouseEnter       = 137872392480008,  -- Âm thanh khi hover chuột vào nút
-		CloseButtonClick = 103307955424380,  -- Âm thanh khi nhấn nút đóng giao diện (X)
-	},
-
-	-- =========================================================
-	-- ÂM THANH DANH HIỆU (ACCOLADES)
+	-- 5. ÂM THANH DANH HIỆU (ACCOLADES)
 	-- =========================================================
 	Accolades = {
-		Announcement       = 96102213526905,   -- Âm thanh khi đạt First Blood, Spree
-		AnnouncementVolume = 3,                -- Âm lượng phát thông báo danh hiệu
+		Announcement      = { Id = 96102213526905, Volume = 1.0 },
 	},
 
 	-- =========================================================
-	-- ÂM THANH CỬA HÀNG (SHOP)
+	-- 6. ÂM THANH CỬA HÀNG (SHOP)
 	-- =========================================================
 	Shop = {
-		ChestBuy         = 113890702074571,  -- Âm thanh khi mua rương thành công
-		ChestBuyVolume   = 5,                -- Âm lượng phát khi mua rương thành công
-		BuyFail          = 128827503277042,  -- Âm thanh khi mua thất bại (thiếu tiền)
+		ChestBuy          = { Id = 113890702074571, Volume = 1.0 },
+		BuyFail           = { Id = 128827503277042, Volume = 0.7 },
 	},
 
 	-- =========================================================
-	-- ÂM THANH NHIỆM VỤ (QUEST)
+	-- 7. ÂM THANH NHIỆM VỤ (QUEST)
 	-- =========================================================
 	Quest = {
-		RewardClaim      = 116439187028468,  -- Âm thanh khi nhận thưởng hoàn thành quest
+		RewardClaim       = { Id = 116439187028468, Volume = 0.8 },
 	},
 
 	-- =========================================================
-	-- ÂM THANH THỐNG KÊ (STATS & MATCH END)
+	-- 8. ÂM THANH THỐNG KÊ (STATS & MATCH END)
 	-- =========================================================
 	Stats = {
-		Overall          = 119804136935260,  -- Âm thanh khi hiển thị bảng PlayerStats sau trận
-		StaggerCount     = 132948338000932,  -- Âm thanh phát cho từng dòng thống kê khi bung ra
+		Overall           = { Id = 119804136935260, Volume = 0.8 },
+		StaggerCount      = { Id = 132948338000932, Volume = 0.4 },
 	},
 
 	-- =========================================================
-	-- ÂM THANH MẶC ĐỊNH
-	-- Dùng khi item trang bị không có override riêng
+	-- 9. ÂM THANH GAMEPLAY (3D SPATIAL & WEAPONS)
 	-- =========================================================
+	Gameplay = {
+		Default = {
+			SwingAudios   = { Ids = { 136455914086398 }, Volume = 0.8, MaxDistance = 60 },
+			FreezeAudio   = { Id = 92048469072346,     Volume = 1.0, MaxDistance = 80 },
+			ThawAudio     = { Id = 138690892117059,    Volume = 1.0, MaxDistance = 80 },
+		},
+		Overrides = {
+			-- Skin overrides theo SkinId (vd: "GoldenIcicle", "CrystalBlock")
+		},
+	},
+
+	-- Tương thích ngược (Fallback compatibility)
 	Default = {
-		-- Swing: âm thanh phát mỗi lần vung vũ khí
-		SwingAudios = {136455914086398},
-		FreezeAudio = 92048469072346,   -- Âm thanh khi đóng băng mục tiêu
-		ThawAudio   = 138690892117059,  -- Âm thanh khi giải cứu đồng đội
+		SwingAudios = { 136455914086398 },
+		FreezeAudio = 92048469072346,
+		ThawAudio   = 138690892117059,
 	},
-
-	-- =========================================================
-	-- OVERRIDE THEO SKIN
-	-- Key là SkinId của Icicle hoặc Block (vd: "GoldenIcicle", "CrystalBlock")
-	-- Chỉ cần khai báo trường cần ghi đè
-	-- =========================================================
-	Overrides = {
-		-- Thêm override cho skin đặc biệt tại đây
-	},
+	Overrides = {},
 
 }
 
 -- =========================================================
--- PUBLIC GETTERS & UTILITIES
+-- PUBLIC GETTERS & RESOLUTION UTILITIES
 -- =========================================================
 
---- Lấy âm thanh swing theo SkinId (Icicle)
---- @param IcicleSkinId string?
---- @return table -- { number, ... }
-function AudioConfig.GetSwingAudios(IcicleSkinId)
-	local Override = IcicleSkinId and AudioConfig.Overrides[IcicleSkinId]
-	if Override and Override.SwingAudios then
-		return Override.SwingAudios
+--- Lấy AudioEntry của GUI theo ActionName và MenuName (kết hợp Default và Overrides)
+--- @param ActionName string -- "ButtonClick" | "MouseEnter" | "CloseButtonClick"
+--- @param MenuName string? -- "Shop" | "Inventory" | "Quest" | "Profile" | ...
+--- @return table -- { Id = number, Volume = number }
+function AudioConfig.GetGuiAudio(ActionName, MenuName)
+	if not ActionName then return { Id = nil, Volume = 1 } end
+
+	local MenuOverride = MenuName and AudioConfig.Gui.Overrides and AudioConfig.Gui.Overrides[MenuName]
+	if MenuOverride and MenuOverride[ActionName] then
+		return MenuOverride[ActionName]
 	end
-	return AudioConfig.Default.SwingAudios
+
+	local DefaultEntry = AudioConfig.Gui.Default and AudioConfig.Gui.Default[ActionName]
+	if DefaultEntry then
+		return DefaultEntry
+	end
+
+	return { Id = nil, Volume = 1 }
 end
 
---- Lấy freeze audio theo SkinId (Block)
---- @param BlockSkinId string?
---- @return number
-function AudioConfig.GetFreezeAudio(BlockSkinId)
-	local Override = BlockSkinId and AudioConfig.Overrides[BlockSkinId]
-	if Override and Override.FreezeAudio then
-		return Override.FreezeAudio
+--- Lấy AudioEntry của bản nhạc nền theo MusicKey
+--- @param MusicKey string?
+--- @return table -- { Id = number?, Volume = number }
+function AudioConfig.GetMusicAudio(MusicKey)
+	local Track = MusicKey and AudioConfig.Music.Tracks and AudioConfig.Music.Tracks[MusicKey]
+	if Track then
+		return Track
 	end
-	return AudioConfig.Default.FreezeAudio
-end
-
---- Lấy thaw audio theo SkinId (Block)
---- @param BlockSkinId string?
---- @return number
-function AudioConfig.GetThawAudio(BlockSkinId)
-	local Override = BlockSkinId and AudioConfig.Overrides[BlockSkinId]
-	if Override and Override.ThawAudio then
-		return Override.ThawAudio
-	end
-	return AudioConfig.Default.ThawAudio
+	return { Id = nil, Volume = AudioConfig.Music.DefaultVolume or 0.3 }
 end
 
 --- Lấy âm lượng cơ sở cho bản nhạc theo MusicKey
 --- @param MusicKey string?
 --- @return number
 function AudioConfig.GetMusicVolume(MusicKey)
-	local Volume = MusicKey and AudioConfig.Music.Volumes and AudioConfig.Music.Volumes[MusicKey]
-	if type(Volume) == "number" then
-		return Volume
-	end
-	return AudioConfig.Music.DefaultVolume or 0.3
+	local Track = AudioConfig.GetMusicAudio(MusicKey)
+	return (Track and Track.Volume) or (AudioConfig.Music.DefaultVolume or 0.3)
 end
 
---- Thu thập tất cả Audio ID trong config để preload vào RAM
+--- Lấy AudioEntry cho Gameplay SFX theo ActionKey và SkinId
+--- @param ActionKey string -- "SwingAudios" | "FreezeAudio" | "ThawAudio"
+--- @param SkinId string?
+--- @return table -- { Id = number?, Ids = table?, Volume = number, MaxDistance = number }
+function AudioConfig.GetGameplayAudio(ActionKey, SkinId)
+	local SkinOverride = SkinId and AudioConfig.Gameplay.Overrides and AudioConfig.Gameplay.Overrides[SkinId]
+	if SkinOverride and SkinOverride[ActionKey] then
+		return SkinOverride[ActionKey]
+	end
+
+	local DefaultEntry = AudioConfig.Gameplay.Default and AudioConfig.Gameplay.Default[ActionKey]
+	if DefaultEntry then
+		return DefaultEntry
+	end
+
+	return { Volume = 1, MaxDistance = 60 }
+end
+
+--- Lấy âm thanh swing theo SkinId (Icicle)
+--- @param IcicleSkinId string?
+--- @return table -- { Ids = { number, ... }, Volume = number, MaxDistance = number }
+function AudioConfig.GetSwingAudios(IcicleSkinId)
+	return AudioConfig.GetGameplayAudio("SwingAudios", IcicleSkinId)
+end
+
+--- Lấy freeze audio theo SkinId (Block)
+--- @param BlockSkinId string?
+--- @return table -- { Id = number, Volume = number, MaxDistance = number }
+function AudioConfig.GetFreezeAudio(BlockSkinId)
+	return AudioConfig.GetGameplayAudio("FreezeAudio", BlockSkinId)
+end
+
+--- Lấy thaw audio theo SkinId (Block)
+--- @param BlockSkinId string?
+--- @return table -- { Id = number, Volume = number, MaxDistance = number }
+function AudioConfig.GetThawAudio(BlockSkinId)
+	return AudioConfig.GetGameplayAudio("ThawAudio", BlockSkinId)
+end
+
+--- Thu thập tất cả Audio ID trong config để preload vào RAM một cách chính xác
 --- @return table -- { number, ... }
 function AudioConfig.GetAllAudioIds()
 	local AudioIdSet = {}
 	local AudioIdList = {}
 
-	local function Collect(Value)
-		if type(Value) == "number" and Value >= 1000 and math.floor(Value) == Value then
-			if not AudioIdSet[Value] then
-				AudioIdSet[Value] = true
-				table.insert(AudioIdList, Value)
-			end
-		elseif type(Value) == "table" then
-			for _, SubValue in pairs(Value) do
-				Collect(SubValue)
+	local function AddId(Id)
+		if type(Id) == "number" and Id >= 1000 and math.floor(Id) == Id then
+			if not AudioIdSet[Id] then
+				AudioIdSet[Id] = true
+				table.insert(AudioIdList, Id)
 			end
 		end
 	end
 
-	Collect(AudioConfig.Music)
-	Collect(AudioConfig.ItemReward)
-	Collect(AudioConfig.Special)
-	Collect(AudioConfig.Gui)
-	Collect(AudioConfig.Accolades)
-	Collect(AudioConfig.Shop)
-	Collect(AudioConfig.Quest)
-	Collect(AudioConfig.Stats)
-	Collect(AudioConfig.Default)
-	Collect(AudioConfig.Overrides)
+	local function CollectFromTable(TableObj)
+		if type(TableObj) ~= "table" then return end
+
+		-- Nếu là AudioEntry có trường Id hoặc Ids
+		if TableObj.Id then
+			AddId(TableObj.Id)
+		end
+		if type(TableObj.Ids) == "table" then
+			for _, SubId in ipairs(TableObj.Ids) do
+				AddId(SubId)
+			end
+		end
+
+		-- Duyệt đệ quy các bảng con
+		for Key, SubValue in pairs(TableObj) do
+			if Key ~= "Volumes" and Key ~= "Volume" and Key ~= "DefaultVolume" and Key ~= "MaxDistance" then
+				if type(SubValue) == "table" then
+					CollectFromTable(SubValue)
+				elseif type(SubValue) == "number" then
+					AddId(SubValue)
+				end
+			end
+		end
+	end
+
+	CollectFromTable(AudioConfig.Gui)
+	CollectFromTable(AudioConfig.Music)
+	CollectFromTable(AudioConfig.ItemReward)
+	CollectFromTable(AudioConfig.Special)
+	CollectFromTable(AudioConfig.Accolades)
+	CollectFromTable(AudioConfig.Shop)
+	CollectFromTable(AudioConfig.Quest)
+	CollectFromTable(AudioConfig.Stats)
+	CollectFromTable(AudioConfig.Gameplay)
 
 	return AudioIdList
 end

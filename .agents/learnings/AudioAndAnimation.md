@@ -1,15 +1,16 @@
 # AudioAndAnimation
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống âm thanh và hoạt ảnh (AudioConfig, AnimationConfig, Sound Pooling, Client-Side Spatial Audio, Preload và Memory Cleanup).
-> Cập nhật lần cuối: 26-08-2026
+> Cập nhật lần cuối: 28-08-2026
 
 ---
 
 ## Kiến trúc
 
-### 1. Tập trung hóa Cấu hình Audio & Animation (Single Source of Truth)
-- **Chi tiết:** Tách bạch hoàn toàn giữa hệ thống âm thanh và hoạt ảnh để tránh lai tạp cấu hình:
-  - `AudioConfig.lua`: Tập trung 100% Sound IDs (BGM Lobby/Ready/InGame/FrozenState/GameOver/GameLoading, SFX trận đấu Freeze/Thaw/Swing, GUI SFX Click/Hover/Close, Shop/Chest/Quest/Accolades), bảng âm lượng cơ sở `Music.Volumes` cho từng track và hằng số `DefaultVolume`.
-  - `AnimationConfig.lua`: Quản lý Animation IDs (Swing, Pose, Idle), Animation Priority (`Action`, `Movement`), và thời lượng cửa sổ quét va chạm (`HitStartTime`, `HitEndTime`) cho từng skin vũ khí.
+### 1. Chuẩn Hóa Cấu Hình Audio theo Unified AudioEntry & Phân Tầng Overrides (Single Source of Truth)
+- **Chi tiết:** 100% âm thanh trong game được chuẩn hóa theo schema **Unified AudioEntry** `{ Id = number, Volume = number, ... }` hoặc `{ Ids = { number, ... }, Volume = number, MaxDistance = number }`:
+  - `AudioConfig.lua`: Quản lý tập trung toàn bộ âm thanh (BGM `Music.Tracks`, GUI `Gui.Default`/`Gui.Overrides`, Shop, Quest, Accolades, Stats, ItemReward, Special, Gameplay `Default`/`Overrides`).
+  - **Hệ thống Overrides 2 tầng:** Cho phép ghi đè âm thanh theo từng `MenuName` trong UI hoặc theo `SkinId` của vũ khí/block trong Gameplay.
+  - **Bộ API phân giải chuẩn hóa:** Cung cấp các hàm resolver tự động (`GetGuiAudio`, `GetMusicAudio`, `GetGameplayAudio`, `GetSwingAudios`, `GetFreezeAudio`, `GetThawAudio`) tự động hòa trộn `Overrides` với `Default`, triệt tiêu hoàn toàn magic numbers.
 - **File liên quan:** [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua)
 
 ### 2. Client-Side 3D Spatial Audio & Broadcast RemoteEvent (Triệt tiêu độ trễ 0ms)
@@ -17,9 +18,10 @@
 - **Client Local Playback:** Client tự phát Spatial Sound cục bộ trên máy của mình gắn vào Part/Character tương ứng, triệt tiêu hoàn toàn độ trễ âm thanh.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua)
 
-### 3. UI Sound Pooling & Zero-Latency Preload
+### 3. UI Sound Pooling, Polymorphic Input & Tự Động Hóa Qua AutoBindButtons
 - **Chi tiết:** Nạp trước toàn bộ audio và animation vào bộ nhớ Client bằng `ContentProvider:PreloadAsync` khi vào game.
-- **Sound Pool tĩnh:** Sử dụng Sound Pool tĩnh (`_guiSoundPool`) cho các âm thanh UI tần suất cao (Click, Hover, Close, Coin count) qua `AudioHelper.PlayGuiSound()` / `GuiHelper.PlayGuiSound()`. Tái sử dụng các instance Sound có sẵn bằng cách đặt `TimePosition = 0; :Play()`, loại bỏ hoàn toàn áp lực rác bộ nhớ (Garbage Collection).
+- **Sound Pool tĩnh & Nạp đa hình:** `AudioHelper.PlayGuiSound`, `Play2DSound`, `PlaySpatialSound` hỗ trợ nạp đa hình (nhận cả `AudioEntry` table lẫn `number` SoundId), tự động cập nhật `Sound.Volume` chính xác theo từng entry trong pool tĩnh `_guiSoundPool`.
+- **Tự động hóa GUI Button:** `GuiHelper.AutoBindButtons(Container, Options)` tự động quét toàn bộ `GuiButton`, gán đồng bộ Scale Animation và SFX (Click, CloseButtonClick, MouseEnter), lắng nghe `DescendantAdded` kèm cache `_BoundButtons[Button] = true` để tự động hỗ trợ toàn bộ phần tử sinh ra động trong thời gian thực.
 - **File liên quan:** [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
 ### 4. Tự Dọn Dẹp Sound Instance Động bằng Sound.Ended:Once()
@@ -32,9 +34,9 @@
 
 ### 6. Điều phối Nhạc nền Đa trạng thái & Cân Bằng Âm Lượng Từng Track (State-Driven BGM & Track Balancing)
 - **Chi tiết:** `MusicController` điều phối BGM duy nhất theo máy trạng thái: $\text{GameLoading} \rightarrow \text{Lobby} \rightarrow \text{Ready} \rightarrow \text{InGame/FrozenState} \rightarrow \text{GameOver}$.
-  - **Per-Track Volume:** Cân bằng âm lượng gốc giữa các bản nhạc qua `AudioConfig.Music.Volumes` và `AudioConfig.GetMusicVolume(MusicKey)`.
-  - **Linh hoạt Loading & Ready:** Tự động giữ im lặng hoặc phát BGM riêng khi tải game; phát BGM `Ready` khi đếm ngược chuẩn bị vào trận.
-  - **Phòng thủ âm thanh:** Hỗ trợ dừng nhạc an toàn (`:Stop()`) khi Sound ID là `nil`/`0`.
+- **Per-Track Volume:** Cân bằng âm lượng gốc giữa các bản nhạc qua `AudioConfig.Music.Tracks` và `AudioConfig.GetMusicAudio(MusicKey)`.
+- **Linh hoạt Loading & Ready:** Tự động giữ im lặng hoặc phát BGM riêng khi tải game; phát BGM `Ready` khi đếm ngược chuẩn bị vào trận.
+- **Phòng thủ âm thanh:** Hỗ trợ dừng nhạc an toàn (`:Stop()`) khi Sound ID là `nil`/`0`.
 - **File liên quan:** [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
 
 ---
@@ -59,10 +61,10 @@
 - **Giải pháp:** Ghi đè `Track.Looped = false` trên Client ngay sau khi load animation, lưu reference track hiện tại để gọi `Track:Stop()` khi `Tool.Unequipped`.
 - **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
 
-### 4. Tiền tải Nhầm Hằng số Âm lượng Thành Sound ID trong PreloadAsync
-- **Vấn đề:** Khi `AudioConfig.GetAllAudioIds()` duyệt đệ quy các bảng cấu hình, các hằng số âm lượng (như `DefaultVolume = 0.5`, `ChestClickVolumes = {1, 3, 5}`) bị thu thập nhầm thành các Asset ID `"rbxassetid://0.5"`, `"rbxassetid://1"`, gây lỗi 404 và lãng phí băng thông preload mạng.
-- **Nguyên nhân:** Bộ thu thập `Collect(Value)` chỉ kiểm tra `type(Value) == "number"` mà không phân biệt giữa Sound ID và hằng số cấu hình.
-- **Giải pháp:** Bổ sung điều kiện lọc nghiêm ngặt `type(Value) == "number" and Value >= 1000 and math.floor(Value) == Value` để chỉ gom các Sound ID hợp lệ (số nguyên $\ge 1000$).
+### 4. Thu Thập Asset ID Sạch & Loại Bỏ Lọc Đoán Số
+- **Vấn đề:** Các hàm thu thập ID duyệt đệ quy dễ bị nhầm lẫn giữa hằng số âm lượng (như `0.3`, `0.6`) và Sound ID, hoặc phải dùng điều kiện lọc số $\ge 1000$.
+- **Nguyên nhân:** Cấu trúc dữ liệu phân tán, thiếu quy chuẩn rõ ràng cho từng entry âm thanh.
+- **Giải pháp:** Chuẩn hóa toàn bộ schema sang `AudioEntry` có thuộc tính `.Id` hoặc mảng `.Ids`. Hàm `AudioConfig.GetAllAudioIds()` chỉ bóc tách đúng các trường định danh này, đảm bảo thu thập đủ 100% asset ID mà không bao giờ nhầm lẫn.
 - **File liên quan:** [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua)
 
 ### 5. Âm thanh Lobby Phát Đè lên Màn hình Tải Game Do Khởi tạo Sớm
@@ -74,5 +76,11 @@
 ### 6. Lệch Mức Âm Lượng Giữa Các Bản Nhạc Do Thiếu Cấu Hình Per-Track Base Volume
 - **Vấn đề:** Các bản audio tải lên Roblox có mức độ to gốc (loudness dBFS) không đồng đều. Dùng chung một hằng số volume làm nhạc ở một số phase (như Ready/InGame) bị quá to trong khi Lobby/GameLoading lại quá nhỏ.
 - **Nguyên nhân:** Thiếu lớp trừu tượng cấu hình âm lượng cơ sở theo từng track trước khi đưa ra Sound instance.
-- **Giải pháp:** Xây dựng bảng `Music.Volumes` trong `AudioConfig.lua` và hàm `AudioConfig.GetMusicVolume(MusicKey)`. `MusicController` truyền kèm `MusicKey` khi cập nhật nhạc, tự động điều chỉnh `_BgmSound.Volume` tương ứng với từng track.
+- **Giải pháp:** Tích hợp `Volume` vào từng track trong `AudioConfig.Music.Tracks` và hàm `AudioConfig.GetMusicAudio(MusicKey)`. `MusicController` tự động cập nhật `_BgmSound.Volume` tương ứng khi đổi bài.
 - **File liên quan:** [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua)
+
+### 7. Phân Mảnh Kết Nối Sự Kiện GUI Audio & Mất Cân Bằng Âm Lượng Hover
+- **Vấn đề:** Logic bắt sự kiện `MouseEnter` và `Click` nằm rải rác khắp các Controller gây lặp code, thiếu nhất quán và âm lượng hover mặc định (1.0) quá lớn gây cảm giác chói tai khi tương tác nhanh qua danh sách phần tử.
+- **Nguyên nhân:** Thiếu tiện ích tự động hóa tập trung cho UI buttons và thiếu trường cấu hình âm lượng riêng cho `MouseEnter`.
+- **Giải pháp:** Thiết lập `GuiHelper.AutoBindButtons(Container, Options)` để tự động hóa toàn bộ việc gắn Scale và SFX cho các nút bấm (kể cả các nút sinh ra động), đồng thời đưa âm lượng `MouseEnter` về `0.35` trong `AudioConfig.Gui.Default`.
+- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)

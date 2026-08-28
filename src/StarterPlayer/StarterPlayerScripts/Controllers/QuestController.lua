@@ -553,12 +553,16 @@ function QuestController:Init()
 		})
 	end
 
+	-- ── AUTO BIND BUTTONS (Scale & SFX cho toàn bộ nút trong Quest) ─────────
+	if _questGui then
+		GuiHelper.AutoBindButtons(_questGui, { MenuName = "Quest" })
+	end
+
 	-- ── Kết nối sự kiện ──
 
 	-- CloseButton
 	if _closeButton then
 		_closeButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			local MenuC = GetMenuController()
 			if MenuC then
 				MenuC.CloseCurrentTab()
@@ -571,13 +575,11 @@ function QuestController:Init()
 	-- Tab buttons
 	if _tabDaily then
 		_tabDaily.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			SwitchTab("Daily")
 		end)
 	end
 	if _tabMilestone then
 		_tabMilestone.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			SwitchTab("Milestone")
 		end)
 	end

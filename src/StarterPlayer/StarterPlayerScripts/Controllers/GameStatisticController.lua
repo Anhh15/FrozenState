@@ -243,16 +243,8 @@ function GameStatisticController:Init()
 	StatGui.ResetOnSpawn = false
 	HideAll()
 
-	-- Gắn hiệu ứng phóng to hover/click và âm thanh SFX cho NextButton
-	GuiHelper.BindButtonScale(NextButton)
-	GuiHelper.BindButtonSound(NextButton, AudioConfig.Gui.ButtonClick, AudioConfig.Gui.MouseEnter)
-
-	-- Gắn hiệu ứng cho các nút đóng CloseButton
-	GuiHelper.BindButtonScale(CloseButton1)
-	GuiHelper.BindButtonSound(CloseButton1, AudioConfig.Gui.CloseButtonClick, AudioConfig.Gui.MouseEnter)
-
-	GuiHelper.BindButtonScale(CloseButton2)
-	GuiHelper.BindButtonSound(CloseButton2, AudioConfig.Gui.CloseButtonClick, AudioConfig.Gui.MouseEnter)
+	-- Tự động gắn Scale & SFX cho toàn bộ nút trong GameStatistic
+	GuiHelper.AutoBindButtons(StatGui, { MenuName = "GameStatistic" })
 
 	-- Lắng nghe dữ liệu cuối trận từ server
 	local ShowGameOverEvent = RemoteDefinitions.GetEvent("ShowGameOver")

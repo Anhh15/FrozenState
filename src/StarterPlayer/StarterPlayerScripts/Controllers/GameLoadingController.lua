@@ -402,7 +402,7 @@ local function SkipLoading(Elements)
 	end
 
 	-- Phát âm thanh click nút
-	local ClickSFX = GuiConfig.Gui and GuiConfig.Gui.ButtonClick
+	local ClickSFX = AudioConfig.GetGuiAudio("ButtonClick")
 	if ClickSFX then
 		GuiHelper.PlayGuiSound(ClickSFX)
 	end

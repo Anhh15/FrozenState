@@ -40,12 +40,13 @@ local _cachedSwingTracks   = {}   -- { [AnimId] = AnimationTrack } cache track �
 local function PreloadAssets()
 	local IcicleSkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player)
 	local AnimId = AnimationConfig.GetSwingAnimation(IcicleSkinId)
-	local Audios = AudioConfig.GetSwingAudios(IcicleSkinId)
+	local SwingEntry = AudioConfig.GetSwingAudios(IcicleSkinId)
+	local Audios = SwingEntry.Ids or SwingEntry
 
 	-- 1. Nạp và giữ sẵn Sound instances trong Hitbox bằng AudioHelper
 	for _, AudioId in ipairs(Audios) do
 		if not _preloadedSounds[AudioId] or not _preloadedSounds[AudioId].Parent then
-			local Pool = AudioHelper.CreateSoundPool(Hitbox, { AudioId }, { Volume = 1, MaxDistance = 60 })
+			local Pool = AudioHelper.CreateSoundPool(Hitbox, { AudioId }, { Volume = SwingEntry.Volume or 0.8, MaxDistance = SwingEntry.MaxDistance or 60 })
 			_preloadedSounds[AudioId] = Pool[AudioId]
 		end
 	end
@@ -85,7 +86,8 @@ end)
 
 --- Phát swing audio ngẫu nhiên từ Sound Pool đã nạp sẵn
 local function PlaySwingAudio(IcicleSkinId)
-	local Audios = AudioConfig.GetSwingAudios(IcicleSkinId)
+	local SwingEntry = AudioConfig.GetSwingAudios(IcicleSkinId)
+	local Audios = SwingEntry.Ids or SwingEntry
 	if not Audios or #Audios == 0 then return end
 
 	local ChosenId = Audios[math.random(1, #Audios)]
@@ -93,7 +95,7 @@ local function PlaySwingAudio(IcicleSkinId)
 
 	-- Fallback nếu sound chưa được tạo trong pool
 	if not Sound or not Sound.Parent then
-		local Pool = AudioHelper.CreateSoundPool(Hitbox, { ChosenId }, { Volume = 1, MaxDistance = 60 })
+		local Pool = AudioHelper.CreateSoundPool(Hitbox, { ChosenId }, { Volume = SwingEntry.Volume or 0.8, MaxDistance = SwingEntry.MaxDistance or 60 })
 		Sound = Pool[ChosenId]
 		_preloadedSounds[ChosenId] = Sound
 	end

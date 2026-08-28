@@ -160,10 +160,9 @@ function ModeAnnouncementController.ShowAnnouncement(ModeKey, OnComplete)
 	Frame.Visible = true
 
 	-- Phát âm thanh thông báo
-	local SoundId = AudioConfig.Special and AudioConfig.Special.ModeAnnouncement
-	if SoundId then
-		local Volume = AudioConfig.Special.ModeAnnouncementVolume or 3
-		AudioHelper.PlayGuiSound(SoundId, Volume)
+	local ModeSoundEntry = AudioConfig.Special and AudioConfig.Special.ModeAnnouncement
+	if ModeSoundEntry then
+		AudioHelper.PlayGuiSound(ModeSoundEntry)
 	end
 
 	-- 1. Tween Fade In cho ModeNameText

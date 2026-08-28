@@ -462,10 +462,14 @@ function InventoryController:Init()
 		})
 	end
 
+	-- Tự động gắn Scale & SFX cho toàn bộ nút trong Inventory
+	if Inventory then
+		GuiHelper.AutoBindButtons(Inventory, { MenuName = "Inventory" })
+	end
+
 	-- Nút đóng Inventory
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.CloseButtonClick)
 			local MenuC = GetMenuController()
 			if MenuC then
 				MenuC.CloseCurrentTab()
@@ -478,22 +482,17 @@ function InventoryController:Init()
 	-- Tab switching
 	if IciclesTab then
 		IciclesTab.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			SwitchTab("Icicle")
 		end)
 	end
 	if BlocksTab then
 		BlocksTab.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.ButtonClick)
 			SwitchTab("Block")
 		end)
 	end
 
-	-- Nút Equip: Gắn hiệu ứng tương tác scale và âm thanh (giống NavigationButtons)
+	-- Nút Equip: Kết nối click trang bị
 	if EquipButton then
-		GuiHelper.BindButtonScale(EquipButton)
-		GuiHelper.BindButtonSound(EquipButton, AudioConfig.Gui.ButtonClick, AudioConfig.Gui.MouseEnter)
-
 		EquipButton.MouseButton1Click:Connect(function()
 			EquipCurrentItem()
 		end)
