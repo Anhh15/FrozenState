@@ -50,6 +50,7 @@ local _IsDead          = false
 local _HotbarConfig         = nil
 local _InputConnection      = nil
 local _isVisible            = false
+local _lastPhase            = nil
 local _characterConnections = {}
 
 -- =========================================================
@@ -196,14 +197,23 @@ local function LoadToolViewport(Viewport, Tool)
 end
 
 --- Cập nhật trạng thái Active / Inactive trực quan của Slot
---- @param SlotFrame Frame
+--- @param SlotData table
 --- @param IsEquipped boolean
-local function UpdateSlotActiveVisual(SlotFrame, IsEquipped)
+local function UpdateSlotActiveVisual(SlotData, IsEquipped)
+	local SlotFrame = SlotData and SlotData.SlotFrame
 	if not SlotFrame or not _HotbarConfig then return end
 
 	local TargetScale = IsEquipped and _HotbarConfig.ActiveScale or _HotbarConfig.InactiveScale
 	local TargetTrans = IsEquipped and _HotbarConfig.ActiveBackgroundTrans or _HotbarConfig.InactiveBackgroundTrans
 	local TargetZIndex = IsEquipped and 10 or 1
+
+	local UiScale = GuiHelper.GetOrCreateScale(SlotFrame)
+
+	-- Nếu trạng thái Equip không đổi và Scale đã khớp TargetScale, không chạy lại animation
+	if SlotData.LastIsEquipped == IsEquipped and UiScale and math.abs(UiScale.Scale - TargetScale) < 0.01 then
+		return
+	end
+	SlotData.LastIsEquipped = IsEquipped
 
 	SlotFrame.ZIndex = TargetZIndex
 
@@ -212,7 +222,6 @@ local function UpdateSlotActiveVisual(SlotFrame, IsEquipped)
 	local Dir      = _HotbarConfig.ScaleEasingDir or Enum.EasingDirection.Out
 
 	-- Tween UIScale qua GuiHelper
-	local UiScale = GuiHelper.GetOrCreateScale(SlotFrame)
 	if UiScale then
 		GuiHelper.CancelTween(UiScale)
 		local ScaleTween = TweenService:Create(UiScale, TweenInfo.new(Duration, Style, Dir), { Scale = TargetScale })
@@ -254,28 +263,43 @@ local function PlayCooldownAnimation(SlotData, Tool)
 	end
 
 	local CooldownDuration = Tool:GetAttribute("CooldownDuration")
-		or GameConfig.Tool.IcicleCooldown
+		or (GameConfig.Tool and GameConfig.Tool.IcicleCooldown)
 		or 0.8
 
 	local CooldownEndTime = Tool:GetAttribute("CooldownEndTime")
 		or (os.clock() + CooldownDuration)
 
-	local TotalTime = math.max(0.1, CooldownEndTime - os.clock())
+	local Remaining = CooldownEndTime - os.clock()
+	if Remaining <= 0 then
+		CooldownCurtain.Visible = false
+		CooldownCurtain.Size = UDim2.new(1, 0, 0, 0)
+		if CooldownText then
+			CooldownText.Visible = false
+			CooldownText.Text = ""
+		end
+		return
+	end
 
-	-- Thiết lập thuộc tính ban đầu cho CooldownCurtain (neo đáy và phủ kín chiều cao)
+	local CurrentScaleY = math.clamp(Remaining / math.max(0.01, CooldownDuration), 0, 1)
+
+	-- Thiết lập thuộc tính ban đầu cho CooldownCurtain (neo đáy và tỉ lệ chiều cao hiện tại)
 	CooldownCurtain.Visible = true
 	CooldownCurtain.AnchorPoint = Vector2.new(0, 1)
 	CooldownCurtain.Position = UDim2.new(0, 0, 1, 0)
-	CooldownCurtain.Size = UDim2.new(1, 0, 1, 0)
+	CooldownCurtain.Size = UDim2.new(1, 0, CurrentScaleY, 0)
 
 	if CooldownText then
 		CooldownText.Visible = true
+		CooldownText.Text = string.format("%.2f", Remaining)
 	end
 
-	-- Tween thu nhỏ rèm từ 1.0 về 0.0 theo chiều cao Y
+	-- Tween thu nhỏ rèm từ CurrentScaleY về 0.0 theo chiều cao Y
+	local EasingStyle = _HotbarConfig and _HotbarConfig.CooldownEasingStyle or Enum.EasingStyle.Linear
+	local EasingDir   = _HotbarConfig and _HotbarConfig.CooldownEasingDir or Enum.EasingDirection.InOut
+
 	local CurtainTween = TweenService:Create(
 		CooldownCurtain,
-		TweenInfo.new(TotalTime, _HotbarConfig.CooldownEasingStyle, _HotbarConfig.CooldownEasingDir),
+		TweenInfo.new(Remaining, EasingStyle, EasingDir),
 		{ Size = UDim2.new(1, 0, 0, 0) }
 	)
 	CurtainTween:Play()
@@ -283,12 +307,12 @@ local function PlayCooldownAnimation(SlotData, Tool)
 	-- Thread cập nhật số giây đếm ngược
 	SlotData.CooldownThread = task.spawn(function()
 		while true do
-			local Remaining = CooldownEndTime - os.clock()
-			if Remaining <= 0 then
+			local TimeLeft = CooldownEndTime - os.clock()
+			if TimeLeft <= 0 then
 				break
 			end
 			if CooldownText then
-				CooldownText.Text = string.format("%.2f", Remaining)
+				CooldownText.Text = string.format("%.2f", TimeLeft)
 			end
 			RunService.Heartbeat:Wait()
 		end
@@ -372,6 +396,7 @@ local function CreateSlotForTool(Tool, SlotIndex)
 		SlotFrame      = SlotFrame,
 		Connections    = {},
 		CooldownThread = nil,
+		LastIsEquipped = nil,
 	}
 
 	-- 1. Bắt sự kiện Click / Touch trên SlotFrame
@@ -396,13 +421,13 @@ local function CreateSlotForTool(Tool, SlotIndex)
 	local function CheckEquipState()
 		local Character = LocalPlayer.Character
 		local IsEquipped = (Character and Tool.Parent == Character)
-		UpdateSlotActiveVisual(SlotFrame, IsEquipped)
+		UpdateSlotActiveVisual(SlotData, IsEquipped)
 	end
 
 	local AncestryConn = Tool.AncestryChanged:Connect(function()
 		if not Tool:IsDescendantOf(game) then
 			-- Tool đã bị Destroy
-			HotbarController.RefreshHotbar()
+			SyncTools()
 			return
 		end
 		CheckEquipState()
@@ -442,6 +467,14 @@ local function CreateSlotForTool(Tool, SlotIndex)
 
 	-- Đặt trạng thái ban đầu
 	CheckEquipState()
+
+	-- Khôi phục Cooldown animation nếu Tool đang trong thời gian Cooldown
+	if Tool:GetAttribute("IsOnCooldown") == true then
+		local EndTime = Tool:GetAttribute("CooldownEndTime")
+		if EndTime and EndTime > os.clock() then
+			PlayCooldownAnimation(SlotData, Tool)
+		end
+	end
 
 	SlotFrame.Parent = _HotbarFrame
 	_ActiveSlots[Tool] = SlotData
@@ -494,19 +527,19 @@ local function SyncTools()
 		end
 	end
 
-	-- Kiểm tra xem có tool nào mới được cấp mà chưa có trong _ActiveSlots không
+	-- Kiểm tra xem có tool nào mới trong ToolsList mà chưa có trong _ActiveSlots không
 	local HasChanged = false
 	for _, Tool in ipairs(ToolsList) do
-		if not _ActiveSlots[Tool] then
+		if not _ActiveSlots[Tool] or not _ActiveSlots[Tool].SlotFrame or not _ActiveSlots[Tool].SlotFrame.Parent then
 			HasChanged = true
 			break
 		end
 	end
 
-	-- Kiểm tra xem có tool nào trong _ActiveSlots đã bị xóa hoàn toàn khỏi player không
+	-- Kiểm tra xem có tool nào trong _ActiveSlots không còn nằm trong ToolsList hoặc đã bị Destroy không
 	if not HasChanged then
 		for Tool, _ in pairs(_ActiveSlots) do
-			if not table.find(ToolsList, Tool) then
+			if not Tool:IsDescendantOf(game) or not table.find(ToolsList, Tool) then
 				HasChanged = true
 				break
 			end
@@ -567,16 +600,22 @@ function HotbarController.RefreshHotbar()
 	end
 end
 
---- Ẩn / Hiện toàn bộ Frame Hotbar
+--- Ẩn / Hiện toàn bộ Frame Hotbar theo điều kiện hiển thị tổng hợp
 --- @param Visible boolean
 function HotbarController.SetVisible(Visible)
+	local ShouldShow = Visible and (not _IsFrozen) and (not _IsDead)
+
+	-- Idempotency Guard: Nếu trạng thái không thay đổi, bỏ qua không làm gì
+	if _isVisible == Visible and _HotbarFrame and _HotbarFrame.Visible == ShouldShow then
+		return
+	end
 	_isVisible = Visible
 
 	if _HotbarFrame then
-		_HotbarFrame.Visible = Visible
-		if Visible then
+		_HotbarFrame.Visible = ShouldShow
+		if ShouldShow then
 			HotbarController.RefreshHotbar()
-		else
+		elseif not Visible then
 			ClearAllSlots()
 		end
 	end
@@ -613,6 +652,9 @@ function HotbarController:Init()
 	UpdatePlayerStateEvent.OnClientEvent:Connect(function(Data)
 		if not Data or Data.PlayerId ~= LocalPlayer.UserId then return end
 
+		local PrevFrozen = _IsFrozen
+		local PrevDead   = _IsDead
+
 		_IsFrozen = (Data.State == "Frozen")
 		_IsDead   = (Data.State == "Dead")
 
@@ -622,6 +664,17 @@ function HotbarController:Init()
 			local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
 			if Humanoid then
 				Humanoid:UnequipTools()
+			end
+
+			-- Ẩn Hotbar hoàn toàn khi Frozen hoặc Dead (Phương án A)
+			if _HotbarFrame then
+				_HotbarFrame.Visible = false
+			end
+		elseif (PrevFrozen or PrevDead) and (not _IsFrozen) and (not _IsDead) then
+			-- Được Thaw / Hồi phục Normal: hiện lại Hotbar và nạp lại Tool mới
+			if _isVisible and _HotbarFrame then
+				_HotbarFrame.Visible = true
+				task.defer(HotbarController.RefreshHotbar)
 			end
 		end
 	end)
@@ -638,12 +691,7 @@ function HotbarController:Init()
 		if Backpack then
 			local AddedConn = Backpack.ChildAdded:Connect(function(Child)
 				if Child:IsA("Tool") then
-					task.defer(function()
-						SyncTools()
-						if _isVisible then
-							HotbarController.RefreshHotbar()
-						end
-					end)
+					task.defer(SyncTools)
 				end
 			end)
 			local RemovedConn = Backpack.ChildRemoved:Connect(function(Child)
@@ -658,12 +706,7 @@ function HotbarController:Init()
 		if Character then
 			local AddedConn = Character.ChildAdded:Connect(function(Child)
 				if Child:IsA("Tool") then
-					task.defer(function()
-						SyncTools()
-						if _isVisible then
-							HotbarController.RefreshHotbar()
-						end
-					end)
+					task.defer(SyncTools)
 				end
 			end)
 			local RemovedConn = Character.ChildRemoved:Connect(function(Child)
@@ -676,7 +719,12 @@ function HotbarController:Init()
 		end
 
 		HotbarController.ResetState()
-		task.defer(HotbarController.RefreshHotbar)
+		if _isVisible and not _IsFrozen and not _IsDead then
+			if _HotbarFrame then
+				_HotbarFrame.Visible = true
+			end
+			task.defer(HotbarController.RefreshHotbar)
+		end
 	end
 
 	LocalPlayer.CharacterAdded:Connect(BindCharacter)
@@ -686,7 +734,9 @@ function HotbarController:Init()
 
 	-- 6. Lắng nghe thay đổi SkinIcicle từ Attribute
 	LocalPlayer:GetAttributeChangedSignal("EquippedIcicleSkinId"):Connect(function()
-		HotbarController.RefreshHotbar()
+		if _isVisible and not _IsFrozen and not _IsDead then
+			HotbarController.RefreshHotbar()
+		end
 	end)
 
 	-- 7. Lắng nghe vòng đời trận đấu để làm sạch Hotbar khi về sảnh (Intermission) và đồng bộ state
@@ -694,6 +744,13 @@ function HotbarController:Init()
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
 		if not Data then return end
 		local Phase = Data.Phase or "Intermission"
+
+		-- Chỉ xử lý khi Phase thực sự thay đổi (tránh reset mỗi giây theo chu kỳ đếm ngược TimeRemaining)
+		if Phase == _lastPhase then
+			return
+		end
+		_lastPhase = Phase
+
 		if Phase == "Intermission" then
 			HotbarController.ResetState()
 			ClearAllSlots()
@@ -701,7 +758,10 @@ function HotbarController:Init()
 			HotbarController.ResetState()
 		elseif Phase == "InGame" then
 			HotbarController.ResetState()
-			if _isVisible then
+			if _isVisible and not _IsFrozen and not _IsDead then
+				if _HotbarFrame then
+					_HotbarFrame.Visible = true
+				end
 				task.defer(HotbarController.RefreshHotbar)
 			end
 		end

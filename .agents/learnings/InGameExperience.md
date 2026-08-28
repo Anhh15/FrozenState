@@ -98,25 +98,31 @@
 - **Giải pháp:** Thiết lập `AnchorPoint = Vector2.new(0.5, 0.5)` cho `ItemSlot` để khi scale nở đều từ tâm mà không lệch trục; đặt `Padding` trong `UIListLayout` đủ rộng (tối thiểu 16px) và tự động nâng `ZIndex = 10` cho ô đang active (khôi phục `ZIndex = 1` khi Inactive).
 - **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
-### 7. Lỗi Giật Cục / Nhấp Nháy Hotbar Do Chu Kỳ UpdateDisplay 1s & Equip Transition
-- **Vấn đề:** Hotbar liên tục bị xóa và tạo lại mỗi giây, gây nhấp nháy, giật cục scale (1.0 $\rightarrow$ 1.3) và làm kẹt rèm/chữ Cooldown trên màn hình.
+### 7. Lỗi Giật Cục / Nhấp Nháy Hotbar Do Chu Kỳ UpdateDisplay 1s, Phase Tick & Equip Transition
+- **Vấn đề:** Hotbar liên tục bị xóa và tạo lại mỗi giây, gây nhấp nháy, giật cục scale ($1.0 \to 1.3$) khi trang bị hoặc khi đang cầm/sử dụng vũ khí và ngắt quãng hoạt ảnh rèm/chữ Cooldown trên màn hình.
 - **Nguyên nhân:**
-  1. Khi Equip/Unequip, Tool đổi container giữa `Backpack` và `Character`, kích hoạt `ChildAdded`/`ChildRemoved` khiến toàn bộ Slot bị xóa và dựng lại liên tục.
-  2. Template trong Studio đang để `Visible = true` cho CooldownCurtain/Text nhưng code không ép ẩn ban đầu lúc clone.
-- **Giải pháp:**
-  1. Thiết lập hàm `SyncTools()` chỉ tái tạo Hotbar khi danh sách Tool thực tế thay đổi (thêm mới/xóa hẳn). Chuyển động Equip/Unequip chỉ thuần túy kích hoạt `UpdateSlotActiveVisual` qua `Tool.AncestryChanged`.
-  2. Ép ẩn `CooldownCurtain.Visible = false`, `CooldownCurtain.Size = UDim2.new(1, 0, 0, 0)` và `CooldownText.Visible = false` ngay khi tạo slot.
+  1. *Lặp theo chu kỳ 1 giây*: `GameStateController:UpdateDisplay` được gọi mỗi giây theo sự kiện `UpdateGameState`. `HotbarController.SetVisible` thiếu Idempotency Guard kết hợp `ShouldShow` nên mỗi giây đều thực thi `RefreshHotbar()`, xóa sạch toàn bộ slot (`ClearAllSlots`), hủy mọi tween và Cooldown thread.
+  2. *Lặp theo Phase Tick*: Listener `UpdateGameState` trong `HotbarController` không lọc theo `_lastPhase`, dẫn đến việc re-render mỗi giây khi nhận phase `InGame`.
+  3. *Equip/Unequip Transition*: Khi Tool đổi container giữa `Backpack` và `Character`, các listener `ChildAdded` gọi `RefreshHotbar()` trực tiếp thay vì chỉ để `SyncTools` và `Tool.AncestryChanged` xử lý tween Active Visual mượt mà.
+  4. *Đứt đoạn Cooldown & Animation lặp*: Khi slot bị xóa và dựng lại giữa chừng, `IsOnCooldown` attribute không thay đổi khiến animation không tự kích hoạt lại và không có cơ chế khôi phục thời gian còn lại. Ngoài ra, thiếu bộ lọc `LastIsEquipped` khiến animation scale $1.3$ bị phát lại liên tục khi kiểm tra trạng thái.
+- **Giải pháp triệt để:**
+  1. Thêm Idempotency Guard chặt chẽ trong `SetVisible(Visible)`: `if _isVisible == Visible and _HotbarFrame and _HotbarFrame.Visible == ShouldShow then return end`.
+  2. Thiết lập bộ lọc chuyển phase `_lastPhase` trong `UpdateGameStateEvent`: chỉ thực thi khi phase thực sự thay đổi.
+  3. Bổ sung bộ lọc `LastIsEquipped` trong `UpdateSlotActiveVisual`: nếu trạng thái trang bị không thay đổi và scale đã đạt đích thì không phát lại tween.
+  4. Loại bỏ hoàn toàn `RefreshHotbar()` trực tiếp trong `ChildAdded`/`ChildRemoved` của `Backpack` và `Character`; chỉ kích hoạt `task.defer(SyncTools)` để nhận diện tool mới hoặc tool bị xóa.
+  5. Trong `PlayCooldownAnimation()`, tính toán chiều cao rèm `CurrentScaleY = math.clamp(Remaining / CooldownDuration, 0, 1)` và tween mượt mà theo `Remaining`.
+  6. Trong `CreateSlotForTool()`, tự động kiểm tra `IsOnCooldown == true` và `CooldownEndTime > os.clock()` để khôi phục ngay hoạt ảnh Cooldown còn lại.
 - **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
-### 8. Lỗi Mất Hotbar Slot & Rò Rỉ Event Listener Giữa Các Vòng Đấu
-- **Vấn đề:** Sang trận thứ 2, Hotbar không render Slot dù Tool đã được cấp vào Balo, hoặc sau khi nhân vật respawn thì Hotbar bị mất kết nối.
+### 8. Lỗi Mất Hotbar Slot & Rò Rỉ Event Listener Giữa Các Vòng Đấu & Xử lý Trạng thái Frozen/Thaw
+- **Vấn đề:** 
+  1. Khi bị `Frozen`, Hotbar vẫn hiển thị nguyên vẹn gây nhầm lẫn là có thể dùng; sau khi được `Thaw`, người chơi không thể rút vũ khí ra tay dù Balo có Tool.
+  2. Sang trận thứ 2, Hotbar không render Slot dù Tool đã được cấp vào Balo khi chuyển sang `InGame`.
 - **Nguyên nhân:**
-  1. `HotbarController` bật từ phase `Ready` khi Balo rỗng. Đến phase `InGame`, cờ debounce `_isVisible == true` chặn `SetVisible` quét lại Tool.
-  2. `_InGameGui` thiếu `ResetOnSpawn = false` khiến tham chiếu GUI bị hỏng khi nhân vật hồi sinh.
-  3. `BindCharacter` không dọn dẹp kết nối `Backpack.ChildAdded` cũ khi nhân vật hồi sinh, gây duplicate listener hoặc mất kết nối.
+  1. *Frozen/Thaw Lifecycle*: Khi bị Freeze, Tool cũ bị destroy trên Server và Tool mới được cấp khi Thaw. HotbarController không ẩn giao diện lúc Freeze và không tự động re-bind tham chiếu ô Slot cho Tool mới khi nhận trạng thái `Normal`.
+  2. *Multi-Round Phase Tick*: `HotbarController` bật từ phase `Ready` khi Balo rỗng. Đến phase `InGame`, cờ debounce `_isVisible == true` chặn `SetVisible` quét lại Tool, trong khi Tool vừa được cấp chưa kịp replication tại frame đầu của event `InGame`.
 - **Giải pháp:**
-  1. Luôn thực thi `RefreshHotbar()` khi `SetVisible(true)` và tự động refresh khi Tool xuất hiện trong `Backpack.ChildAdded` / `Character.ChildAdded`.
-  2. Thêm `_InGameGui.ResetOnSpawn = false` và hàm `HotbarController.ResetState()` tự động gọi khi đổi phase (`Setup`, `Ready`, `InGame`, `Intermission`).
-  3. Quản lý toàn bộ listeners của `Backpack`/`Character` qua mảng `_characterConnections` và ngắt kết nối an toàn (`Disconnect`) trước khi bind nhân vật mới.
+  1. *Quản lý hiển thị tổng hợp theo trạng thái*: `SetVisible(Visible)` tính toán `ShouldShow = Visible and (not _IsFrozen) and (not _IsDead)`. Khi `State == "Frozen"` hoặc `"Dead"`, tự động cất vũ khí và ẩn `_HotbarFrame.Visible = false`. Khi nhận `State == "Normal"` trong trận, tự động bật lại `_HotbarFrame.Visible = true` và kích hoạt `task.defer(HotbarController.RefreshHotbar)`.
+  2. *Nạp vũ khí đầu trận 2*: Trong `UpdateGameStateEvent` tại phase `InGame`, tự động kích hoạt `RefreshHotbar()` và kết nối `Backpack.ChildAdded` gọi `SyncTools()` để phát hiện và nạp ngay khi Tool xuất hiện từ Server.
 - **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
 
