@@ -375,6 +375,13 @@ function GuiHelper.GetHotbarConfig(SlotName)
 	return GuiAnimConfig.GetHotbarConfig(SlotName)
 end
 
+--- Lấy cấu hình Animation FrozenStateAnnouncement (kết hợp Default và Overrides)
+--- @param OverrideKey string?
+--- @return table
+function GuiHelper.GetFrozenStateAnnouncementAnimConfig(OverrideKey)
+	return GuiAnimConfig.GetFrozenStateAnnouncementAnimConfig(OverrideKey)
+end
+
 -- =========================================================
 -- TWEEN HELPERS
 -- =========================================================

@@ -274,6 +274,22 @@ local GuiAnimConfig = {
 			},
 			Overrides = {},
 		},
+
+		-- 11. Cấu hình thông báo Frozen State (InGameGui/FrozenStateAnnouncement)
+		FrozenStateAnnouncement = {
+			Default = {
+				OpenDuration     = 0.25, -- Thời gian bung nở Pop mở ra (giây)
+				CloseDuration    = 0.2,  -- Thời gian thu nhỏ Pop đóng lại (giây)
+				DisplayDuration  = 1.5,  -- Thời gian duy trì hiển thị trước khi tự động đóng (giây)
+				OpenEasingStyle  = Enum.EasingStyle.Back,
+				OpenEasingDir    = Enum.EasingDirection.Out,
+				CloseEasingStyle = Enum.EasingStyle.Quad,
+				CloseEasingDir   = Enum.EasingDirection.In,
+				InitialScale     = 0,
+				TargetScale      = 1,
+			},
+			Overrides = {},
+		},
 	},
 
 }
@@ -475,6 +491,24 @@ function GuiAnimConfig.GetHotbarConfig(SlotName)
 		ActiveBackgroundTrans   = O.ActiveBackgroundTrans   or D.ActiveBackgroundTrans   or 0.4,
 		CooldownEasingStyle     = O.CooldownEasingStyle     or D.CooldownEasingStyle     or Enum.EasingStyle.Linear,
 		CooldownEasingDir       = O.CooldownEasingDir       or D.CooldownEasingDir       or Enum.EasingDirection.InOut,
+	}
+end
+
+--- Lấy cấu hình Animation FrozenStateAnnouncement (kết hợp Default và Overrides)
+--- @param OverrideKey string?
+--- @return table
+function GuiAnimConfig.GetFrozenStateAnnouncementAnimConfig(OverrideKey)
+	local D, O = Resolve("FrozenStateAnnouncement", OverrideKey)
+	return {
+		OpenDuration     = O.OpenDuration     or D.OpenDuration     or 0.25,
+		CloseDuration    = O.CloseDuration    or D.CloseDuration    or 0.2,
+		DisplayDuration  = O.DisplayDuration  or D.DisplayDuration  or 1.5,
+		OpenEasingStyle  = O.OpenEasingStyle  or D.OpenEasingStyle  or Enum.EasingStyle.Back,
+		OpenEasingDir    = O.OpenEasingDir    or D.OpenEasingDir    or Enum.EasingDirection.Out,
+		CloseEasingStyle = O.CloseEasingStyle or D.CloseEasingStyle or Enum.EasingStyle.Quad,
+		CloseEasingDir   = O.CloseEasingDir   or D.CloseEasingDir   or Enum.EasingDirection.In,
+		InitialScale     = O.InitialScale     or D.InitialScale     or 0,
+		TargetScale      = O.TargetScale      or D.TargetScale      or 1,
 	}
 end
 

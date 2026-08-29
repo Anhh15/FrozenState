@@ -1,6 +1,6 @@
 # InGameExperience
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về trải nghiệm giao diện thi đấu trong trận (PlayerStatus, ScoreBoard, Accolades, Custom Hotbar và Phân phối HUD theo GameMode).
-> Cập nhật lần cuối: 28-08-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về trải nghiệm giao diện thi đấu trong trận (PlayerStatus, ScoreBoard, Accolades, FrozenStateAnnouncement, Custom Hotbar và Phân phối HUD theo GameMode).
+> Cập nhật lần cuối: 29-08-2026
 
 ---
 
@@ -11,8 +11,9 @@
   - `PlayerStatusController`: Hiển thị thanh danh sách đồng minh/kẻ địch thu nhỏ trên màn hình cùng trạng thái sống/đóng băng.
   - `ScoreBoardController`: Bảng điểm chi tiết thành tích toàn trận (Freezes, Thaws) và nút toggle `ScoreBoardButton`.
   - `AccoladesController`: Biểu ngữ thông báo danh hiệu hạ gục liên tiếp (Freezing Spree, Thawing Spree, First Blood...).
+  - `FrozenStateAnnouncementController`: Biểu ngữ thông báo và SFX khi trận đấu chuyển sang trạng thái Frozen State.
 - **Lợi ích:** Dễ bảo trì, tuân thủ chặt chẽ nguyên lý đơn nhiệm (Single Responsibility) và tối ưu hóa hiệu năng render.
-- **File liên quan:** [PlayerStatusController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua)
+- **File liên quan:** [PlayerStatusController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [FrozenStateAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/FrozenStateAnnouncementController.lua)
 
 ### 2. Đồng bộ Dữ liệu ScoreBoard qua Payload Event Mở Rộng
 - **Chi tiết:** Thay vì sử dụng một RemoteEvent riêng làm tăng traffic mạng, hệ thống mở rộng payload của sự kiện `UpdatePlayerState` truyền thêm dữ liệu `Freezes` và `Thaws`. Client tự cập nhật phần tử tương ứng trong ScoreBoard giúp tiết kiệm băng thông tối đa.
@@ -54,6 +55,13 @@
 - **Chi tiết:** Tuân thủ nguyên lý tách biệt trách nhiệm: 100% thuộc tính thẩm mỹ tĩnh (màu nền `BackgroundColor3`, màu rèm `CooldownCurtain`, viền `UIStroke`, bo góc `UICorner`, font chữ) được định hình trực tiếp trong Roblox Studio trên template `ItemSlot`. Code và `GuiConfig` chỉ quản lý tham số hoạt ảnh động (`InactiveScale = 1.0`, `ActiveScale = 1.3`, `ScaleDuration = 0.15s`, `InactiveBackgroundTrans = 0.8`, `ActiveBackgroundTrans = 0.4`).
 - **Cơ chế Cooldown Decoupled:** `IcicleScript` gán thuộc tính `IsOnCooldown` và `CooldownEndTime` lên Tool khi kích hoạt. `HotbarController` lắng nghe reactive qua `GetAttributeChangedSignal("IsOnCooldown")` để kích hoạt rèm `CooldownCurtain` neo ở đáy (`Size.Y.Scale = 1.0 -> 0.0`) kèm chữ đếm ngược số giây `CooldownText`.
 - **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 10. Điều Phối Thông Báo Frozen State & State Transition Guard
+- **Chi tiết:** Quản lý hiệu ứng biểu ngữ và âm thanh khi trận đấu bước vào trạng thái Frozen State qua `FrozenStateAnnouncementController`:
+  - Hoạt ảnh `Pop` trên `UIScale` (`GuiHelper.PopOpen`/`PopClose`) với cấu hình trong `GuiAnimConfig.Animations.FrozenStateAnnouncement` (`OpenDuration = 0.25s`, `DisplayDuration = 1.5s`, `CloseDuration = 0.2s`).
+  - Phát SFX qua `AudioHelper.PlayGuiSound(AudioConfig.Special.FrozenStateAnnouncement)` nạp từ Sound Pool.
+  - **State Transition Guard:** Client lắng nghe `UpdateGameStateEvent` nhưng chỉ kích hoạt visual/SFX khi có bước chuyển trạng thái thực sự (`CurrentIsFrozenState == true and not _LastIsFrozenState`), tránh hoàn toàn việc bị kích hoạt lại theo chu kỳ đếm giây (1s/lần) của server.
+- **File liên quan:** [FrozenStateAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/FrozenStateAnnouncementController.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
 ---
 
@@ -125,4 +133,10 @@
   1. *Quản lý hiển thị tổng hợp theo trạng thái*: `SetVisible(Visible)` tính toán `ShouldShow = Visible and (not _IsFrozen) and (not _IsDead)`. Khi `State == "Frozen"` hoặc `"Dead"`, tự động cất vũ khí và ẩn `_HotbarFrame.Visible = false`. Khi nhận `State == "Normal"` trong trận, tự động bật lại `_HotbarFrame.Visible = true` và kích hoạt `task.defer(HotbarController.RefreshHotbar)`.
   2. *Nạp vũ khí đầu trận 2*: Trong `UpdateGameStateEvent` tại phase `InGame`, tự động kích hoạt `RefreshHotbar()` và kết nối `Backpack.ChildAdded` gọi `SyncTools()` để phát hiện và nạp ngay khi Tool xuất hiện từ Server.
 - **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua)
+
+### 9. Lỗi Lặp SFX & Hoạt Ảnh Pop Do Chu Kỳ Server Broadcast GameState 1 Giây
+- **Vấn đề:** Khi trận đấu kích hoạt Frozen State, âm thanh SFX và hiệu ứng Pop của TextLabel thông báo bị kích hoạt lặp đi lặp lại liên tục mỗi 1 giây làm giật UI và chói tai người chơi.
+- **Nguyên nhân:** `MatchService` chạy vòng lặp đếm ngược mỗi giây (`for t = Duration, 0, -1 do BroadcastGameState("InGame", t, FrozenStateOn) task.wait(1) end`). Trong suốt thời gian Frozen State diễn ra, mỗi giây Server đều broadcast gói tin có `IsFrozenState = true`. Client nếu chỉ kiểm tra `if Data.IsFrozenState then` sẽ bị trigger liên tục theo từng nhịp tick.
+- **Giải pháp:** Thiết lập State Transition Guard với bộ đệm `_LastIsFrozenState = false`. Chỉ kích hoạt visual/SFX khi phát hiện bước chuyển trạng thái `CurrentIsFrozenState == true and not _LastIsFrozenState` trong phase `InGame`. Tự động khôi phục `_LastIsFrozenState = false` khi trạng thái tắt hoặc khi ván đấu kết thúc / chuyển phase.
+- **File liên quan:** [FrozenStateAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/FrozenStateAnnouncementController.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
 

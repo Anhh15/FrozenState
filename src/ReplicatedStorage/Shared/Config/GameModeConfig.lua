@@ -58,7 +58,7 @@ local Modes = {
 		WinCondition         = "TeamBased",
 
 		-- Thời gian
-		InGameDuration       = 180,
+		InGameDuration       = 49,
 		FrozenStateThreshold = 45,   -- chỉ dùng khi AllowFrozenState = true
 	},
 

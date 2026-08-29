@@ -34,6 +34,7 @@ local RoundLoadingScreenController   = require(Controllers:WaitForChild("RoundLo
 local GameOverAnnouncementController = require(Controllers:WaitForChild("GameOverAnnouncementController"))
 local GameLoadingController          = require(Controllers:WaitForChild("GameLoadingController"))
 local HotbarController               = require(Controllers:WaitForChild("HotbarController"))
+local FrozenStateAnnouncementController = require(Controllers:WaitForChild("FrozenStateAnnouncementController"))
 
 -- Bước 3: Init tất cả controller
 -- GameLoadingController khởi tạo trước để che màn hình và bắt đầu preload
@@ -61,5 +62,6 @@ ModeAnnouncementController:Init()
 RoundLoadingScreenController:Init()
 GameOverAnnouncementController:Init()
 HotbarController:Init()
+FrozenStateAnnouncementController:Init()
 
 print("[Client] FrozenState đã sẵn sàng.")

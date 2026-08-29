@@ -51,6 +51,14 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ THÔNG BÁO TRONG INGAMEGUI
+	-- =========================================================
+	InGameAnnouncements = {
+		AccoladesAnnouncement   = "AccoladesAnnouncement",
+		FrozenStateAnnouncement = "FrozenStateAnnouncement",
+	},
+
+	-- =========================================================
 	-- TÊN CÁC PHẦN TỬ TRONG FRAME HOTBAR CỦA INGAMEGUI
 	-- =========================================================
 	HotbarElements = {

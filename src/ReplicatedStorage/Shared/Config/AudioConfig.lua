@@ -48,7 +48,8 @@ local AudioConfig = {
 	-- 4. ÂM THANH MÀN HÌNH ĐẶC BIỆT (SPECIAL GUI)
 	-- =========================================================
 	Special = {
-		ModeAnnouncement  = { Id = 75713209190949, Volume = 1.0 },
+		ModeAnnouncement        = { Id = 75713209190949,  Volume = 1.0 },
+		FrozenStateAnnouncement = { Id = 117797923415428, Volume = 1.0 },
 	},
 
 	-- =========================================================

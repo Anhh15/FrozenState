@@ -138,7 +138,7 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 
 	-- Thêm indicator khi FrozenState đang active
 	if IsFrozenState and Phase == "InGame" then
-		DisplayPhase = "❄  FROZEN STATE"
+		DisplayPhase = "FROZEN STATE"
 	end
 
 	local TimeStr = FormatTime(TimeRemaining)
