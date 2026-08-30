@@ -290,6 +290,20 @@ local GuiAnimConfig = {
 			},
 			Overrides = {},
 		},
+
+		-- 12. Cấu hình nút gạt Menu Setting (Menu/Setting Toggle)
+		Setting = {
+			Default = {
+				ActiveBackgroundColor   = Color3.fromHex("FFFFFF"),
+				ActiveTextColor         = Color3.fromHex("000000"),
+				InactiveBackgroundColor = Color3.fromHex("B6B6B6"),
+				InactiveTextColor       = Color3.fromHex("747474"),
+				Duration                = 0.15,
+				EasingStyle             = Enum.EasingStyle.Quad,
+				EasingDir               = Enum.EasingDirection.Out,
+			},
+			Overrides = {},
+		},
 	},
 
 }
@@ -509,6 +523,22 @@ function GuiAnimConfig.GetFrozenStateAnnouncementAnimConfig(OverrideKey)
 		CloseEasingDir   = O.CloseEasingDir   or D.CloseEasingDir   or Enum.EasingDirection.In,
 		InitialScale     = O.InitialScale     or D.InitialScale     or 0,
 		TargetScale      = O.TargetScale      or D.TargetScale      or 1,
+	}
+end
+
+--- Lấy cấu hình Animation và màu sắc cho Setting Toggle (kết hợp Default và Overrides)
+--- @param OverrideKey string?
+--- @return table
+function GuiAnimConfig.GetSettingAnimConfig(OverrideKey)
+	local D, O = Resolve("Setting", OverrideKey)
+	return {
+		ActiveBackgroundColor   = O.ActiveBackgroundColor   or D.ActiveBackgroundColor   or Color3.fromHex("FFFFFF"),
+		ActiveTextColor         = O.ActiveTextColor         or D.ActiveTextColor         or Color3.fromHex("000000"),
+		InactiveBackgroundColor = O.InactiveBackgroundColor or D.InactiveBackgroundColor or Color3.fromHex("B6B6B6"),
+		InactiveTextColor       = O.InactiveTextColor       or D.InactiveTextColor       or Color3.fromHex("747474"),
+		Duration                = O.Duration                or D.Duration                or 0.15,
+		EasingStyle             = O.EasingStyle             or D.EasingStyle             or Enum.EasingStyle.Quad,
+		EasingDir               = O.EasingDir               or D.EasingDir               or Enum.EasingDirection.Out,
 	}
 end
 

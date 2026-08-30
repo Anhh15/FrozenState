@@ -81,7 +81,23 @@ local GuiConfig = {
 		Inventory = "Inventory",
 		Profile   = "Profile",
 		Quest     = "Quest",
+		Setting   = "Setting",
 		-- Spectate đã được chuyển sang ObserverGui (không còn là menu tab)
+	},
+
+	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG FRAME SETTING
+	-- =========================================================
+	SettingElements = {
+		ScrollingFrame  = "ScrollingFrame",
+		GameplaySection = "GameplaySection",
+		Config          = "Config",
+		OnButton        = "OnButton",
+		OffButton       = "OffButton",
+		AfkText         = "AfkText",
+		Background      = "Background",
+		Text            = "Text",
+		CloseButton     = "CloseButton",
 	},
 
 	-- =========================================================

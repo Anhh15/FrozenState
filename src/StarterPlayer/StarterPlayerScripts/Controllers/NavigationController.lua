@@ -139,6 +139,17 @@ local function BindNavigationActions()
 			end
 		end)
 	end
+
+	-- 6. Nút Setting
+	local SettingBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Setting)
+	if SettingBtn then
+		SettingBtn.MouseButton1Click:Connect(function()
+			local MenuCtrl = GetMenuController()
+			if MenuCtrl then
+				MenuCtrl.ToggleTab("Setting")
+			end
+		end)
+	end
 end
 
 -- =========================================================

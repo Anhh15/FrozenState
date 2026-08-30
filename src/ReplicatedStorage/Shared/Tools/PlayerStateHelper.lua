@@ -52,6 +52,14 @@ function PlayerStateHelper.GetEquippedIcicleSkinId(Player)
 	return Player:GetAttribute(Attributes.EquippedIcicleSkinId) or "Default"
 end
 
+--- Kiểm tra xem Player có đang ở chế độ AFK hay không
+--- @param Player Player?
+--- @return boolean
+function PlayerStateHelper.IsAfk(Player)
+	if not Player then return false end
+	return Player:GetAttribute(Attributes.IsAfk) == true
+end
+
 --- Lấy VictimUserId từ BlockModel hoặc Character
 --- @param TargetInstance Instance?
 --- @return number?
@@ -106,6 +114,18 @@ end
 function PlayerStateHelper.SetVictimUserId(BlockModel, UserId)
 	if not BlockModel then return end
 	BlockModel:SetAttribute(Attributes.VictimUserId, UserId)
+end
+
+--- Đặt trạng thái AFK cho Player (chỉ chạy từ Server)
+--- @param Player Player?
+--- @param IsAfk boolean
+function PlayerStateHelper.SetAfk(Player, IsAfk)
+	if not Player then return end
+	if IsAfk then
+		Player:SetAttribute(Attributes.IsAfk, true)
+	else
+		Player:SetAttribute(Attributes.IsAfk, nil)
+	end
 end
 
 -- =========================================================
@@ -164,6 +184,34 @@ function PlayerStateHelper.ObserveGameLoaded(Player, Callback)
 	end
 
 	local Conn = Player:GetAttributeChangedSignal(Attributes.GameLoaded):Connect(FireCallback)
+	task.spawn(FireCallback)
+
+	return {
+		Disconnect = function()
+			if Conn then
+				Conn:Disconnect()
+				Conn = nil
+			end
+		end,
+	}
+end
+
+--- Lắng nghe sự kiện thay đổi trạng thái AFK của Player
+--- Tự động gọi callback 1 lần ban đầu (Option A) và trả về object có Disconnect()
+--- @param Player Player
+--- @param Callback (IsAfk: boolean) -> ()
+--- @return { Disconnect: () -> () }
+function PlayerStateHelper.ObserveAfk(Player, Callback)
+	if not Player or not Callback then
+		return { Disconnect = function() end }
+	end
+
+	local function FireCallback()
+		local IsAfk = PlayerStateHelper.IsAfk(Player)
+		Callback(IsAfk)
+	end
+
+	local Conn = Player:GetAttributeChangedSignal(Attributes.IsAfk):Connect(FireCallback)
 	task.spawn(FireCallback)
 
 	return {

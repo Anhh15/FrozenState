@@ -13,6 +13,7 @@ local PlayerStateConfig = {
 		Team                 = "Team",                 -- string: "Team1" | "Team2" | nil
 		EquippedIcicleSkinId = "EquippedIcicleSkinId", -- string: SkinId của Icicle đang trang bị
 		VictimUserId         = "VictimUserId",         -- number: UserId nạn nhân bị đóng băng (trên IceBlock Model)
+		IsAfk                = "IsAfk",                -- boolean: player đang ở chế độ AFK (không ghép trận)
 	},
 
 	-- =========================================================

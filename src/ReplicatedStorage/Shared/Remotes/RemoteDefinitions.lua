@@ -57,6 +57,10 @@ local REMOTE_EVENTS = {
 
 	-- Client → Server: Báo hiệu hoàn tất GameLoadingScreen (mở rèm vào lobby)
 	"FinishGameLoading",
+
+	-- Client → Server: Đổi trạng thái AFK của người chơi
+	-- Payload: { IsAfk = boolean }
+	"SetAfkState",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

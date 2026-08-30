@@ -1,6 +1,6 @@
 # GuiControllers
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống điều phối giao diện sảnh, menu và chuyển cảnh (MenuController, NavigationController, GameStateController, GameLoadingScreen, RoundLoadingScreen, ModeAnnouncement, GameOverAnnouncement và các Menu con).
-> Cập nhật lần cuối: 28-08-2026
+> Cập nhật lần cuối: 30-08-2026
 
 ---
 
@@ -71,6 +71,12 @@
   - *Zero Magic Numbers*: Khoảng đệm `LazyRenderBuffer` được cấu hình độc lập qua `ShopConfig.lua` và `InventoryConfig.lua`.
 - **File liên quan:** [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [InventoryConfig.lua](../../src/ReplicatedStorage/Shared/Config/InventoryConfig.lua), [ShopConfig.lua](../../src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
 
+### 10. Điều Phối Menu Setting & Cơ Chế Nút Gạt Trạng Thái Nhị Phân (SettingController & Selective State Toggle)
+- **Chi tiết:** Quản lý Frame `Menu/Setting` và các danh mục cài đặt phân tầng (`GameplaySection`). Cụm nút gạt nhị phân (`OnButton` / `OffButton`) được bảo vệ bởi cơ chế kiểm tra trạng thái trước khi tương tác (`_IsAfk == NewState -> return`).
+- **Selective AutoBind & SFX Độc quyền:** Gọi `GuiHelper.SetIgnoreAutoBind(ConfigFrame, true)` trên container nút để loại trừ hoàn toàn các sự kiện click và hover SFX mặc định toàn cục. Chỉ phát âm thanh toggle riêng (`AudioConfig.Setting.Toggle`) và kích hoạt tween màu sắc (`Active` / `Inactive` từ `GuiAnimConfig.GetSettingAnimConfig`) khi bấm vào nút đang chưa chọn.
+- **Đồng bộ 2 chiều:** Đồng bộ tức thì giao diện Client và gửi RemoteEvent `SetAfkState` lên Server.
+- **File liên quan:** [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [MenuController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -125,3 +131,9 @@
   1. Trong hàm dọn dẹp `ClearItemList`/`ClearChestList`, chủ động gọi `_ScrollConn:Disconnect()` và `table.clear(_LazyRenderQueue)`.
   2. Trong vòng lặp `CheckLazyQueue`, bổ sung guard clause: nếu `not Frame.Parent` thì xóa ngay phần tử khỏi queue (`table.remove(_LazyRenderQueue, Index)`) và bỏ qua `continue`.
 - **File liên quan:** [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+
+### 9. Xung Đột Âm Thanh AutoBindButtons Gây Phát SFX Click/Hover Sai Thiết Kế Trên Cụm Nút Setting
+- **Vấn đề:** Khi mở menu Setting, việc di chuột hoặc click vào các nút toggle bị phát đè âm thanh hover và click mặc định của hệ thống GUI chung, vi phạm yêu cầu chỉ phát SFX riêng khi đổi trạng thái.
+- **Nguyên nhân:** `AutoBindButtons` duyệt toàn bộ cây con của `SettingFrame` và tự động gán SFX cho tất cả `GuiButton`.
+- **Giải pháp:** Sử dụng `GuiHelper.SetIgnoreAutoBind` gắn cờ `IgnoreAutoBind = true` trên container `Config` và các nút con trước khi gọi `AutoBindButtons` cho `SettingFrame`.
+- **File liên quan:** [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)

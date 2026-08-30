@@ -83,7 +83,14 @@ local AudioConfig = {
 	},
 
 	-- =========================================================
-	-- 9. ÂM THANH GAMEPLAY (3D SPATIAL & WEAPONS)
+	-- 9. ÂM THANH CÀI ĐẶT (SETTING)
+	-- =========================================================
+	Setting = {
+		Toggle            = { Id = 139077385959653, Volume = 0.8 },
+	},
+
+	-- =========================================================
+	-- 10. ÂM THANH GAMEPLAY (3D SPATIAL & WEAPONS)
 	-- =========================================================
 	Gameplay = {
 		Default = {
@@ -236,6 +243,7 @@ function AudioConfig.GetAllAudioIds()
 	CollectFromTable(AudioConfig.Shop)
 	CollectFromTable(AudioConfig.Quest)
 	CollectFromTable(AudioConfig.Stats)
+	CollectFromTable(AudioConfig.Setting)
 	CollectFromTable(AudioConfig.Gameplay)
 
 	return AudioIdList

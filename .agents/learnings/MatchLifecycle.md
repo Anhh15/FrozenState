@@ -1,6 +1,6 @@
 # MatchLifecycle
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về vòng đời trận đấu (State Machine, Player State, WinCondition, Special Round, Death/Disconnect Lifecycle và Map Management).
-> Cập nhật lần cuối: 28-08-2026
+> Cập nhật lần cuối: 30-08-2026
 
 ---
 
@@ -64,6 +64,14 @@
   - **Bù mạng sống ảo khi Hết giờ (`Alive + 1`):** Trong các trận đấu không cân bằng quân số (ví dụ 2v1), nếu đội ít người hơn vẫn trụ vững đến hết giờ (`Alive > 0`), hệ thống cộng `+1 Alive` để cân bằng tỷ lệ sống sót, đẩy kết quả về hòa người sống và xét điểm đóng góp (`Freeze + Thaw`). Đây là cơ chế bảo vệ nỗ lực của đội ít người.
   - **Đồng thời bị Loại trong FFA (`Simultaneous Elimination`):** Khi 2 người cuối cùng cùng rơi void/chết gần như đồng thời (cách nhau phân giây), hệ thống không coi người sống sót thêm 0.05s là người chiến thắng tuyệt đối, mà chuyển về xét `NormalCount == 0` để trao cúp cho người có điểm Freeze cao nhất toàn trận (`GetTopScorerFFA`).
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
+
+### 11. Bộ Lọc Người Chơi Tham Chiến AFK & Quản Lý Tính Hợp Lệ Trận Đấu (AFK State & Match Eligibility Filter)
+- **Chi tiết:** Tích hợp trạng thái `IsAfk` vào Attribute trên Player (`PlayerStateConfig.Attributes.IsAfk`), quản lý qua `PlayerStateHelper`:
+  - *Runtime State:* Mặc định `IsAfk = false` khi người chơi kết nối vào server. Client gửi RemoteEvent `SetAfkState` lên Server khi thay đổi thiết lập.
+  - *Lọc Ghép Trận Tập Trung:* `MatchService.GetAlivePlayers()` tích hợp điều kiện bắt buộc:
+    $$\text{Eligible} = \text{Character} \land (\text{Health} > 0) \land \text{GameLoaded} \land (\neg \text{IsAfk})$$
+  - Loại bỏ hoàn toàn người chơi AFK khỏi danh sách được phân đội, teleport và cấp vũ khí khi bắt đầu `Setup`.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua), [PlayerStateConfig.lua](../../src/ReplicatedStorage/Shared/Config/PlayerStateConfig.lua)
 
 ---
 
@@ -141,6 +149,12 @@
 - **Nguyên nhân:** Trong `RunSetup()`, Server chỉ gán `SessionService.SetState(Player, "Normal")` trong bộ nhớ Server mà không phát RemoteEvent `UpdatePlayerStateEvent` xuống Client. Các controller ở Client (`HotbarController`) vẫn lưu cờ `_IsFrozen = true` hoặc `_IsDead = true`, khóa toàn bộ tương tác vũ khí qua `ToggleEquipTool`.
 - **Giải pháp:** Trong `MatchService.RunSetup()`, Server duyệt qua toàn bộ `ActivePlayers` và phát `UpdatePlayerStateEvent:FireAllClients(...)` với `State = "Normal"` để xóa sạch cờ đóng băng/chết trên toàn bộ Client.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua)
+
+### 14. Bắt Đầu Trận Đấu 1 Mình Do Đếm Sai Số Lượng Người Chơi Sẵn Sàng Tại Intermission Khi Có Player AFK
+- **Vấn đề:** Khi server chỉ có 2 người chơi nhưng 1 người bật AFK, phase `Intermission` vẫn đếm ngược và bắt đầu ván đấu với chỉ 1 người duy nhất, gây lỗi thiếu người trong mode thi đấu đối kháng.
+- **Nguyên nhân:** Vòng lặp `RunIntermission()` và `GameLoop()` kiểm tra điều kiện `#Players:GetPlayers() >= MinPlayers` (đếm toàn bộ người có trong server bất kể trạng thái AFK).
+- **Giải pháp:** Chuyển toàn bộ điều kiện kiểm tra số lượng sang `#GetAlivePlayers() >= GameConfig.Match.MinPlayers`. Nếu số người sẵn sàng không AFK $< \text{MinPlayers}$, hệ thống tự động reset `TimeLeft = Duration` và duy trì trạng thái chờ ở `Intermission`.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
 
 

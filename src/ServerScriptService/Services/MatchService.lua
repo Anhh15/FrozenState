@@ -53,12 +53,12 @@ local function BroadcastGameState(Phase, TimeRemaining, IsFrozenState, WinnerInf
 	})
 end
 
---- Lấy danh sách các người chơi đang thực sự còn sống và đã hoàn tất tải game (GameLoaded)
+--- Lấy danh sách các người chơi đang thực sự còn sống, đã hoàn tất tải game (GameLoaded) và không ở chế độ AFK
 local function GetAlivePlayers()
 	local Alive = {}
 	for _, Player in ipairs(Players:GetPlayers()) do
 		local Character = Player.Character
-		if Character and Character.Parent and PlayerStateHelper.IsGameLoaded(Player) then
+		if Character and Character.Parent and PlayerStateHelper.IsGameLoaded(Player) and not PlayerStateHelper.IsAfk(Player) then
 			local Humanoid = Character:FindFirstChildOfClass("Humanoid")
 			local HRP = Character:FindFirstChild("HumanoidRootPart")
 			if Humanoid and Humanoid.Health > 0 and HRP then
@@ -360,9 +360,9 @@ local function RunIntermission()
 	local TimeLeft    = Duration
 
 	while TimeLeft > 0 do
-		local PlayerCount = #Players:GetPlayers()
+		local ActivePlayerCount = #GetAlivePlayers()
 
-		if PlayerCount < GameConfig.Match.MinPlayers then
+		if ActivePlayerCount < GameConfig.Match.MinPlayers then
 			TimeLeft = Duration
 			BroadcastGameState("Intermission", Duration, false)
 		else
@@ -709,6 +709,7 @@ function MatchService:Init()
 
 	for _, P in ipairs(Players:GetPlayers()) do
 		PlayerStateHelper.SetGameLoaded(P, false)
+		PlayerStateHelper.SetAfk(P, false)
 		BindPlayer(P)
 	end
 
@@ -720,9 +721,24 @@ function MatchService:Init()
 		print(string.format("[MatchService] Player %s (%d) đã hoàn tất GameLoadingScreen.", Player.Name, Player.UserId))
 	end)
 
+	-- Lắng nghe khi Client chuyển đổi trạng thái AFK
+	local SetAfkStateEvent = RemoteDefinitions.GetEvent("SetAfkState")
+	SetAfkStateEvent.OnServerEvent:Connect(function(Player, Payload)
+		if not Player then return end
+		local IsAfk = false
+		if type(Payload) == "table" then
+			IsAfk = (Payload.IsAfk == true)
+		elseif type(Payload) == "boolean" then
+			IsAfk = Payload
+		end
+		PlayerStateHelper.SetAfk(Player, IsAfk)
+		print(string.format("[MatchService] Player %s (%d) đã cập nhật trạng thái AFK: %s", Player.Name, Player.UserId, tostring(IsAfk)))
+	end)
+
 	-- Khi player mới join giữa trận
 	Players.PlayerAdded:Connect(function(NewPlayer)
 		PlayerStateHelper.SetGameLoaded(NewPlayer, false)
+		PlayerStateHelper.SetAfk(NewPlayer, false)
 		BindPlayer(NewPlayer)
 
 		task.wait(2)
