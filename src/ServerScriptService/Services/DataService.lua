@@ -37,6 +37,14 @@ local PROFILE_TEMPLATE = {
 		ActiveQuests   = {},    -- Mảng 5 phần tử: { QuestId, BaseProgress, Claimed }
 	},
 	MilestoneQuestData  = {},   -- { [QuestId] = BaseProgress } mốc stat đã claim
+
+	-- Settings (Âm lượng & Thiết lập cá nhân)
+	Settings            = {
+		MasterVolume = 100,
+		MusicVolume  = 100,
+		SFXVolume    = 100,
+		UIVolume     = 100,
+	},
 }
 
 -- =========================================================
@@ -298,6 +306,50 @@ function DataService.AddCosmetic(Player, ItemId)
 	table.insert(Profile.Data.OwnedCosmetics, ItemId)
 end
 
+local VALID_SETTING_KEYS = {
+	MasterVolume = true,
+	MusicVolume  = true,
+	SFXVolume    = true,
+	UIVolume     = true,
+}
+
+--- Lấy thiết lập của người chơi
+--- @param Player Player
+--- @return table?
+function DataService.GetSettings(Player)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return nil end
+	return Profile.Data.Settings
+end
+
+--- Cập nhật thiết lập của người chơi
+--- @param Player Player
+--- @param Key string
+--- @param Value any
+--- @return boolean
+function DataService.SetSetting(Player, Key, Value)
+	if not VALID_SETTING_KEYS[Key] then return false end
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return false end
+
+	if not Profile.Data.Settings then
+		Profile.Data.Settings = {
+			MasterVolume = 100,
+			MusicVolume  = 100,
+			SFXVolume    = 100,
+			UIVolume     = 100,
+		}
+	end
+
+	if type(Value) == "number" then
+		-- Clamp và làm tròn theo bước 10 (0, 10, ..., 100)
+		Value = math.clamp(math.round(Value / 10) * 10, 0, 100)
+	end
+
+	Profile.Data.Settings[Key] = Value
+	return true
+end
+
 -- =========================================================
 -- KHỞI ĐỘNG SERVICE
 -- =========================================================
@@ -339,6 +391,12 @@ function DataService:Start()
 			EquippedIcicle     = Data.EquippedIcicle,
 			EquippedIceBlock   = Data.EquippedIceBlock,
 			PlayTime           = Data.PlayTime,
+			Settings           = Data.Settings or {
+				MasterVolume = 100,
+				MusicVolume  = 100,
+				SFXVolume    = 100,
+				UIVolume     = 100,
+			},
 		}
 	end
 
@@ -347,6 +405,17 @@ function DataService:Start()
 	EquipItemFn.OnServerInvoke = function(Player, SlotName, ItemId)
 		return DataService.EquipCosmetic(Player, SlotName, ItemId)
 	end
+
+	-- Xử lý SaveSetting: client gửi khi người chơi điều chỉnh xong slider
+	local SaveSettingEvent = RemoteDefinitions.GetEvent("SaveSetting")
+	SaveSettingEvent.OnServerEvent:Connect(function(Player, Payload)
+		if type(Payload) ~= "table" then return end
+		local Key   = Payload.Key
+		local Value = Payload.Value
+		if type(Key) == "string" and Value ~= nil then
+			DataService.SetSetting(Player, Key, Value)
+		end
+	end)
 
 	print("[DataService] Đang chạy.")
 end

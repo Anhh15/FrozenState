@@ -61,6 +61,10 @@ local REMOTE_EVENTS = {
 	-- Client → Server: Đổi trạng thái AFK của người chơi
 	-- Payload: { IsAfk = boolean }
 	"SetAfkState",
+
+	-- Client → Server: Lưu thiết lập âm lượng / cài đặt của người chơi
+	-- Payload: { Key = string, Value = any }
+	"SaveSetting",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

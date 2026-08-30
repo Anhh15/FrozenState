@@ -15,6 +15,73 @@ local AudioHelper = {}
 local _guiSoundPool = {}
 
 -- =========================================================
+-- SOUND GROUPS (MASTER, MUSIC, SFX, UI)
+-- =========================================================
+
+local _soundGroups = {}
+
+--- Đảm bảo cây SoundGroup đã được tạo trong SoundService
+local function EnsureSoundGroups()
+	if _soundGroups.Master and _soundGroups.Master.Parent then return end
+
+	local Master = SoundService:FindFirstChild("MasterGroup")
+	if not Master then
+		Master = Instance.new("SoundGroup")
+		Master.Name = "MasterGroup"
+		Master.Volume = 1
+		Master.Parent = SoundService
+	end
+
+	local Music = Master:FindFirstChild("MusicGroup")
+	if not Music then
+		Music = Instance.new("SoundGroup")
+		Music.Name = "MusicGroup"
+		Music.Volume = 1
+		Music.Parent = Master
+	end
+
+	local SFX = Master:FindFirstChild("SFXGroup")
+	if not SFX then
+		SFX = Instance.new("SoundGroup")
+		SFX.Name = "SFXGroup"
+		SFX.Volume = 1
+		SFX.Parent = Master
+	end
+
+	local UI = Master:FindFirstChild("UIGroup")
+	if not UI then
+		UI = Instance.new("SoundGroup")
+		UI.Name = "UIGroup"
+		UI.Volume = 1
+		UI.Parent = Master
+	end
+
+	_soundGroups.Master = Master
+	_soundGroups.Music  = Music
+	_soundGroups.SFX    = SFX
+	_soundGroups.UI     = UI
+end
+
+--- Lấy đối tượng SoundGroup theo tên
+--- @param GroupName string -- "Master" | "Music" | "SFX" | "UI"
+--- @return SoundGroup?
+function AudioHelper.GetSoundGroup(GroupName)
+	EnsureSoundGroups()
+	return _soundGroups[GroupName]
+end
+
+--- Cập nhật âm lượng cho một kênh SoundGroup (0 -> 100%)
+--- @param GroupName string -- "Master" | "Music" | "SFX" | "UI"
+--- @param VolumePercent number -- 0 đến 100
+function AudioHelper.SetVolume(GroupName, VolumePercent)
+	EnsureSoundGroups()
+	local Group = _soundGroups[GroupName]
+	if Group and type(VolumePercent) == "number" then
+		Group.Volume = math.clamp(VolumePercent / 100, 0, 1)
+	end
+end
+
+-- =========================================================
 -- PRIVATE HELPERS
 -- =========================================================
 
@@ -56,15 +123,19 @@ end
 --- @param AudioEntryOrId table | number | string
 --- @param VolumeOverride number? -- Ghi đè âm lượng tùy chọn
 --- @param Parent Instance? -- Mặc định là SoundService hoặc PlayerGui
+--- @param SoundGroupName string? -- "UI" | "SFX" | "Music" (mặc định "SFX")
 --- @return Sound?
-function AudioHelper.Play2DSound(AudioEntryOrId, VolumeOverride, Parent)
+function AudioHelper.Play2DSound(AudioEntryOrId, VolumeOverride, Parent, SoundGroupName)
 	local SoundId, Volume = ResolveAudioEntry(AudioEntryOrId, VolumeOverride)
 	if not SoundId then return nil end
+
+	EnsureSoundGroups()
 
 	local Sound = Instance.new("Sound")
 	Sound.Name = "SFX_2D_" .. tostring(SoundId)
 	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
 	Sound.Volume = Volume
+	Sound.SoundGroup = _soundGroups[SoundGroupName or "SFX"] or _soundGroups.SFX
 
 	local TargetParent = Parent or SoundService
 	if not TargetParent then
@@ -96,13 +167,18 @@ function AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 	local SoundId, Volume = ResolveAudioEntry(AudioEntryOrId, VolumeOverride)
 	if not SoundId then return nil end
 
+	EnsureSoundGroups()
+
 	local Sound = _guiSoundPool[SoundId]
 	if not Sound or not Sound.Parent then
 		Sound = Instance.new("Sound")
 		Sound.Name = "SFX_GuiPool_" .. tostring(SoundId)
 		Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
+		Sound.SoundGroup = _soundGroups.UI
 		Sound.Parent = SoundService
 		_guiSoundPool[SoundId] = Sound
+	else
+		Sound.SoundGroup = _soundGroups.UI
 	end
 
 	Sound.Volume = Volume
@@ -137,11 +213,14 @@ function AudioHelper.PlaySpatialSound(ParentInstance, AudioEntryOrId, VolumeOver
 		return nil
 	end
 
+	EnsureSoundGroups()
+
 	local Sound = Instance.new("Sound")
 	Sound.Name = "SpatialSFX_" .. tostring(SoundId)
 	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
 	Sound.Volume = Volume
 	Sound.RollOffMaxDistance = MaxDistance
+	Sound.SoundGroup = _soundGroups.SFX
 	Sound.Parent = TargetPart
 
 	Sound.Ended:Once(function()
@@ -171,6 +250,8 @@ end
 function AudioHelper.CreateSoundPool(ParentInstance, AudioIdsOrEntry, Config)
 	if not ParentInstance or not AudioIdsOrEntry then return {} end
 
+	EnsureSoundGroups()
+
 	local Pool = {}
 	local IdsList = {}
 	local Volume = (Config and Config.Volume) or 1
@@ -192,6 +273,7 @@ function AudioHelper.CreateSoundPool(ParentInstance, AudioIdsOrEntry, Config)
 		Sound.SoundId = "rbxassetid://" .. tostring(AudioId)
 		Sound.Volume = Volume
 		Sound.RollOffMaxDistance = MaxDistance
+		Sound.SoundGroup = _soundGroups.SFX
 		Sound.Parent = ParentInstance
 		Pool[AudioId] = Sound
 	end

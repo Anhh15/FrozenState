@@ -71,11 +71,15 @@
   - *Zero Magic Numbers*: Khoảng đệm `LazyRenderBuffer` được cấu hình độc lập qua `ShopConfig.lua` và `InventoryConfig.lua`.
 - **File liên quan:** [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [InventoryConfig.lua](../../src/ReplicatedStorage/Shared/Config/InventoryConfig.lua), [ShopConfig.lua](../../src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
 
-### 10. Điều Phối Menu Setting & Cơ Chế Nút Gạt Trạng Thái Nhị Phân (SettingController & Selective State Toggle)
-- **Chi tiết:** Quản lý Frame `Menu/Setting` và các danh mục cài đặt phân tầng (`GameplaySection`). Cụm nút gạt nhị phân (`OnButton` / `OffButton`) được bảo vệ bởi cơ chế kiểm tra trạng thái trước khi tương tác (`_IsAfk == NewState -> return`).
-- **Selective AutoBind & SFX Độc quyền:** Gọi `GuiHelper.SetIgnoreAutoBind(ConfigFrame, true)` trên container nút để loại trừ hoàn toàn các sự kiện click và hover SFX mặc định toàn cục. Chỉ phát âm thanh toggle riêng (`AudioConfig.Setting.Toggle`) và kích hoạt tween màu sắc (`Active` / `Inactive` từ `GuiAnimConfig.GetSettingAnimConfig`) khi bấm vào nút đang chưa chọn.
-- **Đồng bộ 2 chiều:** Đồng bộ tức thì giao diện Client và gửi RemoteEvent `SetAfkState` lên Server.
-- **File liên quan:** [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [MenuController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
+### 10. Điều Phối Menu Setting Đa Section & Đồng Bộ Dữ Liệu Bền Vững (SettingController, Stepped Sliders & Drag-Ended Save)
+- **Chi tiết:** Quản lý Frame `Menu/Setting` với các phân mục `GameplaySection` (AFK Toggle) và `SoundSection` (4 Sliders: `MasterRow`, `MusicRow`, `SFXRow`, `UIRow`):
+  - *Stepped Slider Engine*: Tích hợp `SliderHelper` điều khiển 11 nấc vạch chia ($0\%, 10\%, \dots, 100\%$), phát âm thanh tick nhẹ khi nhảy nấc.
+  - *Selective AutoBind & SFX Độc quyền*: Gọi `GuiHelper.SetIgnoreAutoBind` trên container `Config` và các thanh `SlideBar` để loại bỏ SFX/Scale mặc định của hệ thống GUI chung.
+  - *Phân luồng Đồng bộ Kép (Dual Sync Flow)*:
+    - **Local Real-time**: Khi đang kéo núm trượt, cập nhật `SoundGroup.Volume` tức thì ($0\text{ms}$).
+    - **Server Debounced Save**: Chỉ kích hoạt RemoteEvent `SaveSetting` khi người chơi thả tay khỏi chuột/màn hình (`InputEnded`), triệt tiêu hoàn toàn nguy cơ spam network.
+  - *Vòng đời nạp dữ liệu*: Đọc `Settings` từ `PlayerDataController.GetData()` lúc vào game và tự động làm mới vị trí núm trượt trong `OpenSetting()`.
+- **File liên quan:** [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [SliderHelper.lua](../../src/ReplicatedStorage/Shared/Tools/SliderHelper.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua)
 
 ---
 

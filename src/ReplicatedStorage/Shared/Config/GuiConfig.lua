@@ -89,15 +89,34 @@ local GuiConfig = {
 	-- TÊN CÁC PHẦN TỬ TRONG FRAME SETTING
 	-- =========================================================
 	SettingElements = {
-		ScrollingFrame  = "ScrollingFrame",
-		GameplaySection = "GameplaySection",
-		Config          = "Config",
-		OnButton        = "OnButton",
-		OffButton       = "OffButton",
-		AfkText         = "AfkText",
-		Background      = "Background",
-		Text            = "Text",
-		CloseButton     = "CloseButton",
+		ScrollingFrame       = "ScrollingFrame",
+		CloseButton          = "CloseButton",
+
+		-- Gameplay Section
+		GameplaySection      = "GameplaySection",
+		Config               = "Config",
+		OnButton             = "OnButton",
+		OffButton            = "OffButton",
+		AfkText              = "AfkText",
+		Background           = "Background",
+		Text                 = "Text",
+
+		-- Sound Section
+		SoundSection         = "SoundSection",
+		MasterRow            = "MasterRow",
+		MusicRow             = "MusicRow",
+		SFXRow               = "SFXRow",
+		UIRow                = "UIRow",
+
+		-- Slider Components
+		SlideBar             = "SlideBar",
+		Track                = "Track",
+		TicksContainer       = "TicksContainer",
+		TickPrefix           = "Tick",
+		Knob                 = "Knob",
+		SlideButton          = "SlideButton",
+		VolumeTextContainer  = "VolumeTextContainer",
+		TitleText            = "TitleText",
 	},
 
 	-- =========================================================

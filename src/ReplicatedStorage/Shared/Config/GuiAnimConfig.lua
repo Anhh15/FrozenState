@@ -304,6 +304,18 @@ local GuiAnimConfig = {
 			},
 			Overrides = {},
 		},
+
+		-- 13. Cấu hình thanh trượt Slider (Setting Sound Sliders)
+		Slider = {
+			Default = {
+				StepCount        = 10,  -- 10 khoảng (11 ticks: 0%, 10%, ..., 100%)
+				TickCount        = 11,  -- Số lượng ticks
+				Duration         = 0.08, -- Thời gian tween knob giữa các nấc
+				EasingStyle      = Enum.EasingStyle.Quad,
+				EasingDir        = Enum.EasingDirection.Out,
+			},
+			Overrides = {},
+		},
 	},
 
 }
@@ -539,6 +551,20 @@ function GuiAnimConfig.GetSettingAnimConfig(OverrideKey)
 		Duration                = O.Duration                or D.Duration                or 0.15,
 		EasingStyle             = O.EasingStyle             or D.EasingStyle             or Enum.EasingStyle.Quad,
 		EasingDir               = O.EasingDir               or D.EasingDir               or Enum.EasingDirection.Out,
+	}
+end
+
+--- Lấy cấu hình Animation cho Slider (kết hợp Default và Overrides)
+--- @param OverrideKey string?
+--- @return table
+function GuiAnimConfig.GetSliderAnimConfig(OverrideKey)
+	local D, O = Resolve("Slider", OverrideKey)
+	return {
+		StepCount   = O.StepCount   or D.StepCount   or 10,
+		TickCount   = O.TickCount   or D.TickCount   or 11,
+		Duration    = O.Duration    or D.Duration    or 0.08,
+		EasingStyle = O.EasingStyle or D.EasingStyle or Enum.EasingStyle.Quad,
+		EasingDir   = O.EasingDir   or D.EasingDir   or Enum.EasingDirection.Out,
 	}
 end
 

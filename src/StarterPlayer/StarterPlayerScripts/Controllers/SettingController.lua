@@ -1,6 +1,6 @@
 -- SettingController.lua (ModuleScript)
--- Điều khiển giao diện Menu Setting (Cài đặt Gameplay: AFK Toggle)
--- Tích hợp cơ chế điều phối qua MenuController, hiệu ứng tween chuyển màu và SFX toggle
+-- Điều khiển giao diện Menu Setting (Cài đặt Gameplay: AFK Toggle & Cài đặt Sound: Master, Music, SFX, UI Sliders)
+-- Tích hợp cơ chế điều phối qua MenuController, SliderHelper 11 ticks, SoundGroup và đồng bộ DataStore
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +12,7 @@ local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local SliderHelper      = require(ReplicatedStorage.Shared.Tools.SliderHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 local LocalPlayer = Players.LocalPlayer
@@ -26,6 +27,12 @@ local OnButton     = nil
 local OffButton    = nil
 local CloseButton  = nil
 local ConfigFrame  = nil
+
+-- Tham chiếu 4 Sliders
+local _MasterSlider = nil
+local _MusicSlider  = nil
+local _SfxSlider    = nil
+local _UiSlider     = nil
 
 local _IsAfk = false
 local _ActiveTweens = {}
@@ -43,8 +50,21 @@ local function GetMenuController()
 	return _MenuController
 end
 
+-- Lazy-require PlayerDataController để lấy Settings từ DataStore
+local _PlayerDataController = nil
+local function GetPlayerDataController()
+	if not _PlayerDataController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("PlayerDataController")
+		if Module then
+			_PlayerDataController = require(Module)
+		end
+	end
+	return _PlayerDataController
+end
+
 -- =========================================================
--- PRIVATE HELPERS
+-- PRIVATE HELPERS: TWEEN & TOGGLE
 -- =========================================================
 
 --- Hủy tween đang chạy trên một Instance (nếu có)
@@ -128,11 +148,20 @@ local function SendAfkStateToServer(IsAfk)
 	end
 end
 
+--- Gửi cài đặt âm lượng lên Server khi thả tay khỏi Slider
+--- @param Key string
+--- @param Value number
+local function SaveSettingToServer(Key, Value)
+	local SaveSettingEvent = RemoteDefinitions.GetEvent("SaveSetting")
+	if SaveSettingEvent then
+		SaveSettingEvent:FireServer({ Key = Key, Value = Value })
+	end
+end
+
 --- Xử lý khi bấm chuyển sang một trạng thái AFK mới
 --- @param NewState boolean
 local function HandleToggleRequest(NewState)
 	if _IsAfk == NewState then
-		-- Đang ở đúng trạng thái này rồi -> không làm gì, không phát SFX, không chạy animation
 		return
 	end
 
@@ -143,12 +172,75 @@ local function HandleToggleRequest(NewState)
 end
 
 -- =========================================================
+-- PRIVATE HELPERS: SLIDERS & SOUND
+-- =========================================================
+
+--- Khởi tạo 1 hàng Slider cho kênh âm thanh tương ứng
+--- @param RowFrame Frame?
+--- @param SoundGroupName string -- "Master" | "Music" | "SFX" | "UI"
+--- @param SettingKey string -- "MasterVolume" | "MusicVolume" | "SFXVolume" | "UIVolume"
+--- @return table? -- Slider object
+local function SetupSliderRow(RowFrame, SoundGroupName, SettingKey)
+	if not RowFrame then return nil end
+
+	local SlideBar = RowFrame:FindFirstChild(GuiConfig.SettingElements.SlideBar, true)
+	if not SlideBar then return nil end
+
+	-- Bỏ qua AutoBind trên RowFrame và SlideBar
+	GuiHelper.SetIgnoreAutoBind(RowFrame, true)
+	GuiHelper.SetIgnoreAutoBind(SlideBar, true)
+
+	local Slider = SliderHelper.Create(SlideBar, {
+		InitialValue   = 100,
+		StepCount      = 10,
+		PlayTickSound  = true,
+		OnValueChanged = function(NewPercent)
+			AudioHelper.SetVolume(SoundGroupName, NewPercent)
+		end,
+		OnDragEnded    = function(FinalPercent)
+			SaveSettingToServer(SettingKey, FinalPercent)
+		end,
+	})
+
+	return Slider
+end
+
+--- Áp dụng bảng Settings nhận được từ DataStore
+--- @param Settings table
+local function ApplyLoadedSettings(Settings)
+	if not Settings then return end
+
+	if _MasterSlider and Settings.MasterVolume ~= nil then
+		_MasterSlider:SetValue(Settings.MasterVolume, false)
+		AudioHelper.SetVolume("Master", Settings.MasterVolume)
+	end
+	if _MusicSlider and Settings.MusicVolume ~= nil then
+		_MusicSlider:SetValue(Settings.MusicVolume, false)
+		AudioHelper.SetVolume("Music", Settings.MusicVolume)
+	end
+	if _SfxSlider and Settings.SFXVolume ~= nil then
+		_SfxSlider:SetValue(Settings.SFXVolume, false)
+		AudioHelper.SetVolume("SFX", Settings.SFXVolume)
+	end
+	if _UiSlider and Settings.UIVolume ~= nil then
+		_UiSlider:SetValue(Settings.UIVolume, false)
+		AudioHelper.SetVolume("UI", Settings.UIVolume)
+	end
+end
+
+-- =========================================================
 -- TAB LIFECYCLE
 -- =========================================================
 
 local function OpenSetting()
 	if not SettingFrame then return end
 	SyncVisualState(_IsAfk, false)
+
+	-- Làm mới vị trí núm Knob khi mở giao diện
+	if _MasterSlider then _MasterSlider:SetValue(_MasterSlider:GetValue(), false) end
+	if _MusicSlider  then _MusicSlider:SetValue(_MusicSlider:GetValue(), false)   end
+	if _SfxSlider    then _SfxSlider:SetValue(_SfxSlider:GetValue(), false)       end
+	if _UiSlider     then _UiSlider:SetValue(_UiSlider:GetValue(), false)         end
 end
 
 local function CloseSetting()
@@ -184,13 +276,13 @@ function SettingController:Init()
 	-- Ẩn mặc định ban đầu
 	SettingFrame.Visible = false
 
-	-- Tìm các phần tử con bên trong Setting
+	-- 1. Tìm các phần tử con Gameplay (AFK Toggle)
 	ConfigFrame = SettingFrame:FindFirstChild(GuiConfig.SettingElements.Config, true)
 	OnButton    = SettingFrame:FindFirstChild(GuiConfig.SettingElements.OnButton, true)
 	OffButton   = SettingFrame:FindFirstChild(GuiConfig.SettingElements.OffButton, true)
 	CloseButton = SettingFrame:FindFirstChild(GuiConfig.SettingElements.CloseButton, true)
 
-	-- Tắt AutoBind toàn cục trên cụm nút Setting để tránh phát SFX click & hover mặc định
+	-- Tắt AutoBind trên cụm nút Gameplay
 	if ConfigFrame then
 		GuiHelper.SetIgnoreAutoBind(ConfigFrame, true)
 	end
@@ -201,7 +293,7 @@ function SettingController:Init()
 		GuiHelper.SetIgnoreAutoBind(OffButton, true)
 	end
 
-	-- Gán trạng thái hiển thị ban đầu (Mặc định: AFK = false -> OffButton Active, OnButton Inactive)
+	-- Gán trạng thái hiển thị ban đầu của AFK
 	_IsAfk = PlayerStateHelper.IsAfk(LocalPlayer)
 	SyncVisualState(_IsAfk, false)
 
@@ -218,7 +310,41 @@ function SettingController:Init()
 		end)
 	end
 
-	-- Kết nối nút đóng nếu có
+	-- 2. Tìm và khởi tạo 4 hàng Sliders trong SoundSection
+	local MasterRow = SettingFrame:FindFirstChild(GuiConfig.SettingElements.MasterRow, true)
+	local MusicRow  = SettingFrame:FindFirstChild(GuiConfig.SettingElements.MusicRow, true)
+	local SfxRow    = SettingFrame:FindFirstChild(GuiConfig.SettingElements.SFXRow, true)
+	local UiRow     = SettingFrame:FindFirstChild(GuiConfig.SettingElements.UIRow, true)
+
+	_MasterSlider = SetupSliderRow(MasterRow, "Master", "MasterVolume")
+	_MusicSlider  = SetupSliderRow(MusicRow,  "Music",  "MusicVolume")
+	_SfxSlider    = SetupSliderRow(SfxRow,    "SFX",    "SFXVolume")
+	_UiSlider     = SetupSliderRow(UiRow,     "UI",     "UIVolume")
+
+	-- 3. Nạp Settings từ DataStore
+	task.spawn(function()
+		local PlayerDataCtrl = GetPlayerDataController()
+		local Data = PlayerDataCtrl and PlayerDataCtrl.GetData()
+		local Settings = Data and Data.Settings
+
+		if not Settings then
+			-- Chờ dữ liệu ban đầu từ PlayerDataController
+			for _ = 1, 50 do
+				task.wait(0.1)
+				Data = PlayerDataCtrl and PlayerDataCtrl.GetData()
+				if Data and Data.Settings then
+					Settings = Data.Settings
+					break
+				end
+			end
+		end
+
+		if Settings then
+			ApplyLoadedSettings(Settings)
+		end
+	end)
+
+	-- 4. Kết nối nút đóng nếu có
 	if CloseButton and CloseButton:IsA("GuiButton") then
 		CloseButton.MouseButton1Click:Connect(function()
 			local MenuCtrl = GetMenuController()
@@ -228,7 +354,7 @@ function SettingController:Init()
 		end)
 	end
 
-	-- Tự động gắn AutoBind SFX cho các nút còn lại trong SettingFrame (ngoại trừ cụm Config/On/Off đã Ignore)
+	-- Tự động gắn AutoBind SFX cho các nút còn lại trong SettingFrame (ngoại trừ các nút/slider đã Ignore)
 	GuiHelper.AutoBindButtons(SettingFrame, { MenuName = "Setting" })
 
 	-- Đăng ký tab Setting với MenuController
@@ -241,7 +367,7 @@ function SettingController:Init()
 		})
 	end
 
-	print("[SettingController] Đã khởi tạo.")
+	print("[SettingController] Đã khởi tạo đầy đủ Gameplay & Sound Sections.")
 end
 
 return SettingController

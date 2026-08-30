@@ -1,6 +1,6 @@
 # GuiArchitecture
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về nền tảng GUI (UIScale Animation Engine, Phân tầng Cấu hình Default/Overrides, Stagger Pop, Dynamic GUI Resolver, Phân tách GuiConfig/GuiAnimConfig và Quản lý Vòng đời ScreenGui).
-> Cập nhật lần cuối: 28-08-2026
+> Cập nhật lần cuối: 30-08-2026
 
 ---
 
@@ -102,3 +102,12 @@
   1. `ItemCard` gọi `GuiHelper.MarkBound(Frame)` cho toàn bộ các nút con và gán `SetIgnoreAutoBind(Frame, true)` trước khi set `.Parent`.
   2. `AutoBindButtons` tích hợp hàm kiểm tra `ShouldIgnoreAutoBind` để tôn trọng quyền cấu hình riêng của từng component và bỏ qua toàn bộ folder `Templates`.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
+
+### 6. Bẫy Toạ Độ Tĩnh Position của Phần Tử Con Khi Bị Quản Lý Bởi UIListLayout
+- **Vấn đề:** Khi tạo component thanh trượt (Stepped Slider) với các vạch chia `Tick1` $\rightarrow$ `Tick11`, nếu script đọc `TargetTick.Position` để gán toạ độ cho núm `Knob`, núm bị khóa cứng tại góc trái ($0\%$) và không thể di chuyển khi tương tác.
+- **Nguyên nhân:** Khi các phần tử con được sắp xếp bằng `UIListLayout`, Roblox quản lý vị trí runtime độc quyền; thuộc tính tĩnh `Position` của toàn bộ các phần tử con trong Studio vẫn giữ nguyên giá trị `UDim2.new(0, 0, 0, 0)`.
+- **Giải pháp:** Tuyệt đối không đọc thuộc tính `Position` tĩnh của các đối tượng nằm trong layout container. Thay vào đó:
+  1. Sử dụng công thức toán học tuyến tính:
+     $$\text{Knob.Position} = \text{UDim2.new}\left(\frac{\text{StepIndex}}{\text{StepCount}}, 0, 0.5, 0\right)$$
+  2. Gán `Knob.AnchorPoint = Vector2.new(0.5, 0.5)` để tâm của núm luôn căn chính xác $100\%$ vào tâm từng vạch chia $0\%, 10\%, \dots, 100\%$.
+- **File liên quan:** [SliderHelper.lua](../../src/ReplicatedStorage/Shared/Tools/SliderHelper.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua)

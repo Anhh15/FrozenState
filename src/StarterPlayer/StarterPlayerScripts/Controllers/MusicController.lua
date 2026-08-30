@@ -25,6 +25,7 @@ local SoundService      = game:GetService("SoundService")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
 -- =========================================================
@@ -41,10 +42,11 @@ local _IsGameLoaded   = false
 -- Sound instance duy nhất để phát nhạc nền
 -- Đặt trong SoundService → không spatial, phát toàn cục
 local _BgmSound = Instance.new("Sound")
-_BgmSound.Name     = "BackgroundMusic"
-_BgmSound.Looped   = true
-_BgmSound.Volume   = (AudioConfig.Music and AudioConfig.Music.DefaultVolume) or 0.3
-_BgmSound.Parent   = SoundService
+_BgmSound.Name       = "BackgroundMusic"
+_BgmSound.Looped     = true
+_BgmSound.Volume     = (AudioConfig.Music and AudioConfig.Music.DefaultVolume) or 0.3
+_BgmSound.SoundGroup = AudioHelper.GetSoundGroup("Music")
+_BgmSound.Parent     = SoundService
 
 -- SoundId và MusicKey đang phát (để tránh restart nhạc khi không cần)
 local _CurrentSoundId  = nil

@@ -1,6 +1,6 @@
 # AudioAndAnimation
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống âm thanh và hoạt ảnh (AudioConfig, AnimationConfig, Sound Pooling, Client-Side Spatial Audio, Preload và Memory Cleanup).
-> Cập nhật lần cuối: 28-08-2026
+> Cập nhật lần cuối: 30-08-2026
 
 ---
 
@@ -37,7 +37,16 @@
 - **Per-Track Volume:** Cân bằng âm lượng gốc giữa các bản nhạc qua `AudioConfig.Music.Tracks` và `AudioConfig.GetMusicAudio(MusicKey)`.
 - **Linh hoạt Loading & Ready:** Tự động giữ im lặng hoặc phát BGM riêng khi tải game; phát BGM `Ready` khi đếm ngược chuẩn bị vào trận.
 - **Phòng thủ âm thanh:** Hỗ trợ dừng nhạc an toàn (`:Stop()`) khi Sound ID là `nil`/`0`.
-- **File liên quan:** [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+### 7. Kiến Trúc Cây Âm Thanh Đa Kênh Phân Cấp & Điều Khiển Âm Lượng Phần Cứng (SoundGroup Hierarchy & Real-time Hardware Scaling)
+- **Chi tiết:** Thay vì cập nhật thủ công volume của từng Sound instance đang phát bằng code (dễ bỏ sót và gây lag), toàn bộ âm thanh game được định tuyến qua cây `SoundGroup` phân cấp trong `SoundService`:
+  $$\text{SoundService} \rightarrow \text{MasterGroup} \rightarrow \{\text{MusicGroup}, \text{SFXGroup}, \text{UIGroup}\}$$
+- **Định tuyến tự động:**
+  - `_BgmSound.SoundGroup = MusicGroup`
+  - `AudioHelper.PlaySpatialSound` & `CreateSoundPool`: Gán `SFXGroup`
+  - `AudioHelper.PlayGuiSound`: Gán `UIGroup`
+  - `AudioHelper.Play2DSound`: Nhận tham số chọn group (`SFX`/`UI`)
+- **Real-time Scaling:** Khi người chơi điều chỉnh slider trong Setting, `AudioHelper.SetVolume(Group, Percent)` can thiệp trực tiếp `SoundGroup.Volume = Percent / 100`. Roblox Engine tự động nhân tỷ lệ âm lượng phần cứng ngay lập tức cho cả âm thanh đang phát dở lẫn âm thanh phát mới.
+- **File liên quan:** [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua)
 
 ---
 
