@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 
 local ProfileService    = require(ReplicatedStorage.Shared.Lib.ProfileService)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local DataConfig        = require(ReplicatedStorage.Shared.Config.DataConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
 -- =========================================================
@@ -40,10 +41,10 @@ local PROFILE_TEMPLATE = {
 
 	-- Settings (Âm lượng & Thiết lập cá nhân)
 	Settings            = {
-		MasterVolume = 100,
-		MusicVolume  = 100,
-		SFXVolume    = 100,
-		UIVolume     = 100,
+		MasterVolume = DataConfig.DefaultSettings.MasterVolume,
+		MusicVolume  = DataConfig.DefaultSettings.MusicVolume,
+		SFXVolume    = DataConfig.DefaultSettings.SFXVolume,
+		UIVolume     = DataConfig.DefaultSettings.UIVolume,
 	},
 }
 
@@ -51,10 +52,11 @@ local PROFILE_TEMPLATE = {
 -- KHỞI TẠO PROFILESERVICE
 -- =========================================================
 
-local PlayerStore = ProfileService.GetProfileStore("PlayerData_v1", PROFILE_TEMPLATE)
+local PlayerStore = ProfileService.GetProfileStore(DataConfig.ProfileStoreName, PROFILE_TEMPLATE)
 
 -- Lưu trữ profile đang active: { [player] = profile }
 local ActiveProfiles = {}
+local _ProfileLoadedBindable = Instance.new("BindableEvent")
 
 -- =========================================================
 -- PRIVATE FUNCTIONS
@@ -74,6 +76,7 @@ local function OnProfileLoaded(Player, Profile)
 
 	if Player:IsDescendantOf(Players) then
 		ActiveProfiles[Player] = Profile
+		_ProfileLoadedBindable:Fire(Player, Profile)
 		print(("[DataService] Profile đã load: %s | Money: %d"):format(Player.Name, Profile.Data.Money))
 	else
 		-- Player đã rời server trước khi profile load xong
@@ -111,6 +114,50 @@ end
 -- =========================================================
 
 local DataService = {}
+
+--- Chờ cho đến khi Profile của player được nạp xong từ DataStore (hoặc hết timeout)
+--- @param Player Player
+--- @param Timeout number?
+--- @return table | nil -- Profile hoặc nil nếu timeout/player rời server
+function DataService.WaitForProfile(Player, Timeout)
+	if not Player then return nil end
+	if ActiveProfiles[Player] then
+		return ActiveProfiles[Player]
+	end
+	if not Player:IsDescendantOf(Players) then
+		return nil
+	end
+
+	Timeout = Timeout or DataConfig.ProfileLoadTimeout
+	local StartTime = os.clock()
+	local ProfileResult = nil
+
+	local Connection
+	Connection = _ProfileLoadedBindable.Event:Connect(function(LoadedPlayer, Profile)
+		if LoadedPlayer == Player then
+			ProfileResult = Profile
+		end
+	end)
+
+	while not ProfileResult and (os.clock() - StartTime < Timeout) and Player:IsDescendantOf(Players) do
+		task.wait(0.05)
+	end
+
+	if Connection then
+		Connection:Disconnect()
+	end
+
+	return ProfileResult or ActiveProfiles[Player]
+end
+
+--- Chờ cho đến khi Data của player sẵn sàng
+--- @param Player Player
+--- @param Timeout number?
+--- @return table | nil -- Data hoặc nil
+function DataService.WaitForData(Player, Timeout)
+	local Profile = DataService.WaitForProfile(Player, Timeout)
+	return Profile and Profile.Data or nil
+end
 
 --- Lấy profile của player (trả về nil nếu chưa load xong)
 --- @param Player Player
@@ -256,7 +303,7 @@ end
 --- @param Player Player
 --- @return table | nil
 function DataService.GetQuestRawData(Player)
-	local Profile = ActiveProfiles[Player]
+	local Profile = DataService.WaitForProfile(Player)
 	if not Profile then return nil end
 	local Data = Profile.Data
 	return {
@@ -317,7 +364,7 @@ local VALID_SETTING_KEYS = {
 --- @param Player Player
 --- @return table?
 function DataService.GetSettings(Player)
-	local Profile = ActiveProfiles[Player]
+	local Profile = DataService.WaitForProfile(Player)
 	if not Profile then return nil end
 	return Profile.Data.Settings
 end
@@ -334,10 +381,10 @@ function DataService.SetSetting(Player, Key, Value)
 
 	if not Profile.Data.Settings then
 		Profile.Data.Settings = {
-			MasterVolume = 100,
-			MusicVolume  = 100,
-			SFXVolume    = 100,
-			UIVolume     = 100,
+			MasterVolume = DataConfig.DefaultSettings.MasterVolume,
+			MusicVolume  = DataConfig.DefaultSettings.MusicVolume,
+			SFXVolume    = DataConfig.DefaultSettings.SFXVolume,
+			UIVolume     = DataConfig.DefaultSettings.UIVolume,
 		}
 	end
 
@@ -372,9 +419,10 @@ end
 
 function DataService:Start()
 	-- Xử lý GetPlayerData: client gọi lúc mới join để lấy dữ liệu ban đầu
+	-- Yield chờ Profile nạp xong từ DataStore để tránh trả về nil do race condition
 	local GetPlayerDataFn = RemoteDefinitions.GetFunction("GetPlayerData")
 	GetPlayerDataFn.OnServerInvoke = function(Player)
-		local Data = DataService.GetData(Player)
+		local Data = DataService.WaitForData(Player)
 		if not Data then return nil end
 		-- Trả bản copy để tránh client modify trực tiếp
 		return {
@@ -392,10 +440,10 @@ function DataService:Start()
 			EquippedIceBlock   = Data.EquippedIceBlock,
 			PlayTime           = Data.PlayTime,
 			Settings           = Data.Settings or {
-				MasterVolume = 100,
-				MusicVolume  = 100,
-				SFXVolume    = 100,
-				UIVolume     = 100,
+				MasterVolume = DataConfig.DefaultSettings.MasterVolume,
+				MusicVolume  = DataConfig.DefaultSettings.MusicVolume,
+				SFXVolume    = DataConfig.DefaultSettings.SFXVolume,
+				UIVolume     = DataConfig.DefaultSettings.UIVolume,
 			},
 		}
 	end

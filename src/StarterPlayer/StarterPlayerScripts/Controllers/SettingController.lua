@@ -36,6 +36,8 @@ local _UiSlider     = nil
 
 local _IsAfk = false
 local _ActiveTweens = {}
+local _HasUserModifiedSettings = false
+local _IsSettingsApplied = false
 
 -- Lazy-require MenuController để điều phối mở/đóng cửa sổ
 local _MenuController = nil
@@ -195,9 +197,11 @@ local function SetupSliderRow(RowFrame, SoundGroupName, SettingKey)
 		StepCount      = 10,
 		PlayTickSound  = true,
 		OnValueChanged = function(NewPercent)
+			_HasUserModifiedSettings = true
 			AudioHelper.SetVolume(SoundGroupName, NewPercent)
 		end,
 		OnDragEnded    = function(FinalPercent)
+			_HasUserModifiedSettings = true
 			SaveSettingToServer(SettingKey, FinalPercent)
 		end,
 	})
@@ -226,6 +230,7 @@ local function ApplyLoadedSettings(Settings)
 		_UiSlider:SetValue(Settings.UIVolume, false)
 		AudioHelper.SetVolume("UI", Settings.UIVolume)
 	end
+	_IsSettingsApplied = true
 end
 
 -- =========================================================
@@ -235,6 +240,15 @@ end
 local function OpenSetting()
 	if not SettingFrame then return end
 	SyncVisualState(_IsAfk, false)
+
+	-- Nếu người chơi chưa từng tự chỉnh và có dữ liệu settings từ DataStore
+	if not _HasUserModifiedSettings then
+		local PlayerDataCtrl = GetPlayerDataController()
+		local Data = PlayerDataCtrl and PlayerDataCtrl.GetData()
+		if Data and Data.Settings then
+			ApplyLoadedSettings(Data.Settings)
+		end
+	end
 
 	-- Làm mới vị trí núm Knob khi mở giao diện
 	if _MasterSlider then _MasterSlider:SetValue(_MasterSlider:GetValue(), false) end
@@ -321,28 +335,15 @@ function SettingController:Init()
 	_SfxSlider    = SetupSliderRow(SfxRow,    "SFX",    "SFXVolume")
 	_UiSlider     = SetupSliderRow(UiRow,     "UI",     "UIVolume")
 
-	-- 3. Nạp Settings từ DataStore
-	task.spawn(function()
-		local PlayerDataCtrl = GetPlayerDataController()
-		local Data = PlayerDataCtrl and PlayerDataCtrl.GetData()
-		local Settings = Data and Data.Settings
-
-		if not Settings then
-			-- Chờ dữ liệu ban đầu từ PlayerDataController
-			for _ = 1, 50 do
-				task.wait(0.1)
-				Data = PlayerDataCtrl and PlayerDataCtrl.GetData()
-				if Data and Data.Settings then
-					Settings = Data.Settings
-					break
-				end
+	-- 3. Nạp Settings từ DataStore thông qua OnDataLoaded Signal
+	local PlayerDataCtrl = GetPlayerDataController()
+	if PlayerDataCtrl and PlayerDataCtrl.OnDataLoaded then
+		PlayerDataCtrl.OnDataLoaded(function(Data)
+			if Data and Data.Settings and not _HasUserModifiedSettings then
+				ApplyLoadedSettings(Data.Settings)
 			end
-		end
-
-		if Settings then
-			ApplyLoadedSettings(Settings)
-		end
-	end)
+		end)
+	end
 
 	-- 4. Kết nối nút đóng nếu có
 	if CloseButton and CloseButton:IsA("GuiButton") then

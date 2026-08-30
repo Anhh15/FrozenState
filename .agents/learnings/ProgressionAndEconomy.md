@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Daily/Milestone, Hiệu ứng Mở rương và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 21-08-2026
+> Cập nhật lần cuối: 30-08-2026
 
 ---
 
@@ -42,6 +42,13 @@
 - **Reward-First Pattern:** Server trao vật phẩm/tiền ngay khi nhận yêu cầu mua rương, **TRƯỚC** khi Client kích hoạt hiệu ứng. Nếu người chơi thoát giữa chừng hoặc vào trận đấu, vật phẩm vẫn an toàn tuyệt đối do đã được ghi nhận ở Server.
 - **File liên quan:** [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua)
 
+### 7. Cơ chế Yielding Sẵn Sàng Dữ Liệu & Reactive Signal Đồng Bộ Hai Đầu (Data Readiness Engine & OnDataLoaded Signal)
+- **Chi tiết:**
+  - *Server-Side Yielding (`WaitForProfile` / `WaitForData`)*: Thay vì trả về `nil` khi `ProfileStore:LoadProfileAsync` đang nạp, `DataService` sử dụng `_ProfileLoadedBindable` yield an toàn theo `DataConfig.ProfileLoadTimeout` và tự hủy chờ nếu player rời server (`PlayerRemoving`). `GetPlayerDataFn.OnServerInvoke` luôn đảm bảo 100% dữ liệu sẵn sàng trước khi phản hồi.
+  - *Client-Side Reactive Signal (`OnDataLoaded` / `WaitForData`)*: `PlayerDataController` cung cấp Signal `OnDataLoaded(Callback)` (gọi callback tức thì nếu đã có dữ liệu trong cache, hoặc lắng nghe khi dữ liệu về) và cơ chế tự động thử lại `FetchDataFromServer` tối đa `DataConfig.MaxLoadRetries` lần.
+  - *Triệt tiêu Polling*: Các controller phụ thuộc (`SettingController`) loại bỏ hoàn toàn polling `task.wait()` và chuyển sang đăng ký sự kiện hướng dữ liệu (Event-Driven).
+- **File liên quan:** [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [PlayerDataController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -62,3 +69,14 @@
 - **Nguyên nhân:** Thuộc tính `TargetSize` trong code bị hardcode là `UDim2.fromScale(0.4, 0.15)` thay vì đọc từ thuộc tính `Size` của GUI instance.
 - **Giải pháp:** Lưu `_rewardOriginalSize = _rewardAnnouncement.Size` trong `Init()` trước khi ẩn element. Hàm animation sử dụng `_rewardOriginalSize` làm `TargetSize`.
 - **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
+### 4. Lỗi Race Condition Khi Khởi Động Client Khiến Dữ Liệu Trả Về `nil` và Mất Đồng Bộ Sound Setting
+- **Vấn đề:** Khi vào game (đặc biệt trong Studio solo Play), client nhận cảnh báo `[PlayerDataController] InvokeServer thất bại: nil` (>90%), số tiền không hiện, và slider Setting bị kẹt ở mức mặc định (100% / nấc 11) do vòng lặp polling 5s bị timeout trước khi dữ liệu kịp về.
+- **Nguyên nhân:**
+  1. Server nhận `GetPlayerData:InvokeServer()` trong lúc `LoadProfileAsync` đang chạy, `ActiveProfiles[Player]` còn `nil` và Server lập tức trả về `nil` mà không yield chờ.
+  2. `PlayerDataController` chỉ gọi một lần trong `Init()`, không retry khi nhận `nil` và không có cơ chế phát tín hiệu cho các controller khác.
+  3. `SettingController` chỉ đợi tối đa 5s rồi dừng hoàn toàn, không có listener khi data về sau đó.
+- **Giải pháp:**
+  1. Phía Server: `DataService.WaitForData(Player)` yield chờ `_ProfileLoadedBindable` nạp xong mới trả kết quả.
+  2. Phía Client: `PlayerDataController` quản lý retry theo `DataConfig` và kích hoạt `OnDataLoaded`. `SettingController` lắng nghe `OnDataLoaded` kèm cờ `_HasUserModifiedSettings` để đồng bộ âm lượng tức thì mà không bị ghi đè.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [PlayerDataController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua)
