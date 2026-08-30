@@ -93,3 +93,11 @@
 - **Nguyên nhân:** Thiếu tiện ích tự động hóa tập trung cho UI buttons và thiếu trường cấu hình âm lượng riêng cho `MouseEnter`.
 - **Giải pháp:** Thiết lập `GuiHelper.AutoBindButtons(Container, Options)` để tự động hóa toàn bộ việc gắn Scale và SFX cho các nút bấm (kể cả các nút sinh ra động), đồng thời đưa âm lượng `MouseEnter` về `0.35` trong `AudioConfig.Gui.Default`.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+
+### 8. Lệch Kênh Điều Khiển Âm Lượng Do Thiếu Định Tuyến Tường Minh SoundGroup Trong 2D Sound
+- **Vấn đề:** Các âm thanh hiệu ứng giao diện (như tiếng đập rương 3 lần và tiếng nổ flash nhận quà trong `ItemReward`) không chịu sự chi phối của thanh trượt `UI Volume`, mà lại bị tăng/giảm theo thanh `SFX Volume`.
+- **Nguyên nhân:** Hàm `AudioHelper.Play2DSound` nhận tham số `SoundGroupName` tùy chọn và mặc định fallback về `"SFX"` nếu `nil`. Khi controller UI gọi phát âm thanh mà không chỉ định rõ kênh, âm thanh tự động bị gắn vào `SFXGroup`.
+- **Giải pháp:**
+  1. Với các âm thanh UI phát động, bắt buộc truyền tường minh tham số `"UI"` khi gọi `AudioHelper.Play2DSound(AudioEntry, Volume, SoundService, "UI")`.
+  2. Ưu tiên sử dụng `GuiHelper.PlayGuiSound(AudioEntry, Volume)` hoặc `AudioHelper.PlayGuiSound` để vừa tự động gắn `UIGroup`, vừa tận dụng Sound Pool triệt tiêu độ trễ.
+- **File liên quan:** [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
