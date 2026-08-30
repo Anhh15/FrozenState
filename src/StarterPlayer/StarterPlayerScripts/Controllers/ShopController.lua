@@ -19,8 +19,9 @@
 --           AmountAlterButton (ImageButton) — nút tùy chỉnh số lượng, text = "x[N]"
 --           ChestNameText  (TextLabel) — tên rương
 
-local Players           = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players            = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions    = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GameConfig           = require(ReplicatedStorage.Shared.Config.GameConfig)
@@ -28,6 +29,7 @@ local ChestConfig          = require(ReplicatedStorage.Shared.Config.ChestConfig
 local ItemRegistry         = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig         = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ShopConfig           = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local ProductConfig        = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local AudioConfig          = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig            = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController = require(script.Parent.PlayerDataController)
@@ -42,18 +44,21 @@ local ItemCard             = require(ReplicatedStorage.Shared.Tools.ItemCard)
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui = GuiHelper.GetScreenGui("Menu")
+local MenuGui = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.Menu)
 
 -- Shop frame nằm bên trong Menu
-local Shop = MenuGui and MenuGui:FindFirstChild("Shop", true)	
+local Shop = MenuGui and MenuGui:FindFirstChild(GuiConfig.MenuFrames.Shop, true)	
 
 -- Các phần tử bên trong Shop
-local ShopClose    = Shop and Shop:FindFirstChild("CloseButton", true)
-local TabContainer = Shop and Shop:FindFirstChild("TabContainer", true)
-local IciclesTab   = TabContainer and TabContainer:FindFirstChild("IciclesTab")
-local BlocksTab    = TabContainer and TabContainer:FindFirstChild("BlocksTab")
-local ChestList    = Shop and Shop:FindFirstChild("ChestList", true)
-local ChestScroll  = ChestList and ChestList:FindFirstChildOfClass("ScrollingFrame")
+local ShopClose       = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.CloseButton, true)
+local TabContainer    = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.TabContainer, true)
+local IciclesTab      = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.IciclesTab)
+local BlocksTab       = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.BlocksTab)
+local RobuxTab        = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.RobuxTab)
+local ChestList       = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.ChestList, true)
+local ChestScroll     = ChestList and ChestList:FindFirstChildOfClass("ScrollingFrame")
+local RobuxShopList   = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.RobuxShopList, true)
+local CurrencySection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.CurrencySection, true)
 
 -- Template nằm trong Menu/Shop/Templates (không phải ReplicatedStorage)
 local TemplatesFolder       = Shop and Shop:FindFirstChild("Templates")
@@ -67,12 +72,14 @@ local ChestsFolder = Assets and Assets:FindFirstChild("Chests")
 -- STATE
 -- =========================================================
 
-local _CurrentTab      = "Icicle"  -- Tab đang hiển thị: "Icicle" hoặc "Block"
-local _ListConnections = {}        -- Connections của ChestList cards (dọn khi re-render)
-local _PreviewStates   = {}        -- [Frame] = { Amount: number } — trạng thái per-card
-local _LazyRenderQueue = {}        -- { Frame, ChestEntry } — cards chờ render viewport
-local _ScrollConn      = nil       -- Connection theo dõi ChestScroll.CanvasPosition
-local _StaggerThread   = nil       -- Thread animation stagger danh sách rương
+local _CurrentTab       = "Icicle"  -- Tab đang hiển thị: "Icicle", "Block", hoặc "Robux"
+local _ListConnections  = {}        -- Connections của ChestList cards (dọn khi re-render)
+local _RobuxConnections = {}        -- Connections của Robux card buttons
+local _PreviewStates    = {}        -- [Frame] = { Amount: number } — trạng thái per-card
+local _LazyRenderQueue  = {}        -- { Frame, ChestEntry } — cards chờ render viewport
+local _ProductInfoCache = {}        -- [ProductId] = ProductInfo dictionary (Cache giá động theo khu vực)
+local _ScrollConn       = nil       -- Connection theo dõi ChestScroll.CanvasPosition
+local _StaggerThread    = nil       -- Thread animation stagger danh sách rương
 
 --- Dừng animation stagger đang chạy dở
 local function StopStaggerAnimation()
@@ -85,6 +92,39 @@ end
 --- Phát âm thanh GUI qua GuiHelper
 local function PlayGuiSound(SoundId, Volume)
 	GuiHelper.PlayGuiSound(SoundId, Volume)
+end
+
+--- Lấy thông tin sản phẩm và giá Robux động theo khu vực người chơi (có memory cache)
+--- @param ProductId number
+--- @param FallbackPrice number
+--- @param Callback function(Price: number)
+local function FetchDynamicProductPrice(ProductId, FallbackPrice, Callback)
+	if not ProductId or ProductId <= 0 then
+		Callback(FallbackPrice)
+		return
+	end
+
+	-- 1. Đọc từ cache nếu đã fetch trước đó
+	local Cached = _ProductInfoCache[ProductId]
+	if Cached and Cached.PriceInRobux then
+		Callback(Cached.PriceInRobux)
+		return
+	end
+
+	-- 2. Fetch ngầm từ MarketplaceService (Regional Price)
+	task.spawn(function()
+		local Success, Result = pcall(function()
+			return MarketplaceService:GetProductInfo(ProductId, Enum.InfoType.Product)
+		end)
+
+		if Success and Result and Result.PriceInRobux then
+			_ProductInfoCache[ProductId] = Result
+			Callback(Result.PriceInRobux)
+		else
+			-- Fallback về giá config nếu lỗi mạng hoặc timeout
+			Callback(FallbackPrice)
+		end
+	end)
 end
 
 -- =========================================================
@@ -141,6 +181,9 @@ local function UpdateTabHighlight(ActiveTab)
 	end
 	if BlocksTab then
 		BlocksTab.BackgroundColor3 = (ActiveTab == "Block") and ActiveColor or InactiveColor
+	end
+	if RobuxTab then
+		RobuxTab.BackgroundColor3 = (ActiveTab == "Robux") and ActiveColor or InactiveColor
 	end
 end
 
@@ -258,13 +301,14 @@ local function ExecuteBuy(ChestEntry, Amount)
 end
 
 -- =========================================================
--- CHEST LIST RENDERING
+-- CHEST & ROBUX LIST RENDERING
 -- =========================================================
 
 --- Xóa toàn bộ nội dung ChestScroll và dọn connections + lazy state cũ
 local function ClearChestList()
 	StopStaggerAnimation()
 	DisconnectAll(_ListConnections)
+	DisconnectAll(_RobuxConnections)
 
 	-- Ngắt connection theo dõi scroll
 	if _ScrollConn and _ScrollConn.Connected then
@@ -291,6 +335,13 @@ end
 local function RenderChestList(Type)
 	ClearChestList()
 
+	if RobuxShopList then
+		RobuxShopList.Visible = false
+	end
+	if ChestList then
+		ChestList.Visible = true
+	end
+
 	if not ChestScroll then
 		warn("[ShopController] Thiếu ChestScroll — không thể render danh sách rương.")
 		return
@@ -315,9 +366,9 @@ local function RenderChestList(Type)
 		_PreviewStates[Card] = State
 
 		-- Tìm các element bên trong card (search từ Card để không phụ thuộc vào nesting cụ thể)
-		local ChestNameText     = Card:FindFirstChild("ChestNameText",     true)
-		local BuyButton         = Card:FindFirstChild("BuyButton",         true)
-		local AmountAlterButton = Card:FindFirstChild("AmountAlterButton", true)
+		local ChestNameText     = Card:FindFirstChild(GuiConfig.ShopElements.ChestNameText,     true)
+		local BuyButton         = Card:FindFirstChild(GuiConfig.ShopElements.BuyButton,         true)
+		local AmountAlterButton = Card:FindFirstChild(GuiConfig.ShopElements.AmountAlterButton, true)
 
 		-- Điền tên rương
 		if ChestNameText then
@@ -346,7 +397,7 @@ local function RenderChestList(Type)
 		-- Kết nối AmountAlterButton: vòng lặp MinAmount → MaxAmount → MinAmount
 		if AmountAlterButton then
 			local Conn = AmountAlterButton.MouseButton1Click:Connect(function()
-				PlayGuiSound(AudioConfig.Gui.ButtonClick)
+				PlayGuiSound(AudioConfig.Gui.Default.ButtonClick)
 				State.Amount = (State.Amount % MaxAmount) + 1
 				local AlterLabel = AmountAlterButton:FindFirstChild("Text")
 				if AlterLabel then
@@ -382,6 +433,72 @@ local function RenderChestList(Type)
 	-- Render ngay các card đang trong vùng nhìn thấy (không chờ người dùng scroll)
 	-- Dùng task.defer để đảm bảo AbsolutePosition đã được tính bởi engine
 	task.defer(CheckLazyQueue)
+end
+
+--- Render danh sách sản phẩm tiền tệ trong RobuxShopList (CurrencySection)
+local function RenderRobuxShop()
+	ClearChestList()
+
+	if ChestList then
+		ChestList.Visible = false
+	end
+	if RobuxShopList then
+		RobuxShopList.Visible = true
+	end
+
+	if not CurrencySection then
+		CurrencySection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.CurrencySection, true)
+	end
+
+	if not CurrencySection then
+		warn("[ShopController] Không tìm thấy CurrencySection bên trong RobuxShopList.")
+		return
+	end
+
+	for PackageKey, Package in pairs(ProductConfig.CurrencyPackages) do
+		local PackageFrame = CurrencySection:FindFirstChild(PackageKey)
+		if PackageFrame then
+			local NameText   = PackageFrame:FindFirstChild(GuiConfig.ShopElements.NameText, true)
+			local AmountText = PackageFrame:FindFirstChild(GuiConfig.ShopElements.AmountText, true)
+			local GiftButton = PackageFrame:FindFirstChild(GuiConfig.ShopElements.GiftButton, true)
+			local BuyButton  = PackageFrame:FindFirstChild(GuiConfig.ShopElements.BuyButton, true)
+
+			if NameText then
+				NameText.Text = Package.DisplayName
+			end
+
+			-- 1. Điền giá tức thì từ cache hoặc fallback từ config (0ms latency)
+			local Cached = _ProductInfoCache[Package.ProductId]
+			if Cached and Cached.PriceInRobux then
+				if AmountText then
+					AmountText.Text = tostring(Cached.PriceInRobux)
+				end
+			else
+				if AmountText then
+					AmountText.Text = tostring(Package.RobuxPrice)
+				end
+
+				-- 2. Fetch ngầm giá theo khu vực và cập nhật in-place khi nhận dữ liệu
+				FetchDynamicProductPrice(Package.ProductId, Package.RobuxPrice, function(ActualPrice)
+					if AmountText and AmountText.Parent then
+						AmountText.Text = tostring(ActualPrice)
+					end
+				end)
+			end
+
+			if GiftButton then
+				GiftButton.Visible = false
+			end
+
+			if BuyButton then
+				local Conn = BuyButton.MouseButton1Click:Connect(function()
+					PlayGuiSound(AudioConfig.Gui.Default.ButtonClick)
+					MarketplaceService:PromptProductPurchase(LocalPlayer, Package.ProductId)
+				end)
+				table.insert(_RobuxConnections, Conn)
+			end
+		end
+	end
 end
 
 local function OpenShop()
@@ -480,6 +597,25 @@ function ShopController:Init()
 			RenderChestList("Block")
 		end)
 	end
+
+	if RobuxTab then
+		RobuxTab.MouseButton1Click:Connect(function()
+			if _CurrentTab == "Robux" then return end
+			_CurrentTab = "Robux"
+			UpdateTabHighlight("Robux")
+			RenderRobuxShop()
+		end)
+	end
+
+	-- ─── MARKETPLACE SERVICE: MUA PRODUCT THÀNH CÔNG (CLIENT FEEDBACK) ────
+	MarketplaceService.PromptProductPurchaseFinished:Connect(function(UserId, ProductId, IsPurchased)
+		if UserId == LocalPlayer.UserId and IsPurchased then
+			PlayGuiSound(AudioConfig.Shop.ChestBuy)
+			task.spawn(function()
+				PlayerDataController.RefreshData()
+			end)
+		end
+	end)
 
 	-- Highlight tab mặc định
 	UpdateTabHighlight("Icicle")

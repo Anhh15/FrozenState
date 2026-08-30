@@ -86,6 +86,35 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG FRAME SHOP
+	-- =========================================================
+	ShopElements = {
+		TabContainer      = "TabContainer",
+		IciclesTab        = "IciclesTab",
+		BlocksTab         = "BlocksTab",
+		RobuxTab          = "RobuxTab",
+		ChestList         = "ChestList",
+		RobuxShopList     = "RobuxShopList",
+		ScrollingFrame    = "ScrollingFrame",
+		CurrencySection   = "CurrencySection",
+		FrameLabel        = "FrameLabel",
+		GiftButton        = "GiftButton",
+		BuyButton         = "BuyButton",
+		BuyFrame          = "BuyFrame",
+		AmountText        = "AmountText",
+		NameText          = "NameText",
+		Background        = "Background",
+		Icon              = "Icon",
+		Templates         = "Templates",
+		ChestPreview      = "ChestPreview",
+		ChestViewport     = "ChestViewport",
+		ItemPreview       = "ItemPreview",
+		AmountAlterButton = "AmountAlterButton",
+		ChestNameText     = "ChestNameText",
+		CloseButton       = "CloseButton",
+	},
+
+	-- =========================================================
 	-- TÊN CÁC PHẦN TỬ TRONG FRAME SETTING
 	-- =========================================================
 	SettingElements = {

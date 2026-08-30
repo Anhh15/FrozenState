@@ -2,12 +2,15 @@
 -- Xử lý logic mua rương (Chest) phía server
 -- Validate, trừ tiền, random item theo weighted drop rate, hoàn tiền nếu trùng
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players            = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 
 local DataService       = require(script.Parent.DataService)
 local ChestConfig       = require(ReplicatedStorage.Shared.Config.ChestConfig)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
 -- =========================================================
@@ -153,6 +156,58 @@ function ShopService:Start()
 			RefundAmount  = TotalRefund,
 			NewMoney      = NewMoney,
 		}
+	end
+
+	-- =========================================================
+	-- MARKETPLACESERVICE: PROCESS RECEIPT (DEVELOPER PRODUCTS)
+	-- =========================================================
+
+	--- Callback xử lý khi người chơi mua Developer Product (Gói tiền tệ Robux)
+	--- @param ReceiptInfo table -- { PlayerId, ProductId, PurchaseId, CurrencySpent, ... }
+	--- @return Enum.ProductPurchaseDecision
+	MarketplaceService.ProcessReceipt = function(ReceiptInfo)
+		local Player = Players:GetPlayerByUserId(ReceiptInfo.PlayerId)
+		if not Player then
+			-- Người chơi không còn trong server, hoãn xử lý để Roblox retry khi họ quay lại
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+
+		-- Tra cứu gói sản phẩm theo ProductId
+		local Package = ProductConfig.GetPackageByProductId(ReceiptInfo.ProductId)
+		if not Package then
+			warn(("[ShopService] ProcessReceipt: Không tìm thấy gói tương ứng với ProductId %s"):format(
+				tostring(ReceiptInfo.ProductId)
+			))
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+
+		-- Chờ Profile của người chơi sẵn sàng
+		local Profile = DataService.WaitForProfile(Player)
+		if not Profile then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+
+		-- Kiểm tra xem PurchaseId này đã được xử lý trước đó chưa (Chống trùng lặp / Replay)
+		local PurchaseId = tostring(ReceiptInfo.PurchaseId)
+		if DataService.HasProcessedPurchase(Player, PurchaseId) then
+			print(("[ShopService] ProcessReceipt: PurchaseId '%s' đã được xử lý trước đó cho %s."):format(
+				PurchaseId, Player.Name
+			))
+			return Enum.ProductPurchaseDecision.PurchaseGranted
+		end
+
+		-- Trao thưởng tiền tệ vào DataStore
+		local NewMoney = DataService.AddMoney(Player, Package.CurrencyAmount)
+		DataService.RecordPurchase(Player, PurchaseId)
+
+		-- Đồng bộ số tiền mới về Client
+		UpdateMoneyEv:FireClient(Player, NewMoney)
+
+		print(("[ShopService] ProcessReceipt thành công: %s mua gói %s (+%d Money, PurchaseId: %s)"):format(
+			Player.Name, Package.DisplayName, Package.CurrencyAmount, PurchaseId
+		))
+
+		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 
 	print("[ShopService] Đang chạy.")

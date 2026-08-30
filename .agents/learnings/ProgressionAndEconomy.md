@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Daily/Milestone, Hiệu ứng Mở rương và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 30-08-2026
+> Cập nhật lần cuối: 31-08-2026
 
 ---
 
@@ -49,6 +49,14 @@
   - *Triệt tiêu Polling*: Các controller phụ thuộc (`SettingController`) loại bỏ hoàn toàn polling `task.wait()` và chuyển sang đăng ký sự kiện hướng dữ liệu (Event-Driven).
 - **File liên quan:** [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [PlayerDataController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua)
 
+### 8. Kiến trúc Xử lý Giao dịch Robux, Chống Lặp Idempotency & Đồng Bộ Giá Khu Vực (Managed Pricing Engine)
+- **Chi tiết:** Triển khai hệ thống bán vật phẩm/tiền tệ bằng Robux (Developer Products) tuân thủ tiêu chuẩn an toàn và tối ưu hóa doanh thu toàn cầu của Roblox:
+  - *Cấu hình tập trung:* Khai báo toàn bộ gói trong `ProductConfig.lua` (`ProductId`, `DisplayName`, `RobuxPrice`, `CurrencyAmount`), cung cấp helper `GetPackageByProductId` tra cứu tức thì.
+  - *Idempotency chống cộng trùng tiền:* Lưu mảng `PurchaseHistory` trong Profile DataStore. Khi `MarketplaceService.ProcessReceipt` được gọi, kiểm tra `DataService.HasProcessedPurchase` trước khi cộng tiền để chống lỗi mạng gửi lặp biên lai.
+  - *Kiểm soát nạp dữ liệu:* Chờ Profile sẵn sàng qua `DataService.WaitForProfile(Player)`. Nếu người chơi rời server hoặc Profile chưa tải xong, trả về `NotProcessedYet` để Roblox tự động retry khi người chơi quay lại.
+  - *Dynamic Regional Pricing & Cache Engine:* Hỗ trợ tính năng Managed Pricing (giá theo khu vực). Client áp dụng cơ chế *Fallback-First* (hiển thị ngay giá config $0\text{ms}$) kết hợp *In-Memory Cache* (`_ProductInfoCache`) và chạy ngầm `MarketplaceService:GetProductInfo` để lấy `PriceInRobux` thực tế, cập nhật in-place mà không gây nghẽn mạng hay dính Rate-limit HTTP 429.
+- **File liên quan:** [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -80,3 +88,21 @@
   1. Phía Server: `DataService.WaitForData(Player)` yield chờ `_ProfileLoadedBindable` nạp xong mới trả kết quả.
   2. Phía Client: `PlayerDataController` quản lý retry theo `DataConfig` và kích hoạt `OnDataLoaded`. `SettingController` lắng nghe `OnDataLoaded` kèm cờ `_HasUserModifiedSettings` để đồng bộ âm lượng tức thì mà không bị ghi đè.
 - **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [PlayerDataController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua)
+
+### 5. Nguy Cơ Nhân Đôi Tiền Tệ Do Roblox Retry Giao Dịch Khi Mạng Lag (Receipt Replay Vulnerability)
+- **Vấn đề:** Khi mạng chập chờn hoặc server phản hồi chậm, Roblox có thể gửi lại cùng một `ReceiptInfo` nhiều lần. Nếu server chỉ đơn thuần cộng tiền rồi trả về `PurchaseGranted`, người chơi sẽ nhận được gấp nhiều lần số tiền đã mua mà chỉ tốn một lần Robux.
+- **Nguyên nhân:** Thiếu cơ chế lưu vết `PurchaseId` (Idempotency) trên DataStore của người chơi.
+- **Giải pháp:**
+  1. Thêm trường `PurchaseHistory = {}` vào `PROFILE_TEMPLATE` của ProfileService.
+  2. Bổ sung 2 helper `DataService.HasProcessedPurchase(Player, PurchaseId)` và `DataService.RecordPurchase(Player, PurchaseId)`.
+  3. Trong `ProcessReceipt`, kiểm tra `HasProcessedPurchase` đầu tiên: nếu `true`, bỏ qua bước cộng tiền và trả ngay `PurchaseGranted`.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua)
+
+### 6. Lệch Giá Giữa UI Game và Popup Mua Roblox Do Tính Năng Managed Pricing (Regional Pricing Divergence)
+- **Vấn đề:** Khi bật tính năng Managed Pricing trên Roblox Creator Dashboard, giá sản phẩm tự động điều chỉnh theo sức mua khu vực (ví dụ: từ 100 Robux giảm còn 40 Robux tại Việt Nam). Nếu Client chỉ hiển thị giá tĩnh từ file config, người chơi sẽ thấy giá trên nút bấm và giá trên bảng xác nhận Native của Roblox bị lệch nhau.
+- **Nguyên nhân:** Roblox định giá động tại runtime dựa trên vị trí địa lý của người chơi gọi request.
+- **Giải pháp:**
+  1. Áp dụng mô hình *Fallback-First*: Hiển thị tức thời giá config mặc định ($0\text{ms}$).
+  2. Chạy luồng ngầm bất đồng bộ (`task.spawn` + `pcall`) gọi `MarketplaceService:GetProductInfo(ProductId, Enum.InfoType.Product)` để lấy `PriceInRobux` thực tế.
+  3. Duy trì tầng cache `_ProductInfoCache` trong Client RAM để mỗi sản phẩm chỉ fetch một lần duy nhất, loại bỏ hoàn toàn nguy cơ nghẽn mạng và lỗi HTTP 429 Rate Limit khi chuyển tab.
+- **File liên quan:** [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua)

@@ -46,6 +46,9 @@ local PROFILE_TEMPLATE = {
 		SFXVolume    = DataConfig.DefaultSettings.SFXVolume,
 		UIVolume     = DataConfig.DefaultSettings.UIVolume,
 	},
+
+	-- Phase 9: Lịch sử giao dịch mua hàng qua Robux (Chống duplicate receipt)
+	PurchaseHistory     = {},   -- Array lưu các PurchaseId (string) đã xử lý thành công
 }
 
 -- =========================================================
@@ -395,6 +398,34 @@ function DataService.SetSetting(Player, Key, Value)
 
 	Profile.Data.Settings[Key] = Value
 	return true
+end
+
+--- Kiểm tra xem một PurchaseId đã được xử lý thành công chưa (Idempotency)
+--- @param Player Player
+--- @param PurchaseId string
+--- @return boolean
+function DataService.HasProcessedPurchase(Player, PurchaseId)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return false end
+	if not Profile.Data.PurchaseHistory then
+		Profile.Data.PurchaseHistory = {}
+		return false
+	end
+	return table.find(Profile.Data.PurchaseHistory, PurchaseId) ~= nil
+end
+
+--- Ghi lại PurchaseId vào lịch sử giao dịch đã hoàn tất
+--- @param Player Player
+--- @param PurchaseId string
+function DataService.RecordPurchase(Player, PurchaseId)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+	if not Profile.Data.PurchaseHistory then
+		Profile.Data.PurchaseHistory = {}
+	end
+	if not table.find(Profile.Data.PurchaseHistory, PurchaseId) then
+		table.insert(Profile.Data.PurchaseHistory, PurchaseId)
+	end
 end
 
 -- =========================================================
