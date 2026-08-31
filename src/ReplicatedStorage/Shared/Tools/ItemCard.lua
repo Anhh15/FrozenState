@@ -1,6 +1,6 @@
 -- ItemCard.lua
 -- Module Functional Helper dùng chung (Shared) để render, quản lý trạng thái và dọn dẹp thẻ vật phẩm (ItemTemplate)
--- Sử dụng ItemRegistry, RarityConfig, ViewportManager và GuiHelper làm nền tảng
+-- Sử dụng ItemRegistry, RarityConfig, GuiConfig và GuiHelper làm nền tảng
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,7 +8,6 @@ local ItemRegistry    = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig    = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local GuiConfig       = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local AudioConfig     = require(ReplicatedStorage.Shared.Config.AudioConfig)
-local ViewportManager = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper       = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 local ItemCard = {}
@@ -29,51 +28,13 @@ local function GetItemTemplate()
 	return GuiFolder:FindFirstChild("ItemTemplate")
 end
 
---- Lấy Folder chứa 3D Model preview tương ứng với loại item
---- @param ItemType string — "Icicle" hoặc "Block"
---- @return Folder?
-local function GetItemPreviewFolder(ItemType)
-	local Assets = ReplicatedStorage:FindFirstChild("Assets")
-	if not Assets then return nil end
-
-	local ItemPreview = Assets:FindFirstChild("ItemPreview")
-	if not ItemPreview then return nil end
-
-	local SubFolderName = (ItemType == "Icicle") and "Icicles" or "Blocks"
-	return ItemPreview:FindFirstChild(SubFolderName)
-end
-
 -- =========================================================
 -- PUBLIC API
 -- =========================================================
 
---- Nạp 3D model vào ViewportFrame của ItemCard
---- @param Frame Instance — Thẻ ItemCard
---- @param ItemId string — Id vật phẩm
---- @param ItemType string — "Icicle" hoặc "Block"
-function ItemCard.LoadViewport(Frame, ItemId, ItemType)
-	if not Frame or not Frame:IsA("GuiObject") then return end
-	if Frame:GetAttribute("ViewportLoaded") then return end
-
-	local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
-	if not ItemViewport then return end
-
-	ViewportManager.CleanViewport(ItemViewport)
-	local PreviewFolder = GetItemPreviewFolder(ItemType)
-	if PreviewFolder then
-		local ItemModel = PreviewFolder:FindFirstChild(ItemId)
-		if ItemModel then
-			local ModelClone = ItemModel:Clone()
-			ModelClone.Parent = ItemViewport
-			ViewportManager.RenderItem(ItemViewport, ModelClone, ItemType, ItemId)
-			Frame:SetAttribute("ViewportLoaded", true)
-		end
-	end
-end
-
 --- Khởi tạo và render hoàn chỉnh một thẻ ItemCard từ template
 --- @param Parent Instance — Container chứa thẻ (ScrollingFrame / Frame)
---- @param ItemId string — Id vật phẩm (ví dụ: "Default", "BlueBlock")
+--- @param ItemId string — Id vật phẩm (ví dụ: "Default", "Green")
 --- @param ItemType string — "Icicle" hoặc "Block"
 --- @param Options table? — Tùy chọn cấu hình hiển thị
 --- @return Frame?
@@ -149,9 +110,10 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 		end
 	end
 
-	-- 8. Nạp Model 3D vào ViewportFrame (hoặc hoãn lại nếu bật LazyViewport)
-	if not Options.LazyViewport then
-		ItemCard.LoadViewport(Frame, FullEntry.Id, FullEntry.Type)
+	-- 8. Cập nhật hình ảnh 2D (ItemImage)
+	local ItemImage = Frame:FindFirstChild("ItemImage", true)
+	if ItemImage and ItemImage:IsA("ImageLabel") then
+		ItemImage.Image = ItemRegistry.GetItemIcon(FullEntry.Id, FullEntry.Type)
 	end
 
 	-- 9. Gắn sự kiện Click & tương tác
@@ -247,16 +209,10 @@ function ItemCard.BindClick(Frame, Callback)
 	end
 end
 
---- Dọn sạch tài nguyên 3D trong ViewportFrame và hủy Frame
+--- Hủy thẻ ItemCard
 --- @param Frame Instance? — Thẻ ItemCard cần hủy
 function ItemCard.Destroy(Frame)
 	if not Frame or not Frame:IsA("Instance") then return end
-
-	local ItemViewport = Frame:FindFirstChild("ItemViewport", true)
-	if ItemViewport then
-		ViewportManager.CleanViewport(ItemViewport)
-	end
-
 	Frame:Destroy()
 end
 

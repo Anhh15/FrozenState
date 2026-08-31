@@ -5,9 +5,10 @@
 
 -- CẤU TRÚC MỖI ENTRY:
 --   Id      (string) — Tên folder trong ServerStorage/Icicles hoặc ServerStorage/Blocks
---   Name    (string) — Tên hiển thị (dùng cho GUI sau này)
---   Rarity  (string) — Khớp với key trong RarityConfig (Common/Uncommon/Rare/Epic/Legendary)
+--   Name    (string) — Tên hiển thị (dùng cho GUI)
+--   Rarity  (string) — Khớp với key trong RarityConfig (Basic/Common/Uncommon/Rare/Epic/Legendary)
 --   Type    (string) — "Icicle" hoặc "Block"
+--   Icon    (string) — Image ID của icon 2D hiển thị trên GUI ("rbxassetid://..." hoặc "")
 
 local ItemRegistry = {}
 
@@ -21,18 +22,21 @@ local IcicleCatalog = {
 		Name   = "Default Icicle",
 		Rarity = "Basic",
 		Type   = "Icicle",
+		Icon   = "rbxassetid://106702914411826",
 	},
 	{
 		Id     = "Green",
 		Name   = "Green Icicle",
 		Rarity = "Basic",
 		Type   = "Icicle",
+		Icon   = "rbxassetid://106702914411826",
 	},
 	{
 		Id     = "Red",
 		Name   = "Red Icicle",
 		Rarity = "Basic",
 		Type   = "Icicle",
+		Icon   = "rbxassetid://106702914411826",
 	},
 }
 
@@ -46,18 +50,21 @@ local BlockCatalog = {
 		Name   = "Default Block",
 		Rarity = "Basic",
 		Type   = "Block",
+		Icon   = "rbxassetid://106702914411826",
 	},
 	{
 		Id     = "Green",
 		Name   = "Green Block",
 		Rarity = "Basic",
 		Type   = "Block",
+		Icon   = "rbxassetid://106702914411826",
 	},
 	{
 		Id     = "Red",
 		Name   = "Red Block",
 		Rarity = "Basic",
 		Type   = "Block",
+		Icon   = "rbxassetid://106702914411826",
 	},
 }
 
@@ -82,7 +89,7 @@ end
 
 --- Lấy thông tin item theo Id và Type
 --- Tự động fallback về "Default" nếu Id không tồn tại trong catalog
---- @param ItemId string   — Id của item (vd: "Default", "GoldenIcicle")
+--- @param ItemId string   — Id của item (vd: "Default", "Green")
 --- @param ItemType string — "Icicle" hoặc "Block"
 --- @return table          — entry từ catalog
 function ItemRegistry.GetItem(ItemId, ItemType)
@@ -95,6 +102,21 @@ function ItemRegistry.GetItem(ItemId, ItemType)
 	end
 
 	return Entry
+end
+
+--- Lấy Icon của item theo Id và Type
+--- Tự động fallback về Icon của "Default" nếu item không có icon riêng
+--- @param ItemId string
+--- @param ItemType string
+--- @return string
+function ItemRegistry.GetItemIcon(ItemId, ItemType)
+	local Entry = ItemRegistry.GetItem(ItemId, ItemType)
+	if Entry and Entry.Icon and Entry.Icon ~= "" then
+		return Entry.Icon
+	end
+
+	local DefaultEntry = ItemRegistry.GetItem("Default", ItemType)
+	return (DefaultEntry and DefaultEntry.Icon) or ""
 end
 
 --- Lấy toàn bộ catalog Icicle (dùng cho Shop / Inventory sau này)

@@ -1,6 +1,6 @@
 # ItemRegistry
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard và cơ chế hiển thị Avatar (ItemRegistry, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar và Lazy Rendering).
-> Cập nhật lần cuối: 28-08-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard, chuyển đổi 2D ItemImage và cơ chế hiển thị Avatar (ItemRegistry, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar và Shop Lazy Rendering).
+> Cập nhật lần cuối: 01-09-2026
 
 ---
 
@@ -8,21 +8,23 @@
 
 ### 1. Centralized ItemRegistry (Single Source of Truth cho Vật phẩm)
 - **Chi tiết:** Đưa registry cấu hình vật phẩm (Icicles, Blocks) về Shared (`ReplicatedStorage/Shared/Config/ItemRegistry.lua`) dưới dạng cấu trúc bảng lookup $O(1)$. Đảm bảo cả Server và Client dùng chung một nguồn dữ liệu duy nhất, ngăn ngừa sự không đồng bộ dữ liệu.
+- **Cấu trúc Entry & Asset Độc lập:** Mỗi entry gồm `Id`, `Name`, `Rarity`, `Type`, và `Icon` (Image ID riêng biệt). Cung cấp API `ItemRegistry.GetItemIcon(ItemId, ItemType)` tự động fallback về icon Default nếu item chưa có ID riêng.
 - **Chuỗi Fallback An Toàn:** Khi truy vấn thông tin skin: `DataService` $\rightarrow$ `ItemRegistry` $\rightarrow$ `Cấu hình Default`, đi kèm cảnh báo lỗi chi tiết khi thiếu cấu hình.
 - **File liên quan:** [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
 ### 2. Đóng Gói UI Template qua Functional Component Helper (ItemCard.lua)
 - **Chi tiết:** Thay vì để từng Controller (`Inventory`, `Shop`, `Profile`, `ItemReward`) tự clone `ItemTemplate` và thao tác trực tiếp với các node con (dễ gây lệch màu Rarity, quên ẩn thẻ `EquippedText`/`DropRateText`, hoặc lặp code), toàn bộ logic hiển thị thẻ vật phẩm được chuẩn hóa thành Functional Helper `ItemCard.lua` (`ReplicatedStorage/Shared/Tools/ItemCard.lua`).
 - **API Đóng Gói & Tương Tác Tự Động:**
-  - `ItemCard.Create(Parent, ItemId, ItemType, Options)`: Tự động gán thông số từ `ItemRegistry`, `RarityConfig`, tải 3D qua `ViewportManager`, gắn click qua `Activated`, tự động nạp hiệu ứng Hover Scale (`GuiHelper.BindButtonScale`) và âm thanh SFX (`GuiHelper.BindButtonSound`) theo cấu hình tập trung `GuiConfig.Animations.ButtonScale.Overrides.ItemTemplate`.
+  - `ItemCard.Create(Parent, ItemId, ItemType, Options)`: Tự động gán thông số từ `ItemRegistry`, `RarityConfig`, nạp ảnh 2D `ItemImage` (`ImageLabel`) qua `ItemRegistry.GetItemIcon`, gắn click qua `Activated`, tự động nạp hiệu ứng Hover Scale (`GuiHelper.BindButtonScale`) và âm thanh SFX (`GuiHelper.BindButtonSound`) theo cấu hình tập trung `GuiConfig.Animations.ButtonScale.Overrides.ItemTemplate`.
   - `ItemCard.SetEquipped(Frame, IsEquipped)`: Cập nhật in-place thẻ trang bị trong $O(1)$ mà không cần re-render toàn bộ danh sách.
   - `ItemCard.SetDropRate(Frame, DropRate)`: Cập nhật in-place nhãn tỉ lệ rơi.
-  - `ItemCard.Destroy(Frame)`: Tự động dọn dẹp camera và model 3D trong `ViewportFrame` trước khi hủy instance, triệt tiêu rò rỉ bộ nhớ.
+  - `ItemCard.Destroy(Frame)`: Hủy Frame an toàn và giải phóng tài nguyên.
 - **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 
 ### 3. Tự Động Hóa Camera ViewportFrame qua Bounding Box và ViewportConfig
-- **Chi tiết:** Tự động hóa tính toán camera hiển thị mô hình 3D trong `ViewportFrame` bằng `ViewportManager.lua` dựa trên Bounding Box của mô hình. Hỗ trợ ghi đè góc nhìn (Pitch, Yaw, FOV, Padding) qua cấu hình phân tầng `ViewportConfig.lua` (`Default` $\rightarrow$ `Type` $\rightarrow$ `ItemId`) trên tất cả các tab Inventory, Shop và Profile.
-- **File liên quan:** [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua)
+- **Chi tiết:** Tự động hóa tính toán camera hiển thị mô hình 3D trong `ViewportFrame` bằng `ViewportManager.lua` dựa trên Bounding Box của mô hình. Hỗ trợ ghi đè góc nhìn (Pitch, Yaw, FOV, Padding) qua cấu hình phân tầng `ViewportConfig.lua` (`Default` $\rightarrow$ `Type` $\rightarrow$ `ItemId`).
+- **Phân định Phạm vi 3D Viewport:** ViewportFrame 3D được giữ lại phục vụ độc quyền cho các khung hiển thị chi tiết (khung xem trước `ItemSelection` trong Inventory, `ChestViewport` trong Shop và ItemReward), loại bỏ hoàn toàn khỏi danh sách thẻ lặp lại (Card Grid).
+- **File liên quan:** [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### 4. Quy Tắc Phân Vùng Lưu Trữ Template GUI & Khai Tử Dead Asset ChestTemplate
 - **Chi tiết:**
@@ -41,9 +43,14 @@
 - **File liên quan:** [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
 
 ### 6. Lazy Render ViewportFrame theo Vùng Nhìn Thấy (Shop Preview In-Place)
-- **Chi tiết:** Để tối ưu hiệu suất khi một danh sách card GUI có nhiều ViewportFrame 3D, áp dụng cơ chế lazy render: Chỉ clone model và gọi `ViewportManager.RenderItem` khi card nằm trong (hoặc gần) vùng nhìn thấy của `ScrollingFrame` cha.
+- **Chi tiết:** Để tối ưu hiệu suất khi một danh sách card GUI chứa các ViewportFrame 3D (như `ChestPreview.ChestViewport` trong Shop), áp dụng cơ chế lazy render: Chỉ clone model và gọi `ViewportManager.RenderItem` khi card nằm trong (hoặc gần) vùng nhìn thấy của `ScrollingFrame` cha.
 - **Cơ chế:** Lưu hàng đợi `{ Frame, Data }`, lắng nghe `CanvasPosition` thay đổi để kiểm tra bounding box với buffer mở rộng trước khi render.
 - **File liên quan:** [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ShopConfig.lua](../../src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
+
+### 7. Chuyển Đổi Danh Sách Thẻ Vật Phẩm sang 2D Image & Khai Tử Lazy Render trong Inventory
+- **Chi tiết:** Chuyển đổi toàn bộ hiển thị vật phẩm trong danh sách cuộn (`ItemTemplate`) và thanh Hotbar (`ItemSlot`) từ `ViewportFrame` sang `ImageLabel` (**`ItemImage`**).
+- **Triệt tiêu Dead Code:** Do 2D Icon nạp tức thì trong $0\text{ms}$ và được engine gom vào 1 Draw Call duy nhất, toàn bộ hệ thống Lazy Loading (`_LazyRenderQueue`, `CheckLazyQueue`, `_ScrollConn`) trong `InventoryController` và `InventoryConfig.LazyRenderBuffer` được dỡ bỏ hoàn toàn, giảm tải độ phức tạp mã nguồn.
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [InventoryConfig.lua](../../src/ReplicatedStorage/Shared/Config/InventoryConfig.lua)
 
 ---
 
@@ -55,9 +62,9 @@
 - **File liên quan:** [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua)
 
 ### 2. Rò Rỉ Bộ Nhớ (Memory Leak) và Phân Mảnh Logic Render do Naked Template
-- **Vấn đề:** Khi clone thủ công `ItemTemplate` ở nhiều controller, các đối tượng Model và Camera bên trong `ViewportFrame` dễ bị bỏ quên khi dọn dẹp hoặc chuyển tab. Đồng thời mỗi controller tự viết lại ~50 dòng code để tìm node con, gán màu Rarity và ẩn hiện tag thừa.
-- **Giải pháp:** Ủy quyền toàn bộ việc tạo, cập nhật và dọn dẹp cho `ItemCard.lua`. Hàm `ItemCard.Destroy(Frame)` tự động gọi `ViewportManager.CleanViewport(ItemViewport)` trước khi `Frame:Destroy()`, đảm bảo an toàn bộ nhớ tuyệt đối và tập trung hóa 100% logic UI.
-- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
+- **Vấn đề:** Khi clone thủ công `ItemTemplate` ở nhiều controller, các đối tượng con dễ bị bỏ quên khi dọn dẹp hoặc chuyển tab. Đồng thời mỗi controller tự viết lại ~50 dòng code để tìm node con, gán màu Rarity và ẩn hiện tag thừa.
+- **Giải pháp:** Ủy quyền toàn bộ việc tạo, cập nhật và dọn dẹp cho `ItemCard.lua`. Quản lý tập trung 100% logic UI, gán `ItemImage` trực tiếp và hủy Frame an toàn qua `ItemCard.Destroy(Frame)`.
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### 3. Ngăn Ngừa Trang Bị Skin Giả Mạo Từ Client (Server Validation)
 - **Vấn đề:** Người chơi có thể can thiệp client để gửi yêu cầu trang bị các skin hiếm mà họ chưa thực sự sở hữu trong dữ liệu.
@@ -71,3 +78,10 @@
   2. Chuẩn hóa `ItemCard.BindClick` ưu tiên sự kiện `Button.Activated` (Roblox engine tự động phân biệt giữa chạm bấm Tap/Click và vuốt cuộn Drag, đồng thời hỗ trợ mượt mà cả PC, Mobile và Gamepad).
   3. Cấu hình scale riêng cho `ItemTemplate` (`HoverScale = 1.05`, `PressScale = 0.95`) trong `GuiConfig.Animations.ButtonScale.Overrides` để thẻ bung nở từ tâm đối xứng mà không bị che đè lấn các ô lân cận trong `UIGridLayout`.
 - **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
+
+### 5. Nghẽn Cổ Chai GPU do Lạm Dụng Hàng Loạt ViewportFrame trên Mobile (Viewport Grid Anti-Pattern)
+- **Vấn đề:** Đặt hàng chục `ViewportFrame` 3D vào các ô thẻ trong danh sách cuộn (`ScrollingFrame`) hoặc các ô Hotbar gây ra bùng nổ draw calls và sub-render passes song song, làm sụt giảm nghiêm trọng FPS trên các thiết bị di động tầm thấp/trung bình.
+- **Giải pháp:** Áp dụng mô hình **Hybrid (2D Grid + Single 3D Preview)**:
+  - 100% các ô thẻ trong danh sách và Hotbar sử dụng `ImageLabel` 2D (**`ItemImage`**).
+  - Duy trì duy nhất **1** `ViewportFrame` ở khung xem trước chi tiết (`ItemSelection`) để người chơi quan sát mô hình 3D khi click chọn.
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)

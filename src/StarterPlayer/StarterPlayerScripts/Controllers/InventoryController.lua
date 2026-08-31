@@ -12,7 +12,7 @@
 --       ScrollingFrame (ScrollingFrame)
 --         ItemTemplate (Frame) — Visible = false, dùng để clone
 --           Background  (ImageLabel)
---           ItemViewport (ViewportFrame)
+--           ItemImage   (ImageLabel)
 --           RarityText  (TextLabel)
 --           NameText    (TextLabel)
 --           EquippedText (GuiObject) — Hiển thị khi item đang được trang bị
@@ -30,7 +30,6 @@ local ItemRegistry          = require(ReplicatedStorage.Shared.Config.ItemRegist
 local RarityConfig          = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local AudioConfig           = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig             = require(ReplicatedStorage.Shared.Config.GuiConfig)
-local InventoryConfig       = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local PlayerDataController  = require(script.Parent.PlayerDataController)
 local ViewportManager       = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper             = require(ReplicatedStorage.Shared.Tools.GuiHelper)
@@ -70,8 +69,6 @@ local _SelectedEntry   = nil        -- Entry item đang được chọn trong It
 local _SelectionModel  = nil        -- Model đang render trong ItemSelection ViewportFrame
 local _ListConnections = {}        -- Kết nối RenderItem (dọn dẹp khi re-render)
 local _StaggerThread   = nil        -- Thread animation stagger danh sách item
-local _LazyRenderQueue = {}        -- { Frame, Entry } — cards chờ render viewport
-local _ScrollConn      = nil       -- Connection theo dõi ScrollingFrame.CanvasPosition
 
 --- Dừng animation stagger đang chạy dở
 local function StopStaggerAnimation()
@@ -234,43 +231,8 @@ local function EquipCurrentItem()
 end
 
 -- =========================================================
--- LAZY RENDER
+-- LIST MANAGEMENT
 -- =========================================================
-
---- Kiểm tra queue và render các card đang nằm trong (hoặc gần) vùng nhìn thấy của ScrollingFrame
-local function CheckLazyQueue()
-	if not ScrollingFrame or #_LazyRenderQueue == 0 then return end
-
-	local Buffer       = InventoryConfig.LazyRenderBuffer
-	local CanvasY      = ScrollingFrame.CanvasPosition.Y
-	local ScrollHeight = ScrollingFrame.AbsoluteSize.Y
-	local ScrollTop    = ScrollingFrame.AbsolutePosition.Y
-
-	local VisibleTop    = CanvasY - Buffer
-	local VisibleBottom = CanvasY + ScrollHeight + Buffer
-
-	-- Duyệt ngược để an toàn khi xóa phần tử
-	for Index = #_LazyRenderQueue, 1, -1 do
-		local QueueItem = _LazyRenderQueue[Index]
-		local Frame     = QueueItem.Frame
-
-		-- Nếu card đã bị destroy (ví dụ: đổi tab), bỏ qua
-		if not Frame.Parent then
-			table.remove(_LazyRenderQueue, Index)
-			continue
-		end
-
-		-- Tính vị trí card trong canvas coordinate
-		local CardTop    = Frame.AbsolutePosition.Y - ScrollTop + CanvasY
-		local CardBottom = CardTop + Frame.AbsoluteSize.Y
-
-		if CardBottom >= VisibleTop and CardTop <= VisibleBottom then
-			-- Card trong vùng nhìn thấy → render 3D Viewport
-			ItemCard.LoadViewport(Frame, QueueItem.Entry.Id, QueueItem.Entry.Type)
-			table.remove(_LazyRenderQueue, Index)
-		end
-	end
-end
 
 --- Dọn dẹp toàn bộ ItemFrame cũ trong ScrollingFrame
 local function ClearItemList()
@@ -283,15 +245,6 @@ local function ClearItemList()
 		end
 	end
 	table.clear(_ListConnections)
-
-	-- Ngắt connection theo dõi scroll
-	if _ScrollConn and _ScrollConn.Connected then
-		_ScrollConn:Disconnect()
-		_ScrollConn = nil
-	end
-
-	-- Reset state lazy render
-	table.clear(_LazyRenderQueue)
 
 	-- Xóa toàn bộ item đã render
 	if not ScrollingFrame then return end
@@ -371,7 +324,6 @@ local function RenderList(ItemType)
 			IsEquipped   = (Entry.Id == CurrentEquip),
 			ShowDropRate = false,
 			EnableHover  = true,
-			LazyViewport = true,
 			OnClick      = function()
 				SelectItem(EntrySnapshot)
 			end,
@@ -380,20 +332,11 @@ local function RenderList(ItemType)
 		if Frame then
 			LayoutOrder += 1
 			table.insert(RenderedFrames, Frame)
-			table.insert(_LazyRenderQueue, { Frame = Frame, Entry = EntrySnapshot })
 		end
 	end
 
 	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop)
 	_StaggerThread = GuiHelper.StaggerPopOpen(RenderedFrames)
-
-	-- Kết nối scroll để trigger lazy render khi cuộn
-	_ScrollConn = ScrollingFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(CheckLazyQueue)
-	table.insert(_ListConnections, _ScrollConn)
-
-	-- Render ngay các card đang trong vùng nhìn thấy ban đầu (không chờ người dùng scroll)
-	-- Dùng task.defer để đảm bảo AbsolutePosition đã được tính bởi engine
-	task.defer(CheckLazyQueue)
 end
 
 -- =========================================================

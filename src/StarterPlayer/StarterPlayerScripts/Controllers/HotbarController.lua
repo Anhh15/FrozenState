@@ -1,7 +1,7 @@
 -- HotbarController.lua (ModuleScript)
 -- Điều khiển Custom Hotbar trong ScreenGui InGameGui
 -- Thay thế hoàn toàn Hotbar và Backpack mặc định của Roblox
--- Quản lý trang bị/cất vũ khí, render 3D ViewportFrame, hoạt ảnh Active Zoom và Cooldown
+-- Quản lý trang bị/cất vũ khí, render 2D ItemImage, hoạt ảnh Active Zoom và Cooldown
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,8 +12,8 @@ local RunService        = game:GetService("RunService")
 
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
-local ViewportManager   = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
@@ -87,10 +87,10 @@ local function ResolveGuiReferences()
 	_InGameGui.ResetOnSpawn = false
 
 	local Elements = GuiConfig.HotbarElements or {
-		Hotbar       = "Hotbar",
-		Templates    = "Templates",
-		ItemSlot     = "ItemSlot",
-		ItemViewport = "ItemViewport",
+		Hotbar    = "Hotbar",
+		Templates = "Templates",
+		ItemSlot  = "ItemSlot",
+		ItemImage = "ItemImage",
 	}
 
 	_HotbarFrame = _InGameGui:FindFirstChild(Elements.Hotbar, true)
@@ -154,47 +154,6 @@ end
 -- =========================================================
 -- PRIVATE HELPERS: Visual & Animation
 -- =========================================================
-
---- Clone model preview 3D vào ViewportFrame của ItemSlot
---- @param Viewport ViewportFrame
---- @param Tool Tool
-local function LoadToolViewport(Viewport, Tool)
-	if not Viewport or not Tool then return end
-	ViewportManager.CleanViewport(Viewport)
-
-	local SkinId = PlayerStateHelper.GetEquippedIcicleSkinId(LocalPlayer)
-	if Tool:GetAttribute("SkinId") then
-		SkinId = Tool:GetAttribute("SkinId")
-	end
-
-	local Assets = ReplicatedStorage:FindFirstChild("Assets")
-	local ItemPreview = Assets and Assets:FindFirstChild("ItemPreview")
-	local IciclesFolder = ItemPreview and ItemPreview:FindFirstChild("Icicles")
-	local ModelTemplate = IciclesFolder and IciclesFolder:FindFirstChild(SkinId)
-
-	-- Fallback về Default skin nếu không tìm thấy skin cụ thể
-	if not ModelTemplate and IciclesFolder then
-		ModelTemplate = IciclesFolder:FindFirstChild("Default")
-	end
-
-	if ModelTemplate then
-		local ModelClone = ModelTemplate:Clone()
-		ModelClone.Parent = Viewport
-		ViewportManager.RenderItem(Viewport, ModelClone, "Icicle", SkinId)
-	else
-		-- Fallback dự phòng: Clone các Part hiển thị từ chính Tool
-		local Handle = Tool:FindFirstChild("Handle")
-		if Handle then
-			local FallbackModel = Instance.new("Model")
-			FallbackModel.Name = Tool.Name
-			local HandleClone = Handle:Clone()
-			HandleClone.Parent = FallbackModel
-			FallbackModel.PrimaryPart = HandleClone
-			FallbackModel.Parent = Viewport
-			ViewportManager.RenderItem(Viewport, FallbackModel, "Icicle", SkinId)
-		end
-	end
-end
 
 --- Cập nhật trạng thái Active / Inactive trực quan của Slot
 --- @param SlotData table
@@ -360,12 +319,12 @@ local function CreateSlotForTool(Tool, SlotIndex)
 	SlotFrame.Visible = true
 
 	local Elements = GuiConfig.HotbarElements
-	local ViewportName = Elements and Elements.ItemViewport or "ItemViewport"
+	local ImageName     = Elements and Elements.ItemImage or "ItemImage"
 	local IndexTextName = Elements and Elements.IndexText or "IndexText"
 	local CurtainName   = Elements and Elements.CooldownCurtain or "CooldownCurtain"
 	local TextName      = Elements and Elements.CooldownText or "CooldownText"
 
-	local ItemViewport    = SlotFrame:FindFirstChild(ViewportName, true)
+	local ItemImage       = SlotFrame:FindFirstChild(ImageName, true)
 	local IndexLabel      = SlotFrame:FindFirstChild(IndexTextName, true)
 	local CooldownCurtain = SlotFrame:FindFirstChild(CurtainName, true)
 	local CooldownText    = SlotFrame:FindFirstChild(TextName, true)
@@ -387,9 +346,13 @@ local function CreateSlotForTool(Tool, SlotIndex)
 		CooldownText.Text = ""
 	end
 
-	-- Render 3D Model
-	if ItemViewport and ItemViewport:IsA("ViewportFrame") then
-		LoadToolViewport(ItemViewport, Tool)
+	-- Nạp 2D Image
+	if ItemImage and ItemImage:IsA("ImageLabel") then
+		local SkinId = PlayerStateHelper.GetEquippedIcicleSkinId(LocalPlayer)
+		if Tool:GetAttribute("SkinId") then
+			SkinId = Tool:GetAttribute("SkinId")
+		end
+		ItemImage.Image = ItemRegistry.GetItemIcon(SkinId, "Icicle")
 	end
 
 	local SlotData = {
@@ -490,12 +453,6 @@ local function ClearAllSlots()
 			task.cancel(SlotData.CooldownThread)
 		end
 		if SlotData.SlotFrame then
-			local Elements = GuiConfig.HotbarElements
-			local ViewportName = Elements and Elements.ItemViewport or "ItemViewport"
-			local ItemViewport = SlotData.SlotFrame:FindFirstChild(ViewportName, true)
-			if ItemViewport and ItemViewport:IsA("ViewportFrame") then
-				ViewportManager.CleanViewport(ItemViewport)
-			end
 			SlotData.SlotFrame:Destroy()
 		end
 	end
