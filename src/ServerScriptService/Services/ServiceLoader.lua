@@ -35,6 +35,9 @@ local SERVICES = {
 	-- QuestService: hệ thống nhiệm vụ Daily + Milestone (Phase 7)
 	require(script.Parent.QuestService),
 
+	-- AdminService: hệ thống quản trị và kiểm thử qua dòng lệnh CLI (Phase 10)
+	require(script.Parent.AdminService),
+
 	-- MatchService: game loop (phải cuối cùng vì phụ thuộc vào tất cả service trên)
 	require(script.Parent.MatchService),
 }

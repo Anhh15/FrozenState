@@ -161,7 +161,8 @@ function PlayerDataController:Init()
 		NavGui.ResetOnSpawn = false
 	end
 
-	local UpdateMoneyEvent = RemoteDefinitions.GetEvent("UpdateMoney")
+	local UpdateMoneyEvent    = RemoteDefinitions.GetEvent("UpdateMoney")
+	local SyncPlayerDataEvent = RemoteDefinitions.GetEvent("SyncPlayerData")
 
 	-- Lấy dữ liệu ban đầu khi join (async để không block Main.client)
 	task.spawn(function()
@@ -181,6 +182,17 @@ function PlayerDataController:Init()
 	UpdateMoneyEvent.OnClientEvent:Connect(function(NewAmount)
 		_localData.Money = NewAmount
 		UpdateMoneyDisplay(NewAmount)
+	end)
+
+	-- Lắng nghe đồng bộ toàn bộ dữ liệu từ server (khi Admin can thiệp hoặc thay đổi dữ liệu)
+	SyncPlayerDataEvent.OnClientEvent:Connect(function(NewData)
+		if type(NewData) == "table" then
+			_localData = NewData
+			_isDataLoaded = true
+			UpdateMoneyDisplay(NewData.Money or 0)
+			_dataLoadedBindable:Fire(_localData)
+			print("[PlayerDataController] Dữ liệu vừa được đồng bộ từ Server qua SyncPlayerData.")
+		end
 	end)
 
 	-- Phòng thủ: khi nhân vật respawn, cập nhật lại hiển thị số tiền

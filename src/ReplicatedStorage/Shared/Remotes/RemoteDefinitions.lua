@@ -72,6 +72,10 @@ local REMOTE_EVENTS = {
 	-- Client → Server: Lưu thiết lập âm lượng / cài đặt của người chơi
 	-- Payload: { Key = string, Value = any }
 	"SaveSetting",
+
+	-- Server → Client: Đồng bộ toàn bộ dữ liệu người chơi khi Admin thay đổi (Phase 10: Admin CLI)
+	-- Payload: table (PlayerData)
+	"SyncPlayerData",
 }
 
 -- RemoteFunction: giao tiếp hai chiều (Client gọi, Server trả lời)

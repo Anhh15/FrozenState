@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local ProfileService    = require(ReplicatedStorage.Shared.Lib.ProfileService)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local DataConfig        = require(ReplicatedStorage.Shared.Config.DataConfig)
+local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
 -- =========================================================
@@ -190,6 +191,39 @@ function DataService.AddMoney(Player, Amount)
 	return Profile.Data.Money
 end
 
+--- Gán trực tiếp số tiền cho player
+--- @param Player Player
+--- @param Amount number
+--- @return number?
+function DataService.SetMoney(Player, Amount)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then
+		warn(("[DataService] SetMoney: Không tìm thấy profile của %s"):format(Player.Name))
+		return nil
+	end
+	Profile.Data.Money = math.max(0, math.floor(Amount or 0))
+	return Profile.Data.Money
+end
+
+--- Gán giá trị cụ thể cho một stat của player
+--- @param Player Player
+--- @param StatName string
+--- @param Value any
+--- @return boolean
+function DataService.SetStat(Player, StatName, Value)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then
+		warn(("[DataService] SetStat: Không tìm thấy profile của %s"):format(Player.Name))
+		return false
+	end
+	if PROFILE_TEMPLATE[StatName] == nil then
+		warn(("[DataService] SetStat: StatName '%s' không tồn tại trong PROFILE_TEMPLATE."):format(StatName))
+		return false
+	end
+	Profile.Data[StatName] = Value
+	return true
+end
+
 --- Tăng một stat của player lên Amount (mặc định 1)
 --- @param Player Player
 --- @param StatName string   -- tên field trong PROFILE_TEMPLATE
@@ -280,6 +314,25 @@ function DataService.AddIcicle(Player, ItemId)
 	table.insert(Profile.Data.OwnedIcicles, ItemId)
 end
 
+--- Thu hồi / Xóa Icicle skin khỏi danh sách sở hữu
+--- @param Player Player
+--- @param ItemId string
+--- @return boolean
+function DataService.RemoveIcicle(Player, ItemId)
+	local Profile = ActiveProfiles[Player]
+	if not Profile or ItemId == "Default" then return false end
+
+	local Index = table.find(Profile.Data.OwnedIcicles, ItemId)
+	if Index then
+		table.remove(Profile.Data.OwnedIcicles, Index)
+		if Profile.Data.EquippedIcicle == ItemId then
+			Profile.Data.EquippedIcicle = "Default"
+		end
+		return true
+	end
+	return false
+end
+
 --- Thêm Block skin vào danh sách sở hữu (không trùng lặp)
 --- @param Player Player
 --- @param ItemId string
@@ -291,6 +344,127 @@ function DataService.AddBlock(Player, ItemId)
 		if OwnedId == ItemId then return end
 	end
 	table.insert(Profile.Data.OwnedBlocks, ItemId)
+end
+
+--- Thu hồi / Xóa Block skin khỏi danh sách sở hữu
+--- @param Player Player
+--- @param ItemId string
+--- @return boolean
+function DataService.RemoveBlock(Player, ItemId)
+	local Profile = ActiveProfiles[Player]
+	if not Profile or ItemId == "Default" then return false end
+
+	local Index = table.find(Profile.Data.OwnedBlocks, ItemId)
+	if Index then
+		table.remove(Profile.Data.OwnedBlocks, Index)
+		if Profile.Data.EquippedIceBlock == ItemId then
+			Profile.Data.EquippedIceBlock = "Default"
+		end
+		return true
+	end
+	return false
+end
+
+--- Xóa sạch toàn bộ skin đã sở hữu và fallback về Default
+--- @param Player Player
+--- @param SkinType string? -- "Icicle" | "Block" | nil (cả 2)
+function DataService.ClearSkins(Player, SkinType)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+
+	if SkinType == "Icicle" or SkinType == nil then
+		Profile.Data.OwnedIcicles = {}
+		Profile.Data.EquippedIcicle = "Default"
+	end
+	if SkinType == "Block" or SkinType == nil then
+		Profile.Data.OwnedBlocks = {}
+		Profile.Data.EquippedIceBlock = "Default"
+	end
+end
+
+--- Cấp toàn bộ skin có trong catalog cho player
+--- @param Player Player
+function DataService.GiveAllSkins(Player)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+
+	for _, Item in ipairs(ItemRegistry.GetAllIcicles()) do
+		if Item.Id ~= "Default" then
+			DataService.AddIcicle(Player, Item.Id)
+		end
+	end
+
+	for _, Item in ipairs(ItemRegistry.GetAllBlocks()) do
+		if Item.Id ~= "Default" then
+			DataService.AddBlock(Player, Item.Id)
+		end
+	end
+end
+
+--- Reset toàn bộ dữ liệu người chơi về template mặc định
+--- @param Player Player
+function DataService.ResetProfileData(Player)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+
+	Profile.Data.Money              = PROFILE_TEMPLATE.Money
+	Profile.Data.TotalWins          = PROFILE_TEMPLATE.TotalWins
+	Profile.Data.TotalFreezes       = PROFILE_TEMPLATE.TotalFreezes
+	Profile.Data.TotalThaws         = PROFILE_TEMPLATE.TotalThaws
+	Profile.Data.TotalFreezingSpree = PROFILE_TEMPLATE.TotalFreezingSpree
+	Profile.Data.TotalThawingSpree  = PROFILE_TEMPLATE.TotalThawingSpree
+	Profile.Data.TotalFirstBlood    = PROFILE_TEMPLATE.TotalFirstBlood
+	Profile.Data.TotalLastStanding  = PROFILE_TEMPLATE.TotalLastStanding
+	Profile.Data.OwnedCosmetics     = {}
+	Profile.Data.OwnedIcicles       = {}
+	Profile.Data.OwnedBlocks        = {}
+	Profile.Data.EquippedIcicle     = PROFILE_TEMPLATE.EquippedIcicle
+	Profile.Data.EquippedIceBlock   = PROFILE_TEMPLATE.EquippedIceBlock
+	Profile.Data.PlayTime           = 0
+	Profile.Data.DailyQuestData     = {
+		ResetTimestamp = 0,
+		ActiveQuests   = {},
+	}
+	Profile.Data.MilestoneQuestData = {}
+	Profile.Data.PurchaseHistory    = {}
+end
+
+--- Xóa lịch sử mua Robux (để test lại biên lai)
+--- @param Player Player
+function DataService.ClearPurchaseHistory(Player)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+	Profile.Data.PurchaseHistory = {}
+end
+
+--- Lấy bản copy dữ liệu an toàn để đồng bộ xuống Client
+--- @param Player Player
+--- @return table?
+function DataService.GetFullDataCopy(Player)
+	local Profile = ActiveProfiles[Player]
+	if not Profile or not Profile.Data then return nil end
+	local Data = Profile.Data
+	return {
+		Money              = Data.Money,
+		TotalWins          = Data.TotalWins,
+		TotalFreezes       = Data.TotalFreezes,
+		TotalThaws         = Data.TotalThaws,
+		TotalFreezingSpree = Data.TotalFreezingSpree,
+		TotalThawingSpree  = Data.TotalThawingSpree,
+		TotalFirstBlood    = Data.TotalFirstBlood,
+		TotalLastStanding  = Data.TotalLastStanding,
+		OwnedIcicles       = Data.OwnedIcicles,
+		OwnedBlocks        = Data.OwnedBlocks,
+		EquippedIcicle     = Data.EquippedIcicle,
+		EquippedIceBlock   = Data.EquippedIceBlock,
+		PlayTime           = Data.PlayTime,
+		Settings           = Data.Settings or {
+			MasterVolume = DataConfig.DefaultSettings.MasterVolume,
+			MusicVolume  = DataConfig.DefaultSettings.MusicVolume,
+			SFXVolume    = DataConfig.DefaultSettings.SFXVolume,
+			UIVolume     = DataConfig.DefaultSettings.UIVolume,
+		},
+	}
 end
 
 --- Cộng thêm thời gian chơi vào DataStore
@@ -455,28 +629,7 @@ function DataService:Start()
 	GetPlayerDataFn.OnServerInvoke = function(Player)
 		local Data = DataService.WaitForData(Player)
 		if not Data then return nil end
-		-- Trả bản copy để tránh client modify trực tiếp
-		return {
-			Money              = Data.Money,
-			TotalWins          = Data.TotalWins,
-			TotalFreezes       = Data.TotalFreezes,
-			TotalThaws         = Data.TotalThaws,
-			TotalFreezingSpree = Data.TotalFreezingSpree,
-			TotalThawingSpree  = Data.TotalThawingSpree,
-			TotalFirstBlood    = Data.TotalFirstBlood,
-			TotalLastStanding  = Data.TotalLastStanding,
-			OwnedIcicles       = Data.OwnedIcicles,
-			OwnedBlocks        = Data.OwnedBlocks,
-			EquippedIcicle     = Data.EquippedIcicle,
-			EquippedIceBlock   = Data.EquippedIceBlock,
-			PlayTime           = Data.PlayTime,
-			Settings           = Data.Settings or {
-				MasterVolume = DataConfig.DefaultSettings.MasterVolume,
-				MusicVolume  = DataConfig.DefaultSettings.MusicVolume,
-				SFXVolume    = DataConfig.DefaultSettings.SFXVolume,
-				UIVolume     = DataConfig.DefaultSettings.UIVolume,
-			},
-		}
+		return DataService.GetFullDataCopy(Player)
 	end
 
 	-- Xử lý EquipItem: client trang bị cosmetic (Phase 2+)

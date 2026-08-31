@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Daily/Milestone, Hiệu ứng Mở rương và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 31-08-2026
+> Cập nhật lần cuối: 01-09-2026
 
 ---
 
@@ -57,6 +57,14 @@
   - *Dynamic Regional Pricing & Cache Engine:* Hỗ trợ tính năng Managed Pricing (giá theo khu vực). Client áp dụng cơ chế *Fallback-First* (hiển thị ngay giá config $0\text{ms}$) kết hợp *In-Memory Cache* (`_ProductInfoCache`) và chạy ngầm `MarketplaceService:GetProductInfo` để lấy `PriceInRobux` thực tế, cập nhật in-place mà không gây nghẽn mạng hay dính Rate-limit HTTP 429.
 - **File liên quan:** [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
 
+### 9. Kiến trúc Quản trị CLI Server-Authority & Đồng Bộ Dữ Liệu Hai Đầu (Admin CLI & Realtime Data Sync Engine)
+- **Chi tiết:** Triển khai hệ thống điều hành và can thiệp dữ liệu người chơi qua dòng lệnh Chat CLI với quyền lực 100% thuộc Server (`Server Authority`):
+  - *Bảo mật Zero-Remote:* Tuyệt đối không tạo RemoteEvent/RemoteFunction thực thi lệnh từ Client. Lắng nghe trực tiếp sự kiện `Player.Chatted` trên Server và xác thực `AdminConfig.IsAdmin(Player)` bằng `Player.UserId` hoặc môi trường Studio.
+  - *Mở rộng API Can Thiệp 2 Chiều (`DataService`):* Cung cấp đầy đủ các phương thức `SetMoney`, `SetStat`, `RemoveIcicle`/`RemoveBlock`, `ClearSkins`, `GiveAllSkins`, `ResetProfileData`, `ClearPurchaseHistory`.
+  - *Realtime Push-Sync (`SyncPlayerData`):* Khi Admin chỉnh sửa dữ liệu của mục tiêu (hoặc bản thân), Server đẩy toàn bộ dữ liệu mới nhất qua RemoteEvent `SyncPlayerData` kèm `UpdateMoney`. `PlayerDataController` cập nhật lại cache nội bộ và phát signal cho toàn bộ hệ thống UI cập nhật tức thì mà không cần rejoin.
+  - *Audit Logging:* Ghi vết minh bạch mọi lệnh thực thi (Admin Name, UserId, Command, Arguments, Result) trên Server console.
+- **File liên quan:** [AdminConfig.lua](../../src/ReplicatedStorage/Shared/Config/AdminConfig.lua), [AdminService.lua](../../src/ServerScriptService/Services/AdminService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [RemoteDefinitions.lua](../../src/ReplicatedStorage/Shared/Remotes/RemoteDefinitions.lua), [PlayerDataController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -106,3 +114,15 @@
   2. Chạy luồng ngầm bất đồng bộ (`task.spawn` + `pcall`) gọi `MarketplaceService:GetProductInfo(ProductId, Enum.InfoType.Product)` để lấy `PriceInRobux` thực tế.
   3. Duy trì tầng cache `_ProductInfoCache` trong Client RAM để mỗi sản phẩm chỉ fetch một lần duy nhất, loại bỏ hoàn toàn nguy cơ nghẽn mạng và lỗi HTTP 429 Rate Limit khi chuyển tab.
 - **File liên quan:** [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua)
+
+### 7. Lỗi Logic Khi Thu Hồi Skin Đang Trang Bị và Fallback Tự Động (Equipped Item Invalidation)
+- **Vấn đề:** Khi Admin dùng lệnh xóa skin (`/removeskin` hoặc `/clearskins`) của người chơi, nếu người chơi đó đang trang bị chính skin bị xóa (`EquippedIcicle` hoặc `EquippedIceBlock`), hệ thống vẫn giữ nguyên `Equipped` ID dẫn đến lỗi logic và crash khi spawn/render mô hình nhân vật trong trận.
+- **Nguyên nhân:** Thiếu cơ chế kiểm tra và vô hiệu hóa trang bị khi mảng sở hữu (`OwnedIcicles`/`OwnedBlocks`) bị biến đổi.
+- **Giải pháp:** Trong `DataService.RemoveIcicle`, `DataService.RemoveBlock` và `DataService.ClearSkins`, tích hợp cơ chế kiểm tra: Nếu skin bị xóa trùng khớp với `EquippedIcicle` hoặc `EquippedIceBlock`, tự động reset thuộc tính trang bị về `"Default"`, đồng thời đồng bộ lại toàn bộ dữ liệu về Client.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [AdminService.lua](../../src/ServerScriptService/Services/AdminService.lua)
+
+### 8. Rủi Ro Bảo Mật & Lỗ Hổng Từ Các Cơ Chế Thụ Động Tự Động Can Thiệp Dữ Liệu (Zero Implicit Side-Effects)
+- **Vấn đề:** Các ý tưởng thiết kế tự động quét sự hiện diện của Admin ở cuối trận hoặc trong phòng chơi để tự động can thiệp dữ liệu tiềm ẩn nguy cơ bị hacker khai thác giả lập presence hoặc gây rối loạn luồng gameplay chính.
+- **Nguyên nhân:** Các cơ chế tự động tương tác ngầm (implicit side-effects) phụ thuộc vào sự kiện gameplay chung làm phân mảnh quyền kiểm soát và dễ phát sinh lỗ hổng.
+- **Giải pháp:** Áp dụng nguyên tắc *Explicit Command-Driven*: Loại bỏ 100% các hook thụ động trong vòng đời trận đấu. Mọi thao tác can thiệp dữ liệu (tiền, stats, skin, reset, ban/kick) phải do Admin chủ động gõ lệnh trực tiếp qua CLI với đầy đủ Server-side Validation và Audit Log.
+- **File liên quan:** [AdminService.lua](../../src/ServerScriptService/Services/AdminService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [AdminConfig.lua](../../src/ReplicatedStorage/Shared/Config/AdminConfig.lua)

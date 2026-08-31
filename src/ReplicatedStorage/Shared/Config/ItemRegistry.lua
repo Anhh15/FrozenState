@@ -34,12 +34,6 @@ local IcicleCatalog = {
 		Rarity = "Basic",
 		Type   = "Icicle",
 	},
-	{
-		Id     = "AdminCompanion",
-		Name   = "Admin Companion Icicle",
-		Rarity = "Legendary",
-		Type   = "Icicle",
-	},
 }
 
 -- =========================================================
@@ -63,12 +57,6 @@ local BlockCatalog = {
 		Id     = "Red",
 		Name   = "Red Block",
 		Rarity = "Basic",
-		Type   = "Block",
-	},
-	{
-		Id     = "AdminCompanion",
-		Name   = "Admin Companion Block",
-		Rarity = "Legendary",
 		Type   = "Block",
 	},
 }
