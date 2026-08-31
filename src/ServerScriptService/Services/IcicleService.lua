@@ -11,7 +11,11 @@ local ServerStorage = game:GetService("ServerStorage")
 local SessionService    = require(script.Parent.SessionService)
 local DataService       = require(script.Parent.DataService)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
+local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+
+local _lastSwingTimes   = {} -- Cache cooldown chống spam remote: { [UserId] = os.clock() }
 
 -- =========================================================
 -- PRIVATE: Tool Creation
@@ -132,6 +136,48 @@ end
 -- =========================================================
 
 function IcicleService:Init()
+	local OnToolSwingEvent  = RemoteDefinitions.GetEvent("OnToolSwing")
+	local PlaySwingSFXEvent = RemoteDefinitions.GetEvent("PlaySwingSFX")
+
+	-- Lắng nghe tín hiệu vung kiếm từ client để broadcast 3D Spatial SFX
+	OnToolSwingEvent.OnServerEvent:Connect(function(Player)
+		if not Player or not Player:IsA("Player") then return end
+
+		local Character = Player.Character
+		if not Character or not Character.Parent then return end
+
+		-- Kiểm tra người chơi có đang trong trận đấu không
+		if not PlayerStateHelper.IsInMatch(Player) then return end
+
+		-- Chỉ cho phép phát âm thanh khi ở trạng thái Normal (không bị đóng băng hay chết)
+		if SessionService.GetState(Player) ~= "Normal" then return end
+
+		-- Kiểm tra Cooldown chống spam mạng
+		local Now = os.clock()
+		local LastSwing = _lastSwingTimes[Player.UserId] or 0
+		local Cooldown = GameConfig.Tool.IcicleCooldown or 0.5
+
+		if (Now - LastSwing) < (Cooldown - 0.05) then
+			return
+		end
+		_lastSwingTimes[Player.UserId] = Now
+
+		-- Lấy SkinId đang trang bị
+		local SkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player) or "Default"
+
+		-- Broadcast đến tất cả Client khác để phát 3D Spatial Sound
+		PlaySwingSFXEvent:FireAllClients({
+			Player       = Player,
+			Character    = Character,
+			IcicleSkinId = SkinId,
+		})
+	end)
+
+	-- Dọn dẹp cache cooldown khi player thoát game
+	Players.PlayerRemoving:Connect(function(Player)
+		_lastSwingTimes[Player.UserId] = nil
+	end)
+
 	print("[IcicleService] Đã khởi tạo.")
 end
 

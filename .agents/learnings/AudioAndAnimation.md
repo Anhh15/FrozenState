@@ -1,6 +1,6 @@
 # AudioAndAnimation
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống âm thanh và hoạt ảnh (AudioConfig, AnimationConfig, Sound Pooling, Client-Side Spatial Audio, Preload và Memory Cleanup).
-> Cập nhật lần cuối: 30-08-2026
+> Cập nhật lần cuối: 31-08-2026
 
 ---
 
@@ -47,6 +47,13 @@
   - `AudioHelper.Play2DSound`: Nhận tham số chọn group (`SFX`/`UI`)
 - **Real-time Scaling:** Khi người chơi điều chỉnh slider trong Setting, `AudioHelper.SetVolume(Group, Percent)` can thiệp trực tiếp `SoundGroup.Volume = Percent / 100`. Roblox Engine tự động nhân tỷ lệ âm lượng phần cứng ngay lập tức cho cả âm thanh đang phát dở lẫn âm thanh phát mới.
 - **File liên quan:** [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [MusicController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MusicController.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua)
+
+### 8. Cơ Chế Replicate 3D Spatial SFX Kết Hợp Local Sound Pool & Chống Echo (Hybrid Zero-Latency Audio Replication)
+- **Chi tiết:** Mô hình kết hợp phát âm thanh tối ưu độ trễ và đồng bộ không gian:
+  - **Người kích hoạt (Attacker):** Phát tức thì từ Sound Pool cục bộ trong `Hitbox` ngay tại `HitStartTime` để đạt $0\text{ms}$ độ trễ và gửi `OnToolSwing` lên Server.
+  - **Server Validation & Rate Limit:** Server xác thực người chơi đang trong trận (`IsInMatch`), trạng thái `Normal`, và kiểm tra cooldown $\text{Now} - \text{LastSwing} \ge \text{Cooldown} - 0.05\text{s}$ chống spam mạng trước khi broadcast `PlaySwingSFX`.
+  - **Client Lân cận:** `SoundController` trên các Client khác lọc `Payload.Player ~= LocalPlayer` (loại trừ người vung để chống echo/lặp âm thanh) và phát 3D Spatial Sound (`AudioHelper.PlaySpatialSound`) gắn vào Character của người vung với `RollOffMaxDistance = 60` studs trên kênh `SFXGroup`.
+- **File liên quan:** [RemoteDefinitions.lua](../../src/ReplicatedStorage/Shared/Remotes/RemoteDefinitions.lua), [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua)
 
 ---
 
@@ -101,3 +108,10 @@
   1. Với các âm thanh UI phát động, bắt buộc truyền tường minh tham số `"UI"` khi gọi `AudioHelper.Play2DSound(AudioEntry, Volume, SoundService, "UI")`.
   2. Ưu tiên sử dụng `GuiHelper.PlayGuiSound(AudioEntry, Volume)` hoặc `AudioHelper.PlayGuiSound` để vừa tự động gắn `UIGroup`, vừa tận dụng Sound Pool triệt tiêu độ trễ.
 - **File liên quan:** [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+
+### 9. Âm Thanh Vung Vũ Khí Bị Cô Lập Cục Bộ (Local-Only Swing SFX Isolation)
+- **Vấn đề:** `SwingAudios` có cấu hình `MaxDistance = 60` nhưng thực tế chỉ phát trong `LocalScript` của người cầm tool, khiến đối thủ và đồng minh xung quanh hoàn toàn không nghe thấy tiếng chém trong không gian 3D.
+- **Nguyên nhân:** Sound instance tạo bởi Client trong FilteringEnabled không replicate qua mạng sang Client khác, đồng thời thiếu kênh Server broadcast đồng bộ sự kiện vung vũ khí.
+- **Giải pháp:** Thiết lập cặp Remote `OnToolSwing` (Client $\rightarrow$ Server) và `PlaySwingSFX` (Server $\rightarrow$ All Clients). Server kiểm tra rate-limit theo cooldown vũ khí, các Client khác nhận broadcast và phát 3D Spatial Sound trên `TargetChar`, đồng thời lọc bỏ `LocalPlayer` để tránh phát trùng lặp âm thanh.
+- **File liên quan:** [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua)
+

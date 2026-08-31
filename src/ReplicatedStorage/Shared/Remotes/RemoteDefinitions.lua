@@ -28,6 +28,13 @@ local REMOTE_EVENTS = {
 	-- Client → Server: Báo tool đã hit một player (Raycast đã xử lý client-side)
 	"OnToolHit",
 
+	-- Client → Server: Báo tool vừa thực hiện vung kiếm (để broadcast 3D SFX)
+	"OnToolSwing",
+
+	-- Server → Client: Broadcast 3D SFX vung kiếm tới các client xung quanh
+	-- Payload: { Player = Player, Character = Model, IcicleSkinId = string }
+	"PlaySwingSFX",
+
 	-- Server → Client: Bật/tắt AlwaysOnTop cho highlight (FrozenState)
 	"UpdateFrozenState",
 

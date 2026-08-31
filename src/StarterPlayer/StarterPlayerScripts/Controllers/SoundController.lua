@@ -71,6 +71,7 @@ function SoundController:Init()
 
 	PlayFreezeSFXEvent = RemoteDefinitions.GetEvent("PlayFreezeSFX")
 	PlayThawSFXEvent   = RemoteDefinitions.GetEvent("PlayThawSFX")
+	local PlaySwingSFXEvent  = RemoteDefinitions.GetEvent("PlaySwingSFX")
 
 	-- 2. Lắng nghe Freeze SFX từ Server (Broadcast đến toàn bộ Client)
 	PlayFreezeSFXEvent.OnClientEvent:Connect(function(Payload)
@@ -104,6 +105,21 @@ function SoundController:Init()
 		-- Nếu chính LocalPlayer được giải cứu → Dừng pose animation
 		if not Payload or Payload.VictimPlayer == LocalPlayer or (TargetChar and TargetChar == LocalPlayer.Character) then
 			StopPoseAnimation()
+		end
+	end)
+
+	-- 4. Lắng nghe Swing SFX từ Server (Broadcast 3D Spatial Sound khi người chơi khác vung vũ khí)
+	PlaySwingSFXEvent.OnClientEvent:Connect(function(Payload)
+		if not Payload then return end
+
+		-- Bỏ qua nếu chính là LocalPlayer (vì LocalPlayer đã phát local Sound Pool với 0ms delay)
+		if Payload.Player == LocalPlayer then return end
+
+		local TargetChar = Payload.Character or (Payload.Player and Payload.Player.Character)
+		if TargetChar and TargetChar.Parent then
+			local IcicleSkinId = Payload.IcicleSkinId or "Default"
+			local SwingSoundEntry = AudioConfig.GetSwingAudios(IcicleSkinId)
+			AudioHelper.PlaySpatialSound(TargetChar, SwingSoundEntry)
 		end
 	end)
 
