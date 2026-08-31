@@ -19,29 +19,27 @@ local IcicleCatalog = {
 	{
 		Id     = "Default",
 		Name   = "Default Icicle",
-		Rarity = "Common",
+		Rarity = "Basic",
 		Type   = "Icicle",
 	},
 	{
 		Id     = "Green",
 		Name   = "Green Icicle",
-		Rarity = "Common",
+		Rarity = "Basic",
 		Type   = "Icicle",
 	},
 	{
 		Id     = "Red",
 		Name   = "Red Icicle",
-		Rarity = "Common",
+		Rarity = "Basic",
 		Type   = "Icicle",
 	},
-	-- Thêm skin Icicle mới vào đây
-	-- Ví dụ:
-	-- {
-	--     Id     = "GoldenIcicle",
-	--     Name   = "Golden Icicle",
-	--     Rarity = "Legendary",
-	--     Type   = "Icicle",
-	-- },
+	{
+		Id     = "AdminCompanion",
+		Name   = "Admin Companion Icicle",
+		Rarity = "Legendary",
+		Type   = "Icicle",
+	},
 }
 
 -- =========================================================
@@ -52,29 +50,27 @@ local BlockCatalog = {
 	{
 		Id     = "Default",
 		Name   = "Default Block",
-		Rarity = "Common",
+		Rarity = "Basic",
 		Type   = "Block",
 	},
 	{
 		Id     = "Green",
 		Name   = "Green Block",
-		Rarity = "Common",
+		Rarity = "Basic",
 		Type   = "Block",
 	},
 	{
 		Id     = "Red",
 		Name   = "Red Block",
-		Rarity = "Common",
+		Rarity = "Basic",
 		Type   = "Block",
 	},
-	-- Thêm skin Block mới vào đây
-	-- Ví dụ:
-	-- {
-	--     Id     = "ObsidianBlock",
-	--     Name   = "Obsidian Block",
-	--     Rarity = "Epic",
-	--     Type   = "Block",
-	-- },
+	{
+		Id     = "AdminCompanion",
+		Name   = "Admin Companion Block",
+		Rarity = "Legendary",
+		Type   = "Block",
+	},
 }
 
 -- =========================================================
