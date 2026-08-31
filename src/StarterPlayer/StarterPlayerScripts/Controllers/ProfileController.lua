@@ -166,12 +166,12 @@ local function PopulateStats()
 
 	-- Stats trong PlayerStats.Stats
 	local StatMappings = {
-		{ Frame = "Freezes",       Key = "TotalFreezes",       Format = tostring },
-		{ Frame = "Thaws",         Key = "TotalThaws",         Format = tostring },
-		{ Frame = "FreezingSpree", Key = "TotalFreezingSpree", Format = tostring },
-		{ Frame = "ThawingSpree",  Key = "TotalThawingSpree",  Format = tostring },
-		{ Frame = "FirstBlood",    Key = "TotalFirstBlood",    Format = tostring },
-		{ Frame = "LastStanding",  Key = "TotalLastStanding",  Format = tostring },
+		{ Frame = "Freezes",       Key = "TotalFreezes",       Format = GuiHelper.FormatNumber },
+		{ Frame = "Thaws",         Key = "TotalThaws",         Format = GuiHelper.FormatNumber },
+		{ Frame = "FreezingSpree", Key = "TotalFreezingSpree", Format = GuiHelper.FormatNumber },
+		{ Frame = "ThawingSpree",  Key = "TotalThawingSpree",  Format = GuiHelper.FormatNumber },
+		{ Frame = "FirstBlood",    Key = "TotalFirstBlood",    Format = GuiHelper.FormatNumber },
+		{ Frame = "LastStanding",  Key = "TotalLastStanding",  Format = GuiHelper.FormatNumber },
 	}
 
 	for _, Mapping in ipairs(StatMappings) do
@@ -186,7 +186,7 @@ local function PopulateStats()
 	if GameWinsFrame then
 		local WinsValueText = GameWinsFrame:FindFirstChild("ValueText")
 		if WinsValueText then
-			WinsValueText.Text = tostring(Data.TotalWins or 0)
+			WinsValueText.Text = GuiHelper.FormatNumber(Data.TotalWins or 0)
 		end
 	end
 end

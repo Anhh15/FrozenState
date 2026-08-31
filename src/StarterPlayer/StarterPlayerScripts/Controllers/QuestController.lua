@@ -138,7 +138,7 @@ local function RenderProgressBar(ProgressBarFrame, Current, Requirement)
 		if Current >= Requirement then
 			ProgressText.Text = "DONE"
 		else
-			ProgressText.Text = ("%d/%d"):format(Current, Requirement)
+			ProgressText.Text = ("%s/%s"):format(GuiHelper.FormatNumber(Current), GuiHelper.FormatNumber(Requirement))
 		end
 	end
 end
@@ -151,7 +151,7 @@ local function ShowRewardAnnouncement(RewardType, RewardAmount)
 
 	-- Set nội dung
 	if _rewardAmount then
-		_rewardAmount.Text = "+" .. tostring(RewardAmount) .. " " .. RewardType
+		_rewardAmount.Text = "+" .. GuiHelper.FormatNumber(RewardAmount) .. " " .. RewardType
 	end
 
 	-- Lấy kích thước gốc được lưu từ UI trong Studio
@@ -314,7 +314,7 @@ local function RenderQuestList(QuestList, TriggerStagger)
 		if RewardFrame then
 			local AmountLabel = RewardFrame:FindFirstChild("Amount")
 			if AmountLabel then
-				AmountLabel.Text = tostring(QuestEntry.RewardAmount)
+				AmountLabel.Text = GuiHelper.FormatNumber(QuestEntry.RewardAmount)
 			end
 		end
 

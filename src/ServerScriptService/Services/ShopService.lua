@@ -54,7 +54,7 @@ local function ProcessOneDraw(Player, Chest, RefundBasePrice)
 		local RarityEntry = RarityConfig[ItemEntry.Rarity]
 		local RefundAmount = 0
 		if RarityEntry then
-			RefundAmount = math.floor(RefundBasePrice * RarityEntry.RefundPercent)
+			RefundAmount = math.round(RefundBasePrice * RarityEntry.RefundPercent)
 		end
 		return ItemId, RefundAmount, true   -- (ItemId, Refund, WasDuplicate)
 	else

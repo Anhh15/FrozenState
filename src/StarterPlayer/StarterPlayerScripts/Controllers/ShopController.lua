@@ -380,7 +380,7 @@ local function RenderChestList(Type)
 			if BuyButton then
 				local BuyLabel = BuyButton:FindFirstChild("Text")
 				if BuyLabel then
-					BuyLabel.Text = tostring(ChestEntry.Price1 * State.Amount)
+					BuyLabel.Text = GuiHelper.FormatNumber(ChestEntry.Price1 * State.Amount)
 				end
 			end
 		end
@@ -471,17 +471,17 @@ local function RenderRobuxShop()
 			local Cached = _ProductInfoCache[Package.ProductId]
 			if Cached and Cached.PriceInRobux then
 				if AmountText then
-					AmountText.Text = tostring(Cached.PriceInRobux)
+					AmountText.Text = GuiHelper.FormatNumber(Cached.PriceInRobux)
 				end
 			else
 				if AmountText then
-					AmountText.Text = tostring(Package.RobuxPrice)
+					AmountText.Text = GuiHelper.FormatNumber(Package.RobuxPrice)
 				end
 
 				-- 2. Fetch ngầm giá theo khu vực và cập nhật in-place khi nhận dữ liệu
 				FetchDynamicProductPrice(Package.ProductId, Package.RobuxPrice, function(ActualPrice)
 					if AmountText and AmountText.Parent then
-						AmountText.Text = tostring(ActualPrice)
+						AmountText.Text = GuiHelper.FormatNumber(ActualPrice)
 					end
 				end)
 			end

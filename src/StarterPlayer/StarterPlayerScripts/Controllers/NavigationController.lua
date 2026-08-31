@@ -204,7 +204,7 @@ function NavigationController.UpdateMoneyDisplay(Amount)
 		TargetAmount = (Data and Data.Money) or 0
 	end
 
-	Label.Text = tostring(TargetAmount)
+	Label.Text = GuiHelper.FormatNumber(TargetAmount)
 end
 
 --- Khởi tạo NavigationController

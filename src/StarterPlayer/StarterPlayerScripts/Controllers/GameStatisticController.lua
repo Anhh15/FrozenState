@@ -180,8 +180,8 @@ local function FillTopPlayers(TopPlayers)
 		local Data = TopPlayers[i]
 		if Data then
 			Slot.PlayerNameText.Text = Data.Name
-			Slot.FreezesStats.ValueText.Text = tostring(Data.Freezes)
-			Slot.ThawsStats.ValueText.Text = tostring(Data.Thaws)
+			Slot.FreezesStats.ValueText.Text = GuiHelper.FormatNumber(Data.Freezes)
+			Slot.ThawsStats.ValueText.Text = GuiHelper.FormatNumber(Data.Thaws)
 
 			-- Render ảnh 2D toàn thân (AvatarThumbnail) cho Top player
 			local UserId = Data.UserId or 0
@@ -212,25 +212,33 @@ local function FillPersonalStats(Won, Stats)
 	SetPlayerThumbnail(MainAvatarThumbnail, LocalPlayer.UserId, Enum.ThumbnailType.AvatarBust)
 
 	-- Format hiển thị chi tiết: "Số lượng (x Giá trị) = Tổng nhận được"
-	FreezeVal.Text = ("%d (×%d) = %d"):format(
-		Stats.Freezes, RewardPerFreeze, Stats.Freezes * RewardPerFreeze
+	FreezeVal.Text = ("%s (×%s) = %s"):format(
+		GuiHelper.FormatNumber(Stats.Freezes),
+		GuiHelper.FormatNumber(RewardPerFreeze),
+		GuiHelper.FormatNumber(Stats.Freezes * RewardPerFreeze)
 	)
 
-	ThawVal.Text = ("%d (×%d) = %d"):format(
-		Stats.Thaws, RewardPerThaw, Stats.Thaws * RewardPerThaw
+	ThawVal.Text = ("%s (×%s) = %s"):format(
+		GuiHelper.FormatNumber(Stats.Thaws),
+		GuiHelper.FormatNumber(RewardPerThaw),
+		GuiHelper.FormatNumber(Stats.Thaws * RewardPerThaw)
 	)
 
 	-- Đối với First Blood và Last Standing hiển thị số tiền trực tiếp
-	FSpreeVal.Text = ("%d (×%d) = %d"):format(
-		Stats.FreezingSprees, RewardPerFreezingSpree, Stats.FreezingSprees * RewardPerFreezingSpree
+	FSpreeVal.Text = ("%s (×%s) = %s"):format(
+		GuiHelper.FormatNumber(Stats.FreezingSprees),
+		GuiHelper.FormatNumber(RewardPerFreezingSpree),
+		GuiHelper.FormatNumber(Stats.FreezingSprees * RewardPerFreezingSpree)
 	)
-	TSpreeVal.Text = ("%d (×%d) = %d"):format(
-		Stats.ThawingSprees, RewardPerThawingSpree, Stats.ThawingSprees * RewardPerThawingSpree
+	TSpreeVal.Text = ("%s (×%s) = %s"):format(
+		GuiHelper.FormatNumber(Stats.ThawingSprees),
+		GuiHelper.FormatNumber(RewardPerThawingSpree),
+		GuiHelper.FormatNumber(Stats.ThawingSprees * RewardPerThawingSpree)
 	)
-	FirstBloodVal.Text   = Stats.FirstBlood and tostring(RewardFirstBlood) or "0"
-	LastStandingVal.Text = Stats.LastStanding and tostring(RewardLastStanding) or "0"
+	FirstBloodVal.Text   = Stats.FirstBlood and GuiHelper.FormatNumber(RewardFirstBlood) or "0"
+	LastStandingVal.Text = Stats.LastStanding and GuiHelper.FormatNumber(RewardLastStanding) or "0"
 	
-	TotalMoneyVal.Text   = tostring(Stats.MoneyEarned)
+	TotalMoneyVal.Text   = GuiHelper.FormatNumber(Stats.MoneyEarned)
 end
 
 -- =========================================================

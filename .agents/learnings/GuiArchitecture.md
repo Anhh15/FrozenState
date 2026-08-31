@@ -1,6 +1,6 @@
 # GuiArchitecture
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về nền tảng GUI (UIScale Animation Engine, Phân tầng Cấu hình Default/Overrides, Stagger Pop, Dynamic GUI Resolver, Phân tách GuiConfig/GuiAnimConfig và Quản lý Vòng đời ScreenGui).
-> Cập nhật lần cuối: 30-08-2026
+> Cập nhật lần cuối: 01-09-2026
 
 ---
 
@@ -62,6 +62,14 @@
     2. *Attribute bỏ qua:* Kiểm tra thuộc tính `IgnoreAutoBind == true` hoặc `AutoBind == false` trên nút hoặc trên bất kỳ Frame tổ tiên nào (cho phép tắt theo từng nhánh component).
     3. *Khu vực Template:* Tự động bỏ qua mọi phần tử con nằm trong container/folder có tên `"Templates"`.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua)
+
+### 9. Công Cụ Định Dạng Số Chuẩn Hóa & Làm Tròn UI Tự Động (FormatNumber Engine)
+- **Chi tiết:** Cung cấp hàm định dạng số tập trung `GuiHelper.FormatNumber(Value, Decimals)` phục vụ hiển thị tiền tệ và chỉ số thống kê trên toàn bộ hệ thống GUI:
+  - Tự động phân tách cụm 3 chữ số bằng dấu phẩy `,` (ví dụ: $999999 \to \text{"999,999"}$, $1000000 \to \text{"1,000,000"}$).
+  - Mặc định áp dụng `math.round()` khi không truyền `Decimals` để làm tròn số nguyên an toàn, bảo vệ giao diện không bị rách hay hiển thị số lẻ xấu xí.
+  - Hỗ trợ làm tròn theo số chữ số thập phân chỉ định (`Decimals > 0`) cho các tỷ lệ hoặc thời gian.
+  - Xử lý triệt để toàn bộ edge cases: `nil` (fallback `"0"`), $0$, số âm (bảo toàn dấu `-`), số dạng chuỗi và chuỗi chữ không phải số.
+- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua)
 
 ---
 

@@ -73,7 +73,7 @@
 					<YO>0</YO>
 				</UDim2>
 				<token name="SizeConstraint">0</token>
-				<bool name="Visible">false</bool>
+				<bool name="Visible">true</bool>
 				<int name="ZIndex">1</int>
 				<bool name="AutoLocalize">true</bool>
 				<Ref name="RootLocalizationTable">null</Ref>
@@ -693,7 +693,7 @@
 								<int name="MaxVisibleGraphemes">-1</int>
 								<string name="OpenTypeFeatures"></string>
 								<bool name="RichText">false</bool>
-								<string name="Text">Freeze:</string>
+								<string name="Text">Freezes:</string>
 								<Color3 name="TextColor3">
 									<R>1</R>
 									<G>1</G>
@@ -948,7 +948,7 @@
 								<int name="MaxVisibleGraphemes">-1</int>
 								<string name="OpenTypeFeatures"></string>
 								<bool name="RichText">false</bool>
-								<string name="Text">Thaw:</string>
+								<string name="Text">Thaws:</string>
 								<Color3 name="TextColor3">
 									<R>1</R>
 									<G>1</G>
@@ -30252,7 +30252,7 @@
 					<YO>0</YO>
 				</UDim2>
 				<token name="SizeConstraint">0</token>
-				<bool name="Visible">true</bool>
+				<bool name="Visible">false</bool>
 				<int name="ZIndex">10</int>
 				<bool name="AutoLocalize">true</bool>
 				<Ref name="RootLocalizationTable">null</Ref>

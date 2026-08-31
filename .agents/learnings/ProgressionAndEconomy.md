@@ -65,6 +65,11 @@
   - *Audit Logging:* Ghi vết minh bạch mọi lệnh thực thi (Admin Name, UserId, Command, Arguments, Result) trên Server console.
 - **File liên quan:** [AdminConfig.lua](../../src/ReplicatedStorage/Shared/Config/AdminConfig.lua), [AdminService.lua](../../src/ServerScriptService/Services/AdminService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [RemoteDefinitions.lua](../../src/ReplicatedStorage/Shared/Remotes/RemoteDefinitions.lua), [PlayerDataController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua)
 
+### 10. Nguyên Tắc Toàn Vẹn Số Nguyên Tiền Tệ & Cơ Chế Làm Tròn Chuẩn (Integer Integrity & Standard Rounding Pattern)
+- **Chi tiết:** Dữ liệu tiền tệ (`Money`, `Cash`) lưu trong DataStore và xử lý trên Server **luôn luôn phải là số nguyên (Integer)** nhằm triệt tiêu hoàn toàn lỗi trôi dạt dấu chấm động (Floating-point Precision Issue) và đảm bảo tính chính xác khi so sánh điều kiện giao dịch (`Money >= Price`).
+- **Standard Rounding Engine (`math.round`):** Khi tính toán các tỷ lệ phần trăm kinh tế (ví dụ: hoàn tiền khi mua trùng skin theo công thức $\text{RefundBasePrice} \times \text{RarityEntry.RefundPercent}$), Server sử dụng `math.round()` thay vì `math.floor()`. Điều này thực thi quy tắc làm tròn chuẩn ($\ge 0.5$ làm tròn lên, $< 0.5$ làm tròn xuống), vừa đảm bảo quyền lợi công bằng cho người chơi vừa bảo toàn dữ liệu số nguyên tuyệt đối.
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [RarityConfig.lua](../../src/ReplicatedStorage/Shared/Config/RarityConfig.lua), [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp

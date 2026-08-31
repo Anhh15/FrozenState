@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
 -- GUI REFERENCES (lazy-init trong Init)
@@ -202,8 +203,8 @@ local function OnPlayerStateUpdated(Data)
 
 	local FreezesText = Card:FindFirstChild("FreezesText")
 	local ThawsText   = Card:FindFirstChild("ThawsText")
-	if FreezesText then FreezesText.Text = tostring(Freezes) end
-	if ThawsText   then ThawsText.Text   = tostring(Thaws) end
+	if FreezesText then FreezesText.Text = GuiHelper.FormatNumber(Freezes) end
+	if ThawsText   then ThawsText.Text   = GuiHelper.FormatNumber(Thaws) end
 
 	-- Cập nhật cache và tính lại LayoutOrder để tự động sắp xếp
 	local Entry = _playerStats[Data.PlayerId]

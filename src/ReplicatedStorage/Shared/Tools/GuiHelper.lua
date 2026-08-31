@@ -131,6 +131,47 @@ function GuiHelper.GetMoneyLabel(Timeout)
 	return MoneyText
 end
 
+--- Định dạng số với dấu phẩy ngăn cách hàng nghìn (ví dụ: 1000000 -> "1,000,000")
+--- Hỗ trợ làm tròn tự động (mặc định số nguyên, hoặc số chữ số thập phân chỉ định)
+--- @param Value number | string | any
+--- @param Decimals number? -- Số chữ số thập phân mong muốn (mặc định nil = làm tròn số nguyên)
+--- @return string
+function GuiHelper.FormatNumber(Value, Decimals)
+	if Value == nil then
+		return "0"
+	end
+
+	local Num = tonumber(Value)
+	if not Num then
+		return tostring(Value)
+	end
+
+	local Formatted
+	if Decimals and Decimals > 0 then
+		local Multiplier = 10 ^ Decimals
+		Num = math.round(Num * Multiplier) / Multiplier
+		Formatted = string.format("%." .. tostring(Decimals) .. "f", Num)
+	else
+		Num = math.round(Num)
+		Formatted = string.format("%.0f", Num)
+	end
+
+	local Sign, IntegerPart, DecimalPart = Formatted:match("^(%-?)(%d+)(%.?%d*)$")
+	if not IntegerPart then
+		return Formatted
+	end
+
+	local K
+	while true do
+		IntegerPart, K = IntegerPart:gsub("^(%d+)(%d%d%d)", "%1,%2")
+		if K == 0 then
+			break
+		end
+	end
+
+	return (Sign or "") .. IntegerPart .. (DecimalPart or "")
+end
+
 --- Phát âm thanh GUI cục bộ
 --- @param AudioEntryOrId table | number | string
 --- @param VolumeOverride number?
