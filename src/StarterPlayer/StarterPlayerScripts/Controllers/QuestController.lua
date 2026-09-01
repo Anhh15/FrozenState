@@ -566,8 +566,6 @@ function QuestController:Init()
 		_resetButton.Visible = false
 
 		_resetButton.MouseButton1Click:Connect(function()
-			PlayGuiSound(AudioConfig.Gui.Default.ButtonClick)
-
 			local ResetsUsed = _questData and _questData.ResetsUsed or 0
 			local MaxResets = _questData and _questData.MaxResets or 1
 			if ResetsUsed >= MaxResets then

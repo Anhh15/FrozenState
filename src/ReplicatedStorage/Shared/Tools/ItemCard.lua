@@ -2,6 +2,7 @@
 -- Module Functional Helper dùng chung (Shared) để render, quản lý trạng thái và dọn dẹp thẻ vật phẩm (ItemTemplate)
 -- Sử dụng ItemRegistry, RarityConfig, GuiConfig và GuiHelper làm nền tảng
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemRegistry    = require(ReplicatedStorage.Shared.Config.ItemRegistry)
@@ -116,7 +117,7 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 		ItemImage.Image = ItemRegistry.GetItemIcon(FullEntry.Id, FullEntry.Type)
 	end
 
-	-- 9. Gắn sự kiện Click & tương tác
+	-- 9. Gắn sự kiện Click
 	local IsClickable = (Options.OnClick ~= nil)
 	local ShouldEnableHover = (Options.EnableHover ~= nil) and Options.EnableHover or IsClickable
 	local ShouldEnableSound = (Options.EnableSound ~= nil) and Options.EnableSound or IsClickable
@@ -127,17 +128,9 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 		end)
 	end
 
-	-- 10. Gắn Hover Animation qua UIScale (nếu được bật)
-	if ShouldEnableHover then
-		local ScaleConfig = GuiHelper.GetButtonScaleConfig("ItemTemplate")
-		GuiHelper.BindButtonScale(Frame, nil, ScaleConfig)
-	end
-
-	-- 11. Gắn âm thanh Hover & Click (nếu được bật, tự động áp dụng Audio Throttling)
-	if ShouldEnableSound then
-		local ClickSound = Options.ClickSoundId or AudioConfig.GetGuiAudio("ButtonClick")
-		local HoverSound = Options.HoverSoundId or AudioConfig.GetGuiAudio("MouseEnter")
-		GuiHelper.BindButtonSound(Frame, ClickSound, HoverSound, true)
+	-- 10. Gắn Tag tương tác để CollectionService tự động quản lý 100% Tag-Based
+	if ShouldEnableHover or ShouldEnableSound or IsClickable then
+		CollectionService:AddTag(Frame, GuiConfig.Tags.GuiButtonCard)
 	end
 
 	if Parent then
@@ -201,6 +194,7 @@ end
 --- @param Frame Instance? — Thẻ ItemCard cần hủy
 function ItemCard.Destroy(Frame)
 	if not Frame or not Frame:IsA("Instance") then return end
+	CollectionService:RemoveTag(Frame, GuiConfig.Tags.GuiButtonCard)
 	Frame:Destroy()
 end
 

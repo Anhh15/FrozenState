@@ -454,7 +454,6 @@ function GameLoadingController:Init()
 		Elements.SkipButton.Visible = true
 
 		if Elements.SkipButton:IsA("GuiButton") then
-			GuiHelper.BindButtonScale(Elements.SkipButton)
 			Elements.SkipButton.MouseButton1Click:Connect(function()
 				SkipLoading(Elements)
 			end)
