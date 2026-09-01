@@ -75,14 +75,6 @@ local function ResolveMoneyLabel()
 	return MoneyLabel
 end
 
---- Gắn hiệu ứng âm thanh SFX và animation scale cho một item nút điều hướng
---- @param ItemRoot Instance GuiObject đại diện cho toàn bộ nút (bao gồm Background + Icon + Text)
---- Tự động quét và gắn SFX/Animation cho toàn bộ các nút trong NavigationButtons
-local function BindAllNavigationEffects()
-	if not NavGui then return end
-	GuiHelper.AutoBindButtons(NavGui, { MenuName = "Navigation" })
-end
-
 --- Kết nối sự kiện click của các nút chức năng điều hướng
 local function BindNavigationActions()
 	-- 1. Nút Shop
@@ -220,9 +212,6 @@ function NavigationController:Init()
 	ButtonsContainer = GuiHelper.GetNavButtonsContainer()
 	ExtraContainer   = NavGui:FindFirstChild(GuiConfig.NavContainers.Extra, true)
 	StatsContainer   = NavGui:FindFirstChild(GuiConfig.NavContainers.Stats, true)
-
-	-- Gắn hiệu ứng animation và SFX cho tất cả các nút
-	BindAllNavigationEffects()
 
 	-- Kết nối sự kiện mở menu cho các nút
 	BindNavigationActions()

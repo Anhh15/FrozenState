@@ -56,15 +56,6 @@ function SliderHelper.Create(SlideBar, Options)
 	Self.Knob           = SlideBar:FindFirstChild(GuiConfig.SettingElements.Knob)
 	Self.SlideButton    = SlideBar:FindFirstChild(GuiConfig.SettingElements.SlideButton) or SlideBar:FindFirstChildWhichIsA("GuiButton")
 
-	-- Đảm bảo loại trừ AutoBind toàn cục trên SlideBar và SlideButton để không bị đè SFX/Scale
-	GuiHelper.SetIgnoreAutoBind(Self.SlideBar, true)
-	if Self.SlideButton then
-		GuiHelper.SetIgnoreAutoBind(Self.SlideButton, true)
-	end
-	if Self.Knob then
-		GuiHelper.SetIgnoreAutoBind(Self.Knob, true)
-	end
-
 	-- Cấu hình hoạt ảnh
 	Self.AnimConfig = GuiAnimConfig.GetSliderAnimConfig()
 

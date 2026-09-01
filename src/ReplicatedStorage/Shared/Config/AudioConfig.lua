@@ -14,6 +14,7 @@ local AudioConfig = {
 			ButtonClick      = { Id = 7249903719,       Volume = 0.8 },
 			MouseEnter       = { Id = 137872392480008,  Volume = 0.35 }, -- Âm lượng hover dịu nhẹ
 			CloseButtonClick = { Id = 103307955424380,  Volume = 0.8 },
+			HoverThrottle    = 0.045, -- Khoảng cách tối thiểu giữa 2 lần phát âm thanh hover (giây)
 		},
 		-- Ghi đè âm thanh theo từng Menu cụ thể nếu cần
 		Overrides = {

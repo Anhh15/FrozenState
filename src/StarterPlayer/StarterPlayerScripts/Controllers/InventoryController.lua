@@ -405,11 +405,6 @@ function InventoryController:Init()
 		})
 	end
 
-	-- Tự động gắn Scale & SFX cho toàn bộ nút trong Inventory
-	if Inventory then
-		GuiHelper.AutoBindButtons(Inventory, { MenuName = "Inventory" })
-	end
-
 	-- Nút đóng Inventory
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()

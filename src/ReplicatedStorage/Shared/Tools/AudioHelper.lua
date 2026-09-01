@@ -159,6 +159,9 @@ function AudioHelper.Play2DSound(AudioEntryOrId, VolumeOverride, Parent, SoundGr
 	return Sound
 end
 
+-- Bảng lưu mốc thời gian phát âm thanh gần nhất để throttle (chống spam)
+local _LastSoundPlayTimes = {}
+
 --- Phát âm thanh GUI bằng cơ chế Sound Pool tái sử dụng để triệt tiêu độ trễ và không tạo rác bộ nhớ
 --- @param AudioEntryOrId table | number | string
 --- @param VolumeOverride number?
@@ -185,6 +188,28 @@ function AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 	Sound.TimePosition = 0
 	Sound:Play()
 	return Sound
+end
+
+--- Phát âm thanh GUI với cơ chế giới hạn tần suất (Throttle) để chống spam âm thanh khi lướt chuột nhanh
+--- @param AudioEntryOrId table | number | string
+--- @param ThrottleInterval number? Khoảng cách tối thiểu giữa 2 lần phát (giây)
+--- @param VolumeOverride number?
+--- @return Sound?
+function AudioHelper.PlayThrottledGuiSound(AudioEntryOrId, ThrottleInterval, VolumeOverride)
+	if not AudioEntryOrId then return nil end
+
+	local SoundKey = (type(AudioEntryOrId) == "table" and AudioEntryOrId.Id) or tostring(AudioEntryOrId)
+	local DefaultThrottle = (AudioConfig.Gui and AudioConfig.Gui.Default and AudioConfig.Gui.Default.HoverThrottle) or 0.045
+	local MinInterval = ThrottleInterval or DefaultThrottle
+	local Now = os.clock()
+
+	local LastTime = _LastSoundPlayTimes[SoundKey] or 0
+	if Now - LastTime < MinInterval then
+		return nil
+	end
+
+	_LastSoundPlayTimes[SoundKey] = Now
+	return AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 end
 
 -- =========================================================

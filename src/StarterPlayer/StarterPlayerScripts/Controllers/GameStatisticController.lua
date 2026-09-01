@@ -251,9 +251,6 @@ function GameStatisticController:Init()
 	StatGui.ResetOnSpawn = false
 	HideAll()
 
-	-- Tự động gắn Scale & SFX cho toàn bộ nút trong GameStatistic
-	GuiHelper.AutoBindButtons(StatGui, { MenuName = "GameStatistic" })
-
 	-- Lắng nghe dữ liệu cuối trận từ server
 	local ShowGameOverEvent = RemoteDefinitions.GetEvent("ShowGameOver")
 	ShowGameOverEvent.OnClientEvent:Connect(function(Data)

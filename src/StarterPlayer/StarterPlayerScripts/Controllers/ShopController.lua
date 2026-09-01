@@ -647,15 +647,6 @@ function ShopController:Init()
 		})
 	end
 
-	-- ─── AUTO BIND BUTTONS (Scale & SFX cho toàn bộ nút trong Shop) ─────────
-	if TemplatesFolder then
-		GuiHelper.SetIgnoreAutoBind(TemplatesFolder, true)
-	end
-
-	if Shop then
-		GuiHelper.AutoBindButtons(Shop, { MenuName = "Shop" })
-	end
-
 	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ──────────────────────────
 	if ShopClose then
 		ShopClose.MouseButton1Click:Connect(function()

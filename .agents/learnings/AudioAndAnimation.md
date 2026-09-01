@@ -1,6 +1,6 @@
 # AudioAndAnimation
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống âm thanh và hoạt ảnh (AudioConfig, AnimationConfig, Sound Pooling, Client-Side Spatial Audio, Preload và Memory Cleanup).
-> Cập nhật lần cuối: 31-08-2026
+> Cập nhật lần cuối: 02-09-2026
 
 ---
 
@@ -18,11 +18,11 @@
 - **Client Local Playback:** Client tự phát Spatial Sound cục bộ trên máy của mình gắn vào Part/Character tương ứng, triệt tiêu hoàn toàn độ trễ âm thanh.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua)
 
-### 3. UI Sound Pooling, Polymorphic Input & Tự Động Hóa Qua AutoBindButtons
+### 3. UI Sound Pooling, Polymorphic Input & Audio Throttling (Chống Spam Âm Thanh)
 - **Chi tiết:** Nạp trước toàn bộ audio và animation vào bộ nhớ Client bằng `ContentProvider:PreloadAsync` khi vào game.
 - **Sound Pool tĩnh & Nạp đa hình:** `AudioHelper.PlayGuiSound`, `Play2DSound`, `PlaySpatialSound` hỗ trợ nạp đa hình (nhận cả `AudioEntry` table lẫn `number` SoundId), tự động cập nhật `Sound.Volume` chính xác theo từng entry trong pool tĩnh `_guiSoundPool`.
-- **Tự động hóa GUI Button:** `GuiHelper.AutoBindButtons(Container, Options)` tự động quét toàn bộ `GuiButton`, gán đồng bộ Scale Animation và SFX (Click, CloseButtonClick, MouseEnter), lắng nghe `DescendantAdded` kèm cache `_BoundButtons[Button] = true` để tự động hỗ trợ toàn bộ phần tử sinh ra động trong thời gian thực.
-- **File liên quan:** [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+- **Audio Throttling Engine:** Cung cấp `AudioHelper.PlayThrottledGuiSound(AudioEntry, ThrottleInterval)` kiểm tra $t_{\text{now}} - t_{\text{last}} \ge 0.045\text{s}$ (`AudioConfig.Gui.Default.HoverThrottle`), ngăn chặn hoàn toàn hiện tượng vỡ/méo tiếng và spam âm thanh khi lướt chuột nhanh qua danh sách phần tử dày đặc.
+- **File liên quan:** [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
 ### 4. Tự Dọn Dẹp Sound Instance Động bằng Sound.Ended:Once()
 - **Chi tiết:** Với các âm thanh phát động 3D/2D một lần, `AudioHelper.PlaySpatialSound()` và `Play2DSound()` tạo instance và kết nối `Sound.Ended:Once(function() Sound:Destroy() end)` kết hợp timeout fallback phòng thủ (`task.delay(Length + 1)`). Pattern này đảm bảo Sound tự dọn dẹp ngay khi phát xong, loại bỏ hoàn toàn nguy cơ rò rỉ bộ nhớ âm thanh.

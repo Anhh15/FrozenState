@@ -2,6 +2,7 @@
 -- Công cụ hỗ trợ truy xuất và quản lý giao diện (GUI) an toàn cho Client
 -- Sử dụng GuiConfig (tên phần tử) và GuiAnimConfig (thông số animation) làm Single Source of Truth
 
+local CollectionService = game:GetService("CollectionService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
@@ -16,7 +17,8 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local _ActiveTweens = {}
-local _BoundButtons = {}
+local _TagConnections = {}
+local _TagInteractionsInitialized = false
 
 local GuiHelper = {}
 
@@ -179,136 +181,157 @@ function GuiHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 	return AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
 end
 
---- Đánh dấu một GuiObject / GuiButton đã được xử lý bind để AutoBindButtons bỏ qua
---- @param GuiObject GuiObject
-function GuiHelper.MarkBound(GuiObject)
-	if not GuiObject then return end
-	_BoundButtons[GuiObject] = true
-end
-
---- Gán cờ bỏ qua AutoBindButtons cho một Instance hoặc Container (kể cả toàn bộ con cháu)
---- @param Target Instance
---- @param Ignored boolean? -- Mặc định là true
-function GuiHelper.SetIgnoreAutoBind(Target, Ignored)
-	if not Target then return end
-	local Value = (Ignored ~= false)
-	local AttrName = (GuiConfig.Attributes and GuiConfig.Attributes.IgnoreAutoBind) or "IgnoreAutoBind"
-	Target:SetAttribute(AttrName, Value)
-end
-
---- Kiểm tra xem một GuiButton hoặc tổ tiên của nó có bị loại trừ khỏi AutoBindButtons hay không
---- @param Button Instance
---- @param Container Instance?
---- @return boolean
-local function ShouldIgnoreAutoBind(Button, Container)
-	if not Button then return true end
-	if _BoundButtons[Button] then return true end
-
-	local IgnoreAttr = (GuiConfig.Attributes and GuiConfig.Attributes.IgnoreAutoBind) or "IgnoreAutoBind"
-	local AutoBindAttr = (GuiConfig.Attributes and GuiConfig.Attributes.AutoBind) or "AutoBind"
-
-	if Button:GetAttribute(IgnoreAttr) == true or Button:GetAttribute(AutoBindAttr) == false then
-		return true
-	end
-
-	local Curr = Button.Parent
-	while Curr and Curr ~= game and (not Container or Curr ~= Container.Parent) do
-		if Curr.Name == "Templates" then
-			return true
-		end
-		if Curr:GetAttribute(IgnoreAttr) == true or Curr:GetAttribute(AutoBindAttr) == false then
-			return true
-		end
-		if Container and Curr == Container then
-			break
-		end
-		Curr = Curr.Parent
-	end
-
-	return false
-end
-
---- Gắn hiệu ứng âm thanh (Hover/Click) cho một GuiButton
---- @param Button GuiButton
+--- Gắn hiệu ứng âm thanh (Hover/Click) cho một GuiButton hoặc GuiObject
+--- @param Button GuiObject
 --- @param ClickEntryOrId (table | number | string)?
 --- @param HoverEntryOrId (table | number | string)?
-function GuiHelper.BindButtonSound(Button, ClickEntryOrId, HoverEntryOrId)
-	if not Button or not Button:IsA("GuiButton") then return end
-	_BoundButtons[Button] = true
+--- @param UseThrottle boolean? -- Mặc định true để chống spam âm thanh hover
+--- @return table -- { RBXScriptConnection, ... }
+function GuiHelper.BindButtonSound(Button, ClickEntryOrId, HoverEntryOrId, UseThrottle)
+	if not Button or not Button:IsA("GuiObject") then return {} end
 
 	local ClickAudio = ClickEntryOrId or AudioConfig.GetGuiAudio("ButtonClick")
 	local HoverAudio = HoverEntryOrId or AudioConfig.GetGuiAudio("MouseEnter")
+	local ShouldThrottle = (UseThrottle ~= false)
+	local Connections = {}
 
 	if HoverAudio then
-		Button.MouseEnter:Connect(function()
-			GuiHelper.PlayGuiSound(HoverAudio)
+		local HoverConn = Button.MouseEnter:Connect(function()
+			if ShouldThrottle then
+				AudioHelper.PlayThrottledGuiSound(HoverAudio)
+			else
+				GuiHelper.PlayGuiSound(HoverAudio)
+			end
 		end)
+		table.insert(Connections, HoverConn)
 	end
 
 	if ClickAudio then
-		Button.MouseButton1Click:Connect(function()
-			GuiHelper.PlayGuiSound(ClickAudio)
-		end)
+		if Button:IsA("GuiButton") then
+			local ClickConn = Button.MouseButton1Click:Connect(function()
+				GuiHelper.PlayGuiSound(ClickAudio)
+			end)
+			table.insert(Connections, ClickConn)
+		else
+			local ChildBtn = Button:FindFirstChildWhichIsA("GuiButton")
+			if ChildBtn then
+				local ClickConn = ChildBtn.MouseButton1Click:Connect(function()
+					GuiHelper.PlayGuiSound(ClickAudio)
+				end)
+				table.insert(Connections, ClickConn)
+			else
+				local InputConn = Button.InputBegan:Connect(function(Input)
+					if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+						GuiHelper.PlayGuiSound(ClickAudio)
+					end
+				end)
+				table.insert(Connections, InputConn)
+			end
+		end
 	end
+
+	return Connections
 end
 
---- Tự động quét và gắn Scale Animation cùng SFX (Hover & Click) cho toàn bộ GuiButton trong Container
---- Lắng nghe DescendantAdded để tự động hỗ trợ các phần tử sinh ra động
---- @param Container Instance
---- @param Options table? -- { MenuName: string?, EnableScale: boolean?, EnableSound: boolean?, CustomClickEntry: any, CustomHoverEntry: any }
-function GuiHelper.AutoBindButtons(Container, Options)
-	if not Container then return end
+--- Gắn Animation và SFX cho Button/GuiObject theo Tag Preset định sẵn
+--- @param Button GuiObject
+--- @param PresetName string -- "GuiButtonPrimary" | "GuiButtonSecondary" | "GuiButtonTab" | "GuiButtonCard"
+--- @return table -- Danh sách các connection để dọn dẹp khi cần
+function GuiHelper.BindButtonByPreset(Button, PresetName)
+	if not Button or not Button:IsA("GuiObject") then return {} end
 
-	local Opts = Options or {}
-	local MenuName = Opts.MenuName
-	local EnableScale = (Opts.EnableScale ~= false)
-	local EnableSound = (Opts.EnableSound ~= false)
+	local Connections = {}
 
-	local function BindSingleButton(Button)
-		if not Button or not Button:IsA("GuiButton") then return end
-		if ShouldIgnoreAutoBind(Button, Container) then return end
-		_BoundButtons[Button] = true
+	if PresetName == GuiConfig.Tags.GuiButtonPrimary then
+		local ScaleConns = GuiHelper.BindButtonScale(Button)
+		local SoundConns = GuiHelper.BindButtonSound(Button, nil, nil, true)
+		for _, Conn in ipairs(ScaleConns) do table.insert(Connections, Conn) end
+		for _, Conn in ipairs(SoundConns) do table.insert(Connections, Conn) end
 
-		-- 1. Gắn Scale Animation nếu được bật
-		if EnableScale then
-			GuiHelper.BindButtonScale(Button)
+	elseif PresetName == GuiConfig.Tags.GuiButtonSecondary then
+		local SecondaryScaleConfig = {
+			Duration     = 0.12,
+			HoverScale   = 1.05,
+			PressScale   = 0.95,
+			DefaultScale = 1.0,
+			EasingStyle  = Enum.EasingStyle.Quad,
+			EasingDir    = Enum.EasingDirection.Out,
+		}
+		local ScaleConns = GuiHelper.BindButtonScale(Button, nil, SecondaryScaleConfig)
+		local SoundConns = GuiHelper.BindButtonSound(Button, nil, nil, true)
+		for _, Conn in ipairs(ScaleConns) do table.insert(Connections, Conn) end
+		for _, Conn in ipairs(SoundConns) do table.insert(Connections, Conn) end
+
+	elseif PresetName == GuiConfig.Tags.GuiButtonTab then
+		-- Tab Button: Không scale để bảo toàn layout thanh tab bar, chỉ gắn sound
+		local SoundConns = GuiHelper.BindButtonSound(Button, nil, nil, true)
+		for _, Conn in ipairs(SoundConns) do table.insert(Connections, Conn) end
+
+	elseif PresetName == GuiConfig.Tags.GuiButtonCard then
+		local CardScaleConfig = GuiAnimConfig.GetButtonScaleConfig("ItemTemplate")
+		local ScaleConns = GuiHelper.BindButtonScale(Button, nil, CardScaleConfig)
+		local SoundConns = GuiHelper.BindButtonSound(Button, nil, nil, true)
+		for _, Conn in ipairs(ScaleConns) do table.insert(Connections, Conn) end
+		for _, Conn in ipairs(SoundConns) do table.insert(Connections, Conn) end
+	end
+
+	return Connections
+end
+
+--- Khởi tạo hệ thống lắng nghe CollectionService để tự động gắn tương tác cho các nút có Tag
+function GuiHelper.InitTagInteractions()
+	if _TagInteractionsInitialized then return end
+	_TagInteractionsInitialized = true
+
+	local function OnInstanceAdded(Instance, TagName)
+		if not Instance or not Instance:IsA("GuiObject") then return end
+
+		-- Đảm bảo instance nằm trong PlayerGui của người chơi
+		if not Instance:IsDescendantOf(PlayerGui) then
+			local AncestorConn
+			AncestorConn = Instance.AncestryChanged:Connect(function(_, Parent)
+				if Parent and Instance:IsDescendantOf(PlayerGui) then
+					AncestorConn:Disconnect()
+					if _TagConnections[Instance] == nil and CollectionService:HasTag(Instance, TagName) then
+						local Conns = GuiHelper.BindButtonByPreset(Instance, TagName)
+						_TagConnections[Instance] = Conns
+					end
+				end
+			end)
+			return
 		end
 
-		-- 2. Gắn SFX nếu được bật
-		if EnableSound then
-			local ButtonNameLower = string.lower(Button.Name)
-			local ClickEntry = Opts.CustomClickEntry
+		if _TagConnections[Instance] then return end
+		local Conns = GuiHelper.BindButtonByPreset(Instance, TagName)
+		_TagConnections[Instance] = Conns
+	end
 
-			if not ClickEntry then
-				if string.find(ButtonNameLower, "close") then
-					ClickEntry = AudioConfig.GetGuiAudio("CloseButtonClick", MenuName)
-				else
-					ClickEntry = AudioConfig.GetGuiAudio("ButtonClick", MenuName)
+	local function OnInstanceRemoved(Instance)
+		local Conns = _TagConnections[Instance]
+		if Conns then
+			for _, Conn in ipairs(Conns) do
+				if typeof(Conn) == "RBXScriptConnection" and Conn.Connected then
+					Conn:Disconnect()
 				end
 			end
-
-			local HoverEntry = Opts.CustomHoverEntry or AudioConfig.GetGuiAudio("MouseEnter", MenuName)
-			GuiHelper.BindButtonSound(Button, ClickEntry, HoverEntry)
+			_TagConnections[Instance] = nil
 		end
 	end
 
-	-- Quét các nút hiện có
-	if Container:IsA("GuiButton") then
-		BindSingleButton(Container)
-	end
-
-	for _, Descendant in ipairs(Container:GetDescendants()) do
-		if Descendant:IsA("GuiButton") then
-			BindSingleButton(Descendant)
+	for _, TagName in pairs(GuiConfig.Tags) do
+		-- Xử lý các Instance đã có sẵn
+		for _, Instance in ipairs(CollectionService:GetTagged(TagName)) do
+			task.spawn(OnInstanceAdded, Instance, TagName)
 		end
-	end
 
-	-- Lắng nghe các nút sinh ra động
-	Container.DescendantAdded:Connect(function(Descendant)
-		if Descendant:IsA("GuiButton") then
-			BindSingleButton(Descendant)
-		end
-	end)
+		-- Lắng nghe Instance mới được gán Tag
+		CollectionService:GetInstanceAddedSignal(TagName):Connect(function(Instance)
+			OnInstanceAdded(Instance, TagName)
+		end)
+
+		-- Lắng nghe Instance bị gỡ Tag hoặc bị Destroy
+		CollectionService:GetInstanceRemovedSignal(TagName):Connect(OnInstanceRemoved)
+	end
 end
 
 
@@ -558,15 +581,15 @@ function GuiHelper.PopClose(GuiObject, CustomConfig, OnComplete)
 end
 
 --- Gắn hiệu ứng phóng to/thu nhỏ (Hover & Press) cho toàn bộ Button hoặc phần tử chỉ định
---- @param Button GuiButton Nút nhận sự kiện chuột/bấm
+--- @param Button GuiObject Nút nhận sự kiện chuột/bấm
 --- @param TargetElement GuiObject? Phần tử sẽ được scale (mặc định là chính Button)
 --- @param CustomScaleConfig table? { Duration: number?, HoverScale: number?, PressScale: number?, DefaultScale: number? }
+--- @return table -- { RBXScriptConnection, ... }
 function GuiHelper.BindButtonScale(Button, TargetElement, CustomScaleConfig)
-	if not Button or not Button:IsA("GuiButton") then return end
-	_BoundButtons[Button] = true
+	if not Button or not Button:IsA("GuiObject") then return {} end
 
 	local Target = TargetElement or Button
-	if not Target or not Target:IsA("GuiObject") then return end
+	if not Target or not Target:IsA("GuiObject") then return {} end
 
 	local ButtonName   = (Target.Name ~= "" and Target.Name) or Button.Name
 	local ButtonConfig = GuiAnimConfig.GetButtonScaleConfig(ButtonName)
@@ -579,36 +602,62 @@ function GuiHelper.BindButtonScale(Button, TargetElement, CustomScaleConfig)
 	local PressScale   = (CustomScaleConfig and CustomScaleConfig.PressScale) or ButtonConfig.PressScale
 
 	local IsHovered = false
+	local Connections = {}
 
-	Button.MouseEnter:Connect(function()
+	local EnterConn = Button.MouseEnter:Connect(function()
 		IsHovered = true
 		GuiHelper.TweenScale(Target, HoverScale, Duration, Style, Direction)
 	end)
+	table.insert(Connections, EnterConn)
 
-	Button.MouseLeave:Connect(function()
+	local LeaveConn = Button.MouseLeave:Connect(function()
 		IsHovered = false
 		GuiHelper.TweenScale(Target, DefaultScale, Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	end)
+	table.insert(Connections, LeaveConn)
 
-	Button.MouseButton1Down:Connect(function()
-		GuiHelper.TweenScale(Target, PressScale, Duration * 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	end)
+	if Button:IsA("GuiButton") then
+		local DownConn = Button.MouseButton1Down:Connect(function()
+			GuiHelper.TweenScale(Target, PressScale, Duration * 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		end)
+		table.insert(Connections, DownConn)
 
-	Button.MouseButton1Up:Connect(function()
-		local NextScale = IsHovered and HoverScale or DefaultScale
-		GuiHelper.TweenScale(Target, NextScale, Duration, Style, Direction)
-	end)
+		local UpConn = Button.MouseButton1Up:Connect(function()
+			local NextScale = IsHovered and HoverScale or DefaultScale
+			GuiHelper.TweenScale(Target, NextScale, Duration, Style, Direction)
+		end)
+		table.insert(Connections, UpConn)
+	else
+		local DownConn = Button.InputBegan:Connect(function(Input)
+			if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+				GuiHelper.TweenScale(Target, PressScale, Duration * 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			end
+		end)
+		table.insert(Connections, DownConn)
+
+		local UpConn = Button.InputEnded:Connect(function(Input)
+			if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+				local NextScale = IsHovered and HoverScale or DefaultScale
+				GuiHelper.TweenScale(Target, NextScale, Duration, Style, Direction)
+			end
+		end)
+		table.insert(Connections, UpConn)
+	end
 
 	-- Hỗ trợ cho Gamepad / Keyboard selection
-	Button.SelectionGained:Connect(function()
+	local SelGainConn = Button.SelectionGained:Connect(function()
 		IsHovered = true
 		GuiHelper.TweenScale(Target, HoverScale, Duration, Style, Direction)
 	end)
+	table.insert(Connections, SelGainConn)
 
-	Button.SelectionLost:Connect(function()
+	local SelLostConn = Button.SelectionLost:Connect(function()
 		IsHovered = false
 		GuiHelper.TweenScale(Target, DefaultScale, Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	end)
+	table.insert(Connections, SelLostConn)
+
+	return Connections
 end
 
 --- Tìm tên menu/container từ cây phân cấp tổ tiên (Ancestor) của GuiObject
@@ -781,5 +830,8 @@ function GuiHelper.TruncateText(Text, MaxLength)
 
 	return Text
 end
+
+-- Tự động khởi tạo hệ thống lắng nghe CollectionService cho GUI
+GuiHelper.InitTagInteractions()
 
 return GuiHelper

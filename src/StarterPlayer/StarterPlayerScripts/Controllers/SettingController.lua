@@ -188,10 +188,6 @@ local function SetupSliderRow(RowFrame, SoundGroupName, SettingKey)
 	local SlideBar = RowFrame:FindFirstChild(GuiConfig.SettingElements.SlideBar, true)
 	if not SlideBar then return nil end
 
-	-- Bỏ qua AutoBind trên RowFrame và SlideBar
-	GuiHelper.SetIgnoreAutoBind(RowFrame, true)
-	GuiHelper.SetIgnoreAutoBind(SlideBar, true)
-
 	local Slider = SliderHelper.Create(SlideBar, {
 		InitialValue   = 100,
 		StepCount      = 10,
@@ -296,17 +292,6 @@ function SettingController:Init()
 	OffButton   = SettingFrame:FindFirstChild(GuiConfig.SettingElements.OffButton, true)
 	CloseButton = SettingFrame:FindFirstChild(GuiConfig.SettingElements.CloseButton, true)
 
-	-- Tắt AutoBind trên cụm nút Gameplay
-	if ConfigFrame then
-		GuiHelper.SetIgnoreAutoBind(ConfigFrame, true)
-	end
-	if OnButton then
-		GuiHelper.SetIgnoreAutoBind(OnButton, true)
-	end
-	if OffButton then
-		GuiHelper.SetIgnoreAutoBind(OffButton, true)
-	end
-
 	-- Gán trạng thái hiển thị ban đầu của AFK
 	_IsAfk = PlayerStateHelper.IsAfk(LocalPlayer)
 	SyncVisualState(_IsAfk, false)
@@ -354,9 +339,6 @@ function SettingController:Init()
 			end
 		end)
 	end
-
-	-- Tự động gắn AutoBind SFX cho các nút còn lại trong SettingFrame (ngoại trừ các nút/slider đã Ignore)
-	GuiHelper.AutoBindButtons(SettingFrame, { MenuName = "Setting" })
 
 	-- Đăng ký tab Setting với MenuController
 	local MenuCtrl = GetMenuController()

@@ -612,11 +612,6 @@ function QuestController:Init()
 		_rewardAnnouncement.Visible = false
 	end
 
-	-- Gắn SFX và Animation Scale tự động
-	if _questGui then
-		GuiHelper.AutoBindButtons(_questGui, { MenuName = "Quest" })
-	end
-
 	-- Kết nối sự kiện nút bấm
 	if _closeButton then
 		_closeButton.MouseButton1Click:Connect(function()

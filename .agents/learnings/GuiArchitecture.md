@@ -1,6 +1,6 @@
 # GuiArchitecture
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về nền tảng GUI (UIScale Animation Engine, Phân tầng Cấu hình Default/Overrides, Stagger Pop, Dynamic GUI Resolver, Phân tách GuiConfig/GuiAnimConfig và Quản lý Vòng đời ScreenGui).
-> Cập nhật lần cuối: 01-09-2026
+> Cập nhật lần cuối: 02-09-2026
 
 ---
 
@@ -54,13 +54,12 @@
 - **Chi tiết:** Thay vì tween trực tiếp trên Frame cha (`RoundLoadingScreen`, `ItemReward`) làm phá vỡ cấu trúc container toàn màn hình, chuyển 100% các animation nền (fade in/out, flash trắng chuyển pha) sang phần tử con `Background` (`Frame`/`ImageLabel`). Frame cha giữ `BackgroundTransparency = 1` và thuần túy quản lý `Visible` và vòng đời hiển thị.
 - **File liên quan:** [RoundLoadingScreenController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/RoundLoadingScreenController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
-### 8. Kiến trúc Phân quyền Tương tác Nút Bấm & Bộ lọc Tự động (Selective AutoBind & Component Authority Pattern)
-- **Chi tiết:** Phân tách ranh giới rõ ràng giữa **Auto-Binding toàn cục** (`GuiHelper.AutoBindButtons`) và **Component-Level Binding** (`ItemCard`, custom UI elements):
-  - `GuiHelper.AutoBindButtons`: Quét và tự động gán Scale Animation + SFX cho toàn bộ `GuiButton` trong container qua `DescendantAdded`.
-  - **Cơ chế Loại trừ 3 Tầng (Selective Filter):**
-    1. *Đã xử lý:* Kiểm tra `_BoundButtons[Button]` (được đánh dấu bởi `GuiHelper.MarkBound` hoặc các hàm bind trực tiếp).
-    2. *Attribute bỏ qua:* Kiểm tra thuộc tính `IgnoreAutoBind == true` hoặc `AutoBind == false` trên nút hoặc trên bất kỳ Frame tổ tiên nào (cho phép tắt theo từng nhánh component).
-    3. *Khu vực Template:* Tự động bỏ qua mọi phần tử con nằm trong container/folder có tên `"Templates"`.
+### 8. Kiến trúc Tương tác Nút Bấm Hướng Thẻ Tag (Tag-Based Component Engine via CollectionService)
+- **Chi tiết:** Thay thế hoàn toàn cơ chế quét đệ quy `AutoBindButtons` bằng mô hình **Tag Whitelist** thông qua `CollectionService`:
+  - **Tập trung hóa TagName:** Toàn bộ Tag điều khiển tương tác được khai báo trong `GuiConfig.Tags` (`GuiButtonPrimary`, `GuiButtonSecondary`, `GuiButtonTab`, `GuiButtonCard`).
+  - **Tự động gắn Preset:** `GuiHelper.InitTagInteractions()` lắng nghe `GetInstanceAddedSignal` và `GetInstanceRemovedSignal` cho từng Tag, tự động gán Preset hoạt ảnh scale (`BindButtonScaleByPreset`) và SFX âm thanh (`BindButtonSoundByPreset`) tương ứng mà Controller không cần viết thêm bất kỳ dòng code nào.
+  - **Hỗ trợ đa hình (`GuiObject` Polymorphism):** Hỗ trợ gắn tương tác trên cả `GuiButton`, `ImageButton`, `TextButton` lẫn `Frame` template (như `ItemCard`) thông qua cơ chế fallback `InputBegan`/`InputEnded` và kiểm tra `FindFirstChildWhichIsA("GuiButton")`.
+  - **Tự động dọn dẹp vòng đời:** Quản lý bảng kết nối `_TagConnections[Instance]`, tự động disconnect sự kiện khi instance bị gỡ tag hoặc destroy.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua)
 
 ### 9. Công Cụ Định Dạng Số Chuẩn Hóa & Làm Tròn UI Tự Động (FormatNumber Engine)
@@ -103,13 +102,14 @@
 - **Giải pháp:** Di chuyển toàn bộ logic resolve và getters vào `GuiAnimConfig.lua`. `GuiHelper` chỉ giữ proxy 1 dòng (`return GuiAnimConfig.GetXxx(...)`). Khi Default trong `GuiAnimConfig` thay đổi, Helper tự động phản ánh — không còn chỗ để diverge.
 - **File liên quan:** [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
-### 5. Ghi đè Tương tác & Lãng phí Hiệu năng do DescendantAdded trong AutoBindButtons
-- **Vấn đề:** Khi clone các thẻ hiển thị tĩnh (như `ItemTemplate` trong `Shop` Chest Preview hay `Profile` Equipped Items với `EnableHover = false`), các thẻ này vẫn bị phóng to và phát SFX khi di chuột qua.
-- **Nguyên nhân:** `AutoBindButtons` gắn trên Frame cha (`Shop`, `Profile`) lắng nghe `DescendantAdded`. Khi `ItemCard.Create` clone template và gán `.Parent`, `DescendantAdded` bắt được `GuiButton` con và tự động gắn đè `BindButtonScale` và `BindButtonSound`, vô hiệu hóa cấu hình `EnableHover = false`.
+### 5. Cạm Bẫy Quét Tự Động Blacklist (AutoBindButtons) & Giải Pháp Whitelist Tag-Based Kèm Audio Throttling
+- **Vấn đề:** Cơ chế quét đệ quy `DescendantAdded` (Implicit Blacklist) áp đặt animation scale và SFX lên toàn bộ nút con cháu (kể cả slider thumb, checkbox, hitbox tàng hình), gây ô nhiễm âm thanh khi lướt chuột nhanh qua danh sách và buộc lập trình viên phải viết mã phòng thủ cồng kềnh (`_BoundButtons`, `SetIgnoreAutoBind`).
+- **Nguyên nhân:** Mô hình Blacklist giả định mọi nút đều cần tương tác giống nhau, vi phạm nguyên tắc kiểm soát phân quyền (Separation of Concerns).
 - **Giải pháp:**
-  1. `ItemCard` gọi `GuiHelper.MarkBound(Frame)` cho toàn bộ các nút con và gán `SetIgnoreAutoBind(Frame, true)` trước khi set `.Parent`.
-  2. `AutoBindButtons` tích hợp hàm kiểm tra `ShouldIgnoreAutoBind` để tôn trọng quyền cấu hình riêng của từng component và bỏ qua toàn bộ folder `Templates`.
-- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
+  1. Khai tử hoàn toàn `AutoBindButtons`, chuyển 100% sang mô hình **Whitelist Tag-Based** qua `CollectionService` (`GuiConfig.Tags`).
+  2. Bổ sung **Audio Throttling** (`AudioHelper.PlayThrottledGuiSound`) với khoảng cách tối thiểu $0.045\text{s}$ (`AudioConfig.Gui.Default.HoverThrottle`), loại bỏ 100% hiện tượng méo/vỡ tiếng khi quẹt chuột qua grid `ItemCard`.
+  3. Mở rộng `BindButtonScale` và `BindButtonSound` hỗ trợ đa hình `GuiObject` (fallback `InputBegan`/`InputEnded`).
+- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua)
 
 ### 6. Bẫy Toạ Độ Tĩnh Position của Phần Tử Con Khi Bị Quản Lý Bởi UIListLayout
 - **Vấn đề:** Khi tạo component thanh trượt (Stepped Slider) với các vạch chia `Tick1` $\rightarrow$ `Tick11`, nếu script đọc `TargetTick.Position` để gán toạ độ cho núm `Knob`, núm bị khóa cứng tại góc trái ($0\%$) và không thể di chuyển khi tương tác.

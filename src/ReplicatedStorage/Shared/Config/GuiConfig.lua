@@ -225,11 +225,13 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
-	-- TÊN CÁC ATTRIBUTES ĐIỀU KHIỂN GUI
+	-- TÊN CÁC COLLECTIONSERVICE TAGS ĐIỀU KHIỂN GUI INTERACTION
 	-- =========================================================
-	Attributes = {
-		IgnoreAutoBind = "IgnoreAutoBind",
-		AutoBind       = "AutoBind",
+	Tags = {
+		GuiButtonPrimary   = "GuiButtonPrimary",
+		GuiButtonSecondary = "GuiButtonSecondary",
+		GuiButtonTab       = "GuiButtonTab",
+		GuiButtonCard      = "GuiButtonCard",
 	},
 
 	-- =========================================================

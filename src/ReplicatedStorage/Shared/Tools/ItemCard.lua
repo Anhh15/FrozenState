@@ -121,18 +121,6 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 	local ShouldEnableHover = (Options.EnableHover ~= nil) and Options.EnableHover or IsClickable
 	local ShouldEnableSound = (Options.EnableSound ~= nil) and Options.EnableSound or IsClickable
 
-	-- Đánh dấu quyền quản lý tương tác cho ItemCard để AutoBindButtons không bind đè
-	GuiHelper.MarkBound(Frame)
-	for _, Descendant in ipairs(Frame:GetDescendants()) do
-		if Descendant:IsA("GuiButton") then
-			GuiHelper.MarkBound(Descendant)
-		end
-	end
-
-	if not ShouldEnableHover and not ShouldEnableSound and not IsClickable then
-		GuiHelper.SetIgnoreAutoBind(Frame, true)
-	end
-
 	if IsClickable then
 		ItemCard.BindClick(Frame, function()
 			Options.OnClick(FullEntry)
@@ -145,11 +133,11 @@ function ItemCard.Create(Parent, ItemId, ItemType, Options)
 		GuiHelper.BindButtonScale(Frame, nil, ScaleConfig)
 	end
 
-	-- 11. Gắn âm thanh Hover & Click (nếu được bật)
+	-- 11. Gắn âm thanh Hover & Click (nếu được bật, tự động áp dụng Audio Throttling)
 	if ShouldEnableSound then
 		local ClickSound = Options.ClickSoundId or AudioConfig.GetGuiAudio("ButtonClick")
 		local HoverSound = Options.HoverSoundId or AudioConfig.GetGuiAudio("MouseEnter")
-		GuiHelper.BindButtonSound(Frame, ClickSound, HoverSound)
+		GuiHelper.BindButtonSound(Frame, ClickSound, HoverSound, true)
 	end
 
 	if Parent then
