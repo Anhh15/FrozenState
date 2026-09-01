@@ -27,6 +27,7 @@ local FORMAT_DAILY_TIME  = "Time remain: %02d:%02d:%02d"
 -- GUI references — được gán trong Init()
 local _questGui          = nil  -- StarterGui/Menu/Quest (Frame)
 local _questList         = nil  -- MainFrame/QuestList (ScrollingFrame)
+local _resetButton       = nil  -- MainFrame/QuestList/ResetButton (ImageButton / TextButton)
 local _notificationText  = nil  -- MainFrame/NotificationText (TextLabel)
 local _tabDaily          = nil  -- TabContainer/DailyTab (ImageButton)
 local _tabMilestone      = nil  -- TabContainer/MilestoneTab (ImageButton)
@@ -110,12 +111,13 @@ local function UpdateTabHighlight(ActiveTab)
 	end
 end
 
---- Dọn sạch tất cả clone trong QuestList
+--- Dọn sạch tất cả clone trong QuestList (bảo toàn ResetButton và layout)
 local function ClearQuestList()
 	StopStaggerAnimation()
 	if not _questList then return end
+	local ResetBtnName = GuiConfig.QuestElements and GuiConfig.QuestElements.ResetButton or "ResetButton"
 	for _, Child in ipairs(_questList:GetChildren()) do
-		if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") then
+		if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") and not Child:IsA("UIGridLayout") and Child.Name ~= ResetBtnName and Child ~= _resetButton then
 			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 			Child:Destroy()
 		end
@@ -263,7 +265,12 @@ end
 --- @param QuestList table
 --- @param TriggerStagger boolean?
 local function RenderQuestList(QuestList, TriggerStagger)
-	if not _templates or not _questList then return end
+	if not _templates or not _questList then
+		warn(("[QuestController] Không thể render QuestList: _templates=%s, _questList=%s"):format(
+			tostring(_templates), tostring(_questList)
+		))
+		return
+	end
 
 	local Template = _templates:FindFirstChild("QuestTemplate")
 	if not Template then
@@ -399,9 +406,10 @@ local function RenderQuestList(QuestList, TriggerStagger)
 		end
 	end
 
-	-- Xóa các Frame không thuộc tab hiện tại
+	-- Xóa các Frame không thuộc tab hiện tại (bảo vệ ResetButton)
+	local ResetBtnName = GuiConfig.QuestElements and GuiConfig.QuestElements.ResetButton or "ResetButton"
 	for _, Child in ipairs(_questList:GetChildren()) do
-		if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") then
+		if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") and not Child:IsA("UIGridLayout") and Child.Name ~= ResetBtnName and Child ~= _resetButton then
 			if not ValidQuestIds[Child.Name] then
 				GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Child))
 				Child:Destroy()
@@ -413,6 +421,14 @@ local function RenderQuestList(QuestList, TriggerStagger)
 	if TriggerStagger then
 		_staggerThread = GuiHelper.StaggerPopOpen(RenderedFrames)
 	end
+end
+
+--- Cập nhật trạng thái hiển thị của ResetButton (Chỉ hiện khi ở Tab Daily và sở hữu GamePass UpgradeDailyQuests)
+local function UpdateResetButtonVisibility()
+	if not _resetButton then return end
+	local OwnsPass = (_questData and _questData.OwnsQuestPass == true)
+	local IsDailyTab = (_currentTab == "Daily")
+	_resetButton.Visible = (IsDailyTab and OwnsPass)
 end
 
 --- Refresh dữ liệu từ server rồi render tab hiện tại (gọi 1 lần khi mở hoặc khi đổi tab)
@@ -429,6 +445,7 @@ RefreshQuestUI = function(TriggerStagger)
 	local QuestList = (_currentTab == "Daily") and _questData.Daily or _questData.Milestone
 	RenderQuestList(QuestList, TriggerStagger)
 	UpdateNotificationDisplay()
+	UpdateResetButtonVisibility()
 end
 
 -- =========================================================
@@ -450,6 +467,7 @@ local function SwitchTab(TabName)
 		local QuestList = (TabName == "Daily") and _questData.Daily or _questData.Milestone
 		RenderQuestList(QuestList, true)
 		UpdateNotificationDisplay()
+		UpdateResetButtonVisibility()
 	else
 		RefreshQuestUI(true)
 	end
@@ -483,20 +501,39 @@ end
 -- =========================================================
 
 function QuestController:Init()
-	local Menu = PlayerGui:WaitForChild("Menu")
+	local Menu = PlayerGui:WaitForChild("Menu", GuiConfig.Timeouts.ShortWait)
 	_menuFrame  = Menu
-	_questGui   = Menu:WaitForChild("Quest")
+	_questGui   = Menu and (Menu:FindFirstChild("Quest", true) or Menu:WaitForChild("Quest", GuiConfig.Timeouts.ShortWait))
+
+	if not _questGui then
+		warn("[QuestController] Không tìm thấy Quest frame trong Menu GUI.")
+		return
+	end
 
 	local MenuGui = Menu.Parent
 	if MenuGui and MenuGui:IsA("ScreenGui") then
 		MenuGui.ResetOnSpawn = false
 	end
 
-	-- Templates folder
-	_templates = _questGui:FindFirstChild("Templates") or _questGui:WaitForChild("Templates", GuiConfig.Timeouts.ShortWait)
+	-- ── 1. ĐĂNG KÝ TAB SỚM VỚI MENU CONTROLLER (ĐẢM BẢO LUÔN MỞ ĐƯỢC) ──
+	local MenuCtrl = GetMenuController()
+	if MenuCtrl then
+		MenuCtrl.RegisterTab("Quest", {
+			Open  = OpenQuest,
+			Close = CloseQuest,
+			Frame = _questGui,
+		})
+	end
 
-	-- QuestList ScrollingFrame
-	local QuestListContainer = _questGui:FindFirstChild("QuestList")
+	-- ── 2. TÌM KIẾM TEMPLATES VÀ QUESTLIST (TÌM KIẾM ĐỆ QUY AN TOÀN) ──
+	_templates = _questGui:FindFirstChild("Templates", true)
+		or _questGui:WaitForChild("Templates", GuiConfig.Timeouts.ShortWait)
+
+	if not _templates then
+		warn("[QuestController] Cảnh báo: Không tìm thấy thư mục 'Templates' trong Quest GUI.")
+	end
+
+	local QuestListContainer = _questGui:FindFirstChild("QuestList", true)
 		or _questGui:WaitForChild("QuestList", GuiConfig.Timeouts.ShortWait)
 
 	if QuestListContainer then
@@ -506,10 +543,9 @@ function QuestController:Init()
 	end
 
 	if not _questList then
-		local MainFrame = _questGui:FindFirstChild("MainFrame")
-			or _questGui:WaitForChild("MainFrame", GuiConfig.Timeouts.ShortWait)
+		local MainFrame = _questGui:FindFirstChild("MainFrame", true)
 		if MainFrame then
-			_questList = MainFrame:FindFirstChild("QuestList") or MainFrame:FindFirstChildOfClass("ScrollingFrame")
+			_questList = MainFrame:FindFirstChild("QuestList", true) or MainFrame:FindFirstChildOfClass("ScrollingFrame")
 		end
 	end
 
@@ -517,34 +553,63 @@ function QuestController:Init()
 		_questList = _questGui:FindFirstChildWhichIsA("ScrollingFrame", true)
 	end
 
-	-- NotificationText
-	_notificationText = _questGui:FindFirstChild("NotificationText", true)
-
-	-- TabContainer
-	local TabContainer = _questGui:FindFirstChild("TabContainer", true) or _questGui:WaitForChild("TabContainer")
-	_tabDaily          = TabContainer and TabContainer:FindFirstChild("DailyTab")
-	_tabMilestone      = TabContainer and TabContainer:FindFirstChild("MilestoneTab")
-
-	-- CloseButton
-	_closeButton = _questGui:FindFirstChild("CloseButton", true) or _questGui:WaitForChild("CloseButton")
-
-	-- RewardAnnouncement
-	_rewardAnnouncement = _questGui:FindFirstChild("RewardAnnouncement", true) or _questGui:WaitForChild("RewardAnnouncement")
-	if _rewardAnnouncement then
-		_rewardIcon         = _rewardAnnouncement:FindFirstChild("Icon")
-		_rewardAmount       = _rewardAnnouncement:FindFirstChild("AmountText")
-		_rewardOriginalSize = _rewardAnnouncement.Size
-		_rewardAnnouncement.Visible = false
+	if not _questList then
+		warn("[QuestController] Cảnh báo: Không tìm thấy ScrollingFrame 'QuestList' trong Quest GUI.")
 	end
 
-	-- Đăng ký tab với MenuController
-	local MenuCtrl = GetMenuController()
-	if MenuCtrl then
-		MenuCtrl.RegisterTab("Quest", {
-			Open  = OpenQuest,
-			Close = CloseQuest,
-			Frame = _questGui,
-		})
+	-- ── 3. RESET BUTTON (CHỈ HIỆN KHI CÓ GAMEPASS VÀ Ở TAB DAILY) ────
+	local ResetBtnName = GuiConfig.QuestElements and GuiConfig.QuestElements.ResetButton or "ResetButton"
+	_resetButton = (_questList and _questList:FindFirstChild(ResetBtnName, true))
+		or (_questGui and _questGui:FindFirstChild(ResetBtnName, true))
+
+	if _resetButton then
+		_resetButton.Visible = false
+
+		_resetButton.MouseButton1Click:Connect(function()
+			PlayGuiSound(AudioConfig.Gui.Default.ButtonClick)
+
+			local ResetsUsed = _questData and _questData.ResetsUsed or 0
+			local MaxResets = _questData and _questData.MaxResets or 1
+			if ResetsUsed >= MaxResets then
+				warn(("[QuestController] Đã sử dụng hết lượt làm mới daily quest trong ngày (%d/%d)."):format(ResetsUsed, MaxResets))
+				return
+			end
+
+			local RequestResetFn = RemoteDefinitions.GetFunction("RequestResetDailyQuests")
+			local Result = RequestResetFn:InvokeServer()
+			if Result and Result.Success and Result.Data then
+				PlayGuiSound(AudioConfig.Shop.ChestBuy)
+				_questData = Result.Data
+				if _currentTab == "Daily" then
+					ClearQuestList()
+					RenderQuestList(_questData.Daily, true)
+					UpdateNotificationDisplay()
+					UpdateResetButtonVisibility()
+				end
+			else
+				warn(("[QuestController] Không thể làm mới Daily Quests: %s"):format(tostring(Result and Result.Reason)))
+			end
+		end)
+	end
+
+	-- ── 4. NOTIFICATION & TABS & BUTTONS (TIMEOUT AN TOÀN) ───────────
+	_notificationText = _questGui:FindFirstChild("NotificationText", true)
+
+	local TabContainer = _questGui:FindFirstChild("TabContainer", true)
+		or _questGui:WaitForChild("TabContainer", GuiConfig.Timeouts.ShortWait)
+	_tabDaily     = TabContainer and TabContainer:FindFirstChild("DailyTab", true)
+	_tabMilestone = TabContainer and TabContainer:FindFirstChild("MilestoneTab", true)
+
+	_closeButton = _questGui:FindFirstChild("CloseButton", true)
+		or _questGui:WaitForChild("CloseButton", GuiConfig.Timeouts.ShortWait)
+
+	_rewardAnnouncement = _questGui:FindFirstChild("RewardAnnouncement", true)
+		or _questGui:WaitForChild("RewardAnnouncement", GuiConfig.Timeouts.ShortWait)
+	if _rewardAnnouncement then
+		_rewardIcon         = _rewardAnnouncement:FindFirstChild("Icon", true)
+		_rewardAmount       = _rewardAnnouncement:FindFirstChild("AmountText", true)
+		_rewardOriginalSize = _rewardAnnouncement.Size
+		_rewardAnnouncement.Visible = false
 	end
 
 	-- Gắn SFX và Animation Scale tự động

@@ -81,6 +81,12 @@
   - *Vòng đời nạp dữ liệu*: Đọc `Settings` từ `PlayerDataController.GetData()` lúc vào game và tự động làm mới vị trí núm trượt trong `OpenSetting()`.
 - **File liên quan:** [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [SliderHelper.lua](../../src/ReplicatedStorage/Shared/Tools/SliderHelper.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua)
 
+### 11. Điều Phối Nút Hành Động Theo Ngữ Cảnh Quyền Sở Hữu & Tab (Contextual Action Button Visibility Pattern)
+- **Chi tiết:** Quản lý các nút hành động đặc quyền (như `ResetButton` làm mới Daily Quest) nằm bên trong container danh sách:
+  - *Bộ lọc hiển thị đa chiều (Contextual Visibility)*: Nút chỉ `Visible = true` khi thỏa mãn đồng thời: (1) Đang ở tab phù hợp (`_currentTab == "Daily"`), và (2) Người chơi sở hữu GamePass (`OwnsQuestPass == true`).
+  - *Tự động ẩn an toàn*: Khi chuyển tab (sang `Milestone`) hoặc khi dữ liệu xác nhận chưa sở hữu GamePass, nút lập tức ẩn hoàn toàn để tránh gây nhầm lẫn về UX.
+- **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -141,3 +147,16 @@
 - **Nguyên nhân:** `AutoBindButtons` duyệt toàn bộ cây con của `SettingFrame` và tự động gán SFX cho tất cả `GuiButton`.
 - **Giải pháp:** Sử dụng `GuiHelper.SetIgnoreAutoBind` gắn cờ `IgnoreAutoBind = true` trên container `Config` và các nút con trước khi gọi `AutoBindButtons` cho `SettingFrame`.
 - **File liên quan:** [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
+
+### 10. Lỗi Xóa Nhầm Nút Điều Khiển Tĩnh Trong Danh Sách Khi Tái Sử Dụng Container (Dynamic List Child Pruning Hazard)
+- **Vấn đề:** Khi hàm re-render hoặc dọn dẹp (`ClearQuestList` / `RenderQuestList`) quét toàn bộ `ScrollingFrame:GetChildren()` để hủy các card cũ, các nút điều khiển tĩnh nằm chung container (như `ResetButton`) bị `Child:Destroy()` nhầm, dẫn đến mất nút hoặc gây crash `nil indexing` ở lần tương tác sau.
+- **Nguyên nhân:** Logic dọn dẹp chỉ loại trừ `UIListLayout`/`UIPadding` mà coi mọi Frame/Button khác đều là card động được sinh ra từ template.
+- **Giải pháp:** Thiết lập bộ lọc ngoại lệ đa tầng trong hàm dọn dẹp: kiểm tra `Child ~= _controlButton and Child.Name ~= StaticElementName and not Child:IsA("UIGridLayout")` trước khi hủy đối tượng.
+- **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 11. Lỗi Treo Luồng Khởi Tạo Client Controller Do WaitForChild Không Timeout Trước Khi Đăng Ký Tab (Early Tab Registration & Bounded Yield Pattern)
+- **Vấn đề:** Khi controller menu gọi `WaitForChild` không có timeout cho các phần tử con lồng sâu (`TabContainer`, `CloseButton`, `RewardAnnouncement`), nếu một phần tử chưa nhân bản hoặc bị đổi tên, luồng khởi tạo sẽ bị treo vĩnh viễn (Infinite Yield). Dẫn đến lệnh `MenuController.RegisterTab` ở cuối hàm không bao giờ được gọi, làm tê liệt toàn bộ tab menu đó.
+- **Giải pháp:**
+  1. *Early Tab Registration*: Đưa lệnh `MenuController.RegisterTab` lên ngay đầu hàm `Init()`.
+  2. *Bounded Yield*: Sử dụng tìm kiếm đệ quy `FindFirstChild("Name", true)` kết hợp `WaitForChild("Name", GuiConfig.Timeouts.ShortWait)` có giới hạn thời gian an toàn.
+- **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [MenuController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)

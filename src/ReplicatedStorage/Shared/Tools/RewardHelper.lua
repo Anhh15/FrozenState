@@ -1,9 +1,7 @@
--- RewardHelper.lua
--- Module tiện ích dùng chung (Shared) cho Server & Client để tính toán phần thưởng và Spree
--- Sử dụng EconomyConfig làm Single Source of Truth
-
+local RunService        = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local EconomyConfig     = require(ReplicatedStorage.Shared.Config.EconomyConfig)
+local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 
 local RewardHelper = {}
 
@@ -85,20 +83,36 @@ end
 -- SERVER REWARD & SYNC HELPER
 -- =========================================================
 
---- Trao tiền và đồng bộ về client an toàn từ Server
+--- Trao tiền và đồng bộ về client an toàn từ Server (Tự động nhân đôi nếu sở hữu GamePass DoubleMatchMoney)
 --- @param Player Player
 --- @param Amount number
 --- @param DataService table -- DataService instance
 --- @param UpdateMoneyEvent RemoteEvent?
---- @return number? -- New money
-function RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent)
-	if not Player or not Amount or Amount <= 0 or not DataService then return nil end
+--- @param Multiplier number? -- Hệ số nhân tùy chọn (nếu nil, tự động kiểm tra GamePass)
+--- @return number?, number -- (NewMoney, FinalAmount)
+function RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent, Multiplier)
+	if not Player or not Amount or Amount <= 0 or not DataService then return nil, 0 end
 
-	local NewMoney = DataService.AddMoney(Player, Amount)
+	local ActualMultiplier = Multiplier or 1
+	if not Multiplier and RunService:IsServer() then
+		local ServerScriptService = game:GetService("ServerScriptService")
+		local Services = ServerScriptService:FindFirstChild("Services")
+		local ShopServiceMod = Services and Services:FindFirstChild("ShopService")
+		if ShopServiceMod then
+			local ShopService = require(ShopServiceMod)
+			if ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "DoubleMatchMoney") then
+				local PassConfig = ProductConfig.GetGamePassByKey("DoubleMatchMoney")
+				ActualMultiplier = (PassConfig and PassConfig.Multiplier) or 2
+			end
+		end
+	end
+
+	local FinalAmount = math.round(Amount * ActualMultiplier)
+	local NewMoney = DataService.AddMoney(Player, FinalAmount)
 	if UpdateMoneyEvent and NewMoney then
 		UpdateMoneyEvent:FireClient(Player, NewMoney)
 	end
-	return NewMoney
+	return NewMoney, FinalAmount
 end
 
 return RewardHelper

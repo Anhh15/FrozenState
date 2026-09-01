@@ -59,6 +59,7 @@ local ChestList       = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.Ches
 local ChestScroll     = ChestList and ChestList:FindFirstChildOfClass("ScrollingFrame")
 local RobuxShopList   = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.RobuxShopList, true)
 local CurrencySection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.CurrencySection, true)
+local GamePassSection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.GamePassSection, true)
 
 -- Template nằm trong Menu/Shop/Templates (không phải ReplicatedStorage)
 local TemplatesFolder       = Shop and Shop:FindFirstChild("Templates")
@@ -77,7 +78,7 @@ local _ListConnections  = {}        -- Connections của ChestList cards (dọn 
 local _RobuxConnections = {}        -- Connections của Robux card buttons
 local _PreviewStates    = {}        -- [Frame] = { Amount: number } — trạng thái per-card
 local _LazyRenderQueue  = {}        -- { Frame, ChestEntry } — cards chờ render viewport
-local _ProductInfoCache = {}        -- [ProductId] = ProductInfo dictionary (Cache giá động theo khu vực)
+local _ProductInfoCache = {}        -- [ProductId / CacheKey] = ProductInfo dictionary (Cache giá động theo khu vực)
 local _ScrollConn       = nil       -- Connection theo dõi ChestScroll.CanvasPosition
 local _StaggerThread    = nil       -- Thread animation stagger danh sách rương
 
@@ -122,6 +123,39 @@ local function FetchDynamicProductPrice(ProductId, FallbackPrice, Callback)
 			Callback(Result.PriceInRobux)
 		else
 			-- Fallback về giá config nếu lỗi mạng hoặc timeout
+			Callback(FallbackPrice)
+		end
+	end)
+end
+
+--- Lấy thông tin GamePass và giá Robux động theo khu vực người chơi (có memory cache)
+--- @param PassId number
+--- @param FallbackPrice number
+--- @param Callback function(Price: number)
+local function FetchDynamicGamePassPrice(PassId, FallbackPrice, Callback)
+	if not PassId or PassId <= 0 then
+		Callback(FallbackPrice)
+		return
+	end
+
+	-- 1. Đọc từ cache nếu đã fetch trước đó
+	local CacheKey = "GP_" .. tostring(PassId)
+	local Cached = _ProductInfoCache[CacheKey]
+	if Cached and Cached.PriceInRobux then
+		Callback(Cached.PriceInRobux)
+		return
+	end
+
+	-- 2. Fetch ngầm từ MarketplaceService (Regional Price cho GamePass)
+	task.spawn(function()
+		local Success, Result = pcall(function()
+			return MarketplaceService:GetProductInfo(PassId, Enum.InfoType.GamePass)
+		end)
+
+		if Success and Result and Result.PriceInRobux then
+			_ProductInfoCache[CacheKey] = Result
+			Callback(Result.PriceInRobux)
+		else
 			Callback(FallbackPrice)
 		end
 	end)
@@ -435,7 +469,7 @@ local function RenderChestList(Type)
 	task.defer(CheckLazyQueue)
 end
 
---- Render danh sách sản phẩm tiền tệ trong RobuxShopList (CurrencySection)
+--- Render danh sách sản phẩm trong RobuxShopList (GamePassSection + CurrencySection)
 local function RenderRobuxShop()
 	ClearChestList()
 
@@ -446,56 +480,111 @@ local function RenderRobuxShop()
 		RobuxShopList.Visible = true
 	end
 
+	DisconnectAll(_RobuxConnections)
+
+	-- 1. ─── GAMEPASS SECTION ─────────────────────────────────────
+	if not GamePassSection then
+		GamePassSection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.GamePassSection, true)
+	end
+
+	if GamePassSection then
+		for PassKey, PassConfig in pairs(ProductConfig.GamePasses) do
+			local PassFrame = GamePassSection:FindFirstChild(PassKey)
+			if PassFrame then
+				local AmountText = PassFrame:FindFirstChild(GuiConfig.ShopElements.AmountText, true)
+				local GiftButton = PassFrame:FindFirstChild(GuiConfig.ShopElements.GiftButton, true)
+				local BuyButton  = PassFrame:FindFirstChild(GuiConfig.ShopElements.BuyButton, true)
+				local BuyFrame   = PassFrame:FindFirstChild(GuiConfig.ShopElements.BuyFrame, true)
+
+				-- Không đổi NameText để bảo toàn 100% thiết kế Studio
+
+				-- Điền giá tức thì từ cache hoặc fallback từ config (0ms latency)
+				local CacheKey = "GP_" .. tostring(PassConfig.PassId)
+				local Cached = _ProductInfoCache[CacheKey]
+				if Cached and Cached.PriceInRobux then
+					if AmountText then
+						AmountText.Text = GuiHelper.FormatNumber(Cached.PriceInRobux)
+					end
+				else
+					if AmountText then
+						AmountText.Text = GuiHelper.FormatNumber(PassConfig.RobuxPrice)
+					end
+
+					-- Fetch ngầm giá theo khu vực và cập nhật in-place khi nhận dữ liệu
+					FetchDynamicGamePassPrice(PassConfig.PassId, PassConfig.RobuxPrice, function(ActualPrice)
+						if AmountText and AmountText.Parent then
+							AmountText.Text = GuiHelper.FormatNumber(ActualPrice)
+						end
+					end)
+				end
+
+				if GiftButton then
+					GiftButton.Visible = false
+				end
+
+				local TargetClickable = BuyButton or (BuyFrame and BuyFrame:IsA("GuiButton") and BuyFrame)
+				if TargetClickable then
+					local Conn = TargetClickable.MouseButton1Click:Connect(function()
+						PlayGuiSound(AudioConfig.Gui.Default.ButtonClick)
+						if PassConfig.PassId and PassConfig.PassId > 0 then
+							MarketplaceService:PromptGamePassPurchase(LocalPlayer, PassConfig.PassId)
+						else
+							warn(("[ShopController] PassId cho '%s' chưa được cấu hình (PassId = 0)."):format(PassKey))
+						end
+					end)
+					table.insert(_RobuxConnections, Conn)
+				end
+			end
+		end
+	end
+
+	-- 2. ─── CURRENCY SECTION ─────────────────────────────────────
 	if not CurrencySection then
 		CurrencySection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.CurrencySection, true)
 	end
 
-	if not CurrencySection then
-		warn("[ShopController] Không tìm thấy CurrencySection bên trong RobuxShopList.")
-		return
-	end
+	if CurrencySection then
+		for PackageKey, Package in pairs(ProductConfig.CurrencyPackages) do
+			local PackageFrame = CurrencySection:FindFirstChild(PackageKey)
+			if PackageFrame then
+				local AmountText = PackageFrame:FindFirstChild(GuiConfig.ShopElements.AmountText, true)
+				local GiftButton = PackageFrame:FindFirstChild(GuiConfig.ShopElements.GiftButton, true)
+				local BuyButton  = PackageFrame:FindFirstChild(GuiConfig.ShopElements.BuyButton, true)
+				local BuyFrame   = PackageFrame:FindFirstChild(GuiConfig.ShopElements.BuyFrame, true)
 
-	for PackageKey, Package in pairs(ProductConfig.CurrencyPackages) do
-		local PackageFrame = CurrencySection:FindFirstChild(PackageKey)
-		if PackageFrame then
-			local NameText   = PackageFrame:FindFirstChild(GuiConfig.ShopElements.NameText, true)
-			local AmountText = PackageFrame:FindFirstChild(GuiConfig.ShopElements.AmountText, true)
-			local GiftButton = PackageFrame:FindFirstChild(GuiConfig.ShopElements.GiftButton, true)
-			local BuyButton  = PackageFrame:FindFirstChild(GuiConfig.ShopElements.BuyButton, true)
+				-- Không đổi NameText theo code nữa để giữ nguyên thiết kế Studio
 
-			if NameText then
-				NameText.Text = Package.DisplayName
-			end
-
-			-- 1. Điền giá tức thì từ cache hoặc fallback từ config (0ms latency)
-			local Cached = _ProductInfoCache[Package.ProductId]
-			if Cached and Cached.PriceInRobux then
-				if AmountText then
-					AmountText.Text = GuiHelper.FormatNumber(Cached.PriceInRobux)
-				end
-			else
-				if AmountText then
-					AmountText.Text = GuiHelper.FormatNumber(Package.RobuxPrice)
-				end
-
-				-- 2. Fetch ngầm giá theo khu vực và cập nhật in-place khi nhận dữ liệu
-				FetchDynamicProductPrice(Package.ProductId, Package.RobuxPrice, function(ActualPrice)
-					if AmountText and AmountText.Parent then
-						AmountText.Text = GuiHelper.FormatNumber(ActualPrice)
+				-- Điền giá tức thì từ cache hoặc fallback từ config (0ms latency)
+				local Cached = _ProductInfoCache[Package.ProductId]
+				if Cached and Cached.PriceInRobux then
+					if AmountText then
+						AmountText.Text = GuiHelper.FormatNumber(Cached.PriceInRobux)
 					end
-				end)
-			end
+				else
+					if AmountText then
+						AmountText.Text = GuiHelper.FormatNumber(Package.RobuxPrice)
+					end
 
-			if GiftButton then
-				GiftButton.Visible = false
-			end
+					-- Fetch ngầm giá theo khu vực và cập nhật in-place khi nhận dữ liệu
+					FetchDynamicProductPrice(Package.ProductId, Package.RobuxPrice, function(ActualPrice)
+						if AmountText and AmountText.Parent then
+							AmountText.Text = GuiHelper.FormatNumber(ActualPrice)
+						end
+					end)
+				end
 
-			if BuyButton then
-				local Conn = BuyButton.MouseButton1Click:Connect(function()
-					PlayGuiSound(AudioConfig.Gui.Default.ButtonClick)
-					MarketplaceService:PromptProductPurchase(LocalPlayer, Package.ProductId)
-				end)
-				table.insert(_RobuxConnections, Conn)
+				if GiftButton then
+					GiftButton.Visible = false
+				end
+
+				local TargetClickable = BuyButton or (BuyFrame and BuyFrame:IsA("GuiButton") and BuyFrame)
+				if TargetClickable then
+					local Conn = TargetClickable.MouseButton1Click:Connect(function()
+						PlayGuiSound(AudioConfig.Gui.Default.ButtonClick)
+						MarketplaceService:PromptProductPurchase(LocalPlayer, Package.ProductId)
+					end)
+					table.insert(_RobuxConnections, Conn)
+				end
 			end
 		end
 	end
@@ -610,6 +699,16 @@ function ShopController:Init()
 	-- ─── MARKETPLACE SERVICE: MUA PRODUCT THÀNH CÔNG (CLIENT FEEDBACK) ────
 	MarketplaceService.PromptProductPurchaseFinished:Connect(function(UserId, ProductId, IsPurchased)
 		if UserId == LocalPlayer.UserId and IsPurchased then
+			PlayGuiSound(AudioConfig.Shop.ChestBuy)
+			task.spawn(function()
+				PlayerDataController.RefreshData()
+			end)
+		end
+	end)
+
+	-- ─── MARKETPLACE SERVICE: MUA GAMEPASS THÀNH CÔNG (CLIENT FEEDBACK) ───
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(Player, PassId, WasPurchased)
+		if Player == LocalPlayer and WasPurchased then
 			PlayGuiSound(AudioConfig.Shop.ChestBuy)
 			task.spawn(function()
 				PlayerDataController.RefreshData()

@@ -46,6 +46,24 @@ local ProductConfig = {
 		},
 	},
 
+	-- =========================================================
+	-- CÁC GÓI GAMEPASS (GAMEPASSES)
+	-- =========================================================
+	GamePasses = {
+		DoubleMatchMoney = {
+			PassId     = 1966153598,   -- Roblox GamePass Id (điền Id thật tại đây)
+			RobuxPrice = 199, -- Giá Robux dự phòng khi chưa tải được từ MarketplaceService
+			Multiplier = 2,   -- Hệ số nhân đôi tiền thưởng trận đấu
+		},
+		UpgradeDailyQuests = {
+			PassId      = 1967652369,   -- Roblox GamePass Id (điền Id thật tại đây)
+			RobuxPrice  = 149, -- Giá Robux dự phòng khi chưa tải được từ MarketplaceService
+			ExtraSlots  = 2,   -- Số lượng quest daily cộng thêm (5 -> 7)
+			RewardBonus = 0.5, -- Thưởng thêm +50% tiền khi claim quest daily
+			DailyResets = 1,   -- Số lần được phép làm mới toàn bộ quest daily mỗi ngày
+		},
+	},
+
 }
 
 -- =========================================================
@@ -60,6 +78,27 @@ function ProductConfig.GetPackageByProductId(ProductId)
 	for Key, Package in pairs(ProductConfig.CurrencyPackages) do
 		if Package.ProductId == ProductId then
 			return Package, Key
+		end
+	end
+	return nil, nil
+end
+
+--- Tra cứu GamePass theo Key
+--- @param PassKey string -- "DoubleMatchMoney" | "UpgradeDailyQuests"
+--- @return table?
+function ProductConfig.GetGamePassByKey(PassKey)
+	if not PassKey then return nil end
+	return ProductConfig.GamePasses[PassKey]
+end
+
+--- Tra cứu GamePass theo PassId
+--- @param PassId number
+--- @return table?, string? -- (PassEntry, PassKey)
+function ProductConfig.GetGamePassById(PassId)
+	if not PassId or PassId <= 0 then return nil, nil end
+	for Key, PassEntry in pairs(ProductConfig.GamePasses) do
+		if PassEntry.PassId == PassId then
+			return PassEntry, Key
 		end
 	end
 	return nil, nil

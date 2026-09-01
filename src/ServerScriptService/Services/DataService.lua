@@ -37,7 +37,8 @@ local PROFILE_TEMPLATE = {
 	QuestData           = {
 		Daily = {
 			ResetTimestamp = 0,
-			Quests = {}, -- { [QuestId] = { Progress = 0, Completed = false, Claimed = false } }
+			ResetsUsed     = 0,  -- Số lần làm mới toàn bộ daily quest đã sử dụng trong chu kỳ 24h
+			Quests         = {}, -- { [QuestId] = { Progress = 0, Completed = false, Claimed = false } }
 		},
 		Milestone = {
 			Quests = {}, -- { [QuestId] = { Progress = 0, Completed = false, Claimed = false } }

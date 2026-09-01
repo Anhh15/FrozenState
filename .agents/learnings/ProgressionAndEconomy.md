@@ -87,6 +87,20 @@
   - *Liên tục cộng dồn:* `DispatchEvent` vẫn cho phép tiếp tục tích lũy tiến trình vượt quá `Requirement` kể cả khi người chơi chưa kịp bấm nhận thưởng.
 - **File liên quan:** [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
 
+### 13. Kiến trúc GamePass Đa Quyền Lợi & Mô Hình Định Giá Động Khu Vực (GamePass Tiering & Regional Pricing Engine)
+- **Chi tiết:** Phân tách hoàn toàn Developer Products (tiêu dùng nhiều lần, `Enum.InfoType.Product`, `PromptProductPurchase`, `ProcessReceipt`) và GamePasses (sở hữu vĩnh viễn, `Enum.InfoType.GamePass`, `PromptGamePassPurchase`, `UserOwnsGamePassAsync`):
+  - *Cấu hình tập trung:* Khai báo GamePasses độc lập trong `ProductConfig.lua` (`DoubleMatchMoney`, `UpgradeDailyQuests`).
+  - *UI Đồng bộ Giá Khu Vực:* `GamePassSection` tái sử dụng mô hình *Fallback-First* (hiển thị ngay giá tĩnh $0\text{ms}$) và tầng cache bộ nhớ `_ProductInfoCache` từ `CurrencySection` qua `MarketplaceService:GetProductInfo(..., Enum.InfoType.GamePass)`.
+  - *Phân định Static Name vs Dynamic Price:* Giữ nguyên text tiêu đề (`NameText` / `FrameLabel`) được thiết kế sẵn trong Studio, chỉ cập nhật động giá tiền `AmountText` theo giá khu vực thực tế.
+- **File liên quan:** [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
+### 14. Mô hình Cân Bằng GamePass: Nhân Tiền Hướng Mục Tiêu & Kích Hoạt Retention (Targeted Multipliers & Quest Restock Engine)
+- **Chi tiết:** Thiết kế Gamepass tối ưu hóa cân bằng kinh tế và tăng tỷ lệ giữ chân (Retention):
+  - *Gamepass 1 (`DoubleMatchMoney`):* Nhân đôi $2\times$ tiền thưởng trong trận đấu, bị khóa an toàn bởi thời lượng ván đấu ($2-3$ phút/trận) giúp tránh lạm phát kinh tế.
+  - *Gamepass 2 (`UpgradeDailyQuests`):* Kết hợp bộ 3 đặc quyền: mở rộng $+2$ slots (tổng $7$ quests), thưởng thêm $+50\%$ tiền quest khi claim (`math.round(BaseAmount * 1.5)`), và cấp $1$ lượt Instant Full Restock mỗi $24\text{h}$ (`ResetsUsed < 1`).
+  - *Tạo Động Lực Chiến Thuật:* Buộc người chơi đưa ra quyết định cày trọn $14$ nhiệm vụ/ngày ($\approx 2,100$ tiền) để tối ưu lợi nhuận, chuyển hóa trực tiếp thành thời gian chơi thực tế (Playtime).
+- **File liên quan:** [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -170,3 +184,22 @@
   - Nếu `Repeatable == true` (Milestone): Trừ đúng mức `Requirement` khỏi `Progress`, giữ `Claimed = false` để tiếp tục chu kỳ cày mới, và cho phép `DispatchEvent` tiếp tục cộng dồn tiến trình kể cả khi vượt mốc.
   - Nếu `Repeatable == false` (Daily): Đánh dấu `Claimed = true` vĩnh viễn trong chu kỳ 24h.
 - **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
+### 12. Nguy Cơ Lạm Phát Kinh Tế Từ Nhân Đôi Tiền Toàn Nguồn & Reset Nhiệm Vụ Vô Hạn (Compound Economy Inflation Guard)
+- **Vấn đề:** Nếu nhân đôi $2\times$ từ mọi nguồn hoặc cho phép reset Daily Quest không giới hạn, người chơi sẽ kiếm được lượng tiền khổng lồ mỗi ngày mà không cần cày trận, phá vỡ giá trị của rương (Chest) và vô hiệu hóa các gói Robux Developer Products.
+- **Nguyên nhân:** Không phân tầng nguồn thu nhập (Match Loop vs Quest Loop vs Milestone) và thiếu kiểm soát trần (Cap) chu kỳ nhiệm vụ.
+- **Giải pháp:**
+  1. Giới hạn $2\times$ chỉ áp dụng cho thu nhập trực tiếp trong trận đấu.
+  2. Áp dụng hệ số tỷ lệ $+50\%$ thay vì cộng phẳng $+100$ tiền cho Daily Quest.
+  3. Đặt Hard Cap $1$ lần Instant Restock/ngày, lưu trạng thái `ResetsUsed` trong `QuestData.Daily` và reset tự động cùng `ResetTimestamp`.
+- **File liên quan:** [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua)
+
+### 13. Phân Biệt Cơ Chế Kiểm Tra Quyền Sở Hữu GamePass Client-Server & Tránh Rate-Limit API (GamePass Ownership Cache & Verification)
+- **Vấn đề:** Gọi `MarketplaceService:UserOwnsGamePassAsync` liên tục trong mỗi action gameplay (mỗi lần freeze/thaw hoặc mỗi trận) sẽ gây nghẽn mạng và dính lỗi Rate Limit HTTP 429 trên Server.
+- **Giải pháp:** Tích hợp tầng cache trạng thái sở hữu GamePass trên Server khi người chơi join (`_gamePassCache[Player][PassId]`). Khi người chơi mua thành công trong game qua `PromptGamePassPurchaseFinished`, Server cập nhật cache ngay lập tức. Mọi kiểm tra thưởng $2\times$ hay $+50\%$ quest chỉ đọc từ RAM cache $0\text{ms}$.
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
+### 14. Bẫy Dữ Liệu Bảng Nhiệm Vụ Rỗng Khi Timestamp Chu Kỳ Còn Hiệu Lực (Empty Quest Table State Guard)
+- **Vấn đề:** Nếu profile người chơi có `ResetTimestamp > 0` (do dữ liệu cũ, wipe test hoặc lỗi migration), nhưng bảng `DailyData.Quests` đang rỗng `{}` hoặc `nil`, điều kiện kiểm tra chu kỳ `(Now - ResetTimestamp) >= ResetSeconds` trả về `false`. `PickRandomDailyQuests` không được gọi, dẫn đến server trả về mảng rỗng `Daily = {}` và giao diện nhiệm vụ của người chơi bị trống hoàn toàn cho đến hết 24h.
+- **Giải pháp:** Bổ sung guard clause kiểm tra bảng rỗng: `IsQuestsEmpty = (not DailyData.Quests) or (next(DailyData.Quests) == nil)` trực tiếp vào điều kiện kích hoạt `CheckAndResetDaily`, đảm bảo luôn tự động sinh danh sách nhiệm vụ nếu dữ liệu bị thiếu.
+- **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua)

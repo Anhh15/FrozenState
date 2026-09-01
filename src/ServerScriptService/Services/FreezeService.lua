@@ -162,8 +162,8 @@ end
 
 --- Thưởng tiền và đồng bộ về client
 local function RewardAndSync(Player, Amount)
-	RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent)
-	SessionService.IncrementStat(Player, "MoneyEarned", Amount)
+	local _, FinalAmount = RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent)
+	SessionService.IncrementStat(Player, "MoneyEarned", FinalAmount or Amount)
 end
 
 --- Broadcast trạng thái player xuống tất cả client

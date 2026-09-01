@@ -243,8 +243,8 @@ local function DistributeRewards(Result)
 				SessionService.SetStat(LastAlive, "LastStanding", true)
 				DataService.IncrementStat(LastAlive, "TotalLastStanding")
 				local LastReward = RewardHelper.GetLastStandingReward()
-				RewardHelper.RewardAndSync(LastAlive, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
-				SessionService.IncrementStat(LastAlive, "MoneyEarned", LastReward)
+				local _, FinalLastReward = RewardHelper.RewardAndSync(LastAlive, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+				SessionService.IncrementStat(LastAlive, "MoneyEarned", FinalLastReward or LastReward)
 			end
 		end
 
@@ -256,8 +256,8 @@ local function DistributeRewards(Result)
 			local IsWinner = (Team == WinTeam)
 			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
-			SessionService.IncrementStat(Player, "MoneyEarned", Reward)
+			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+			SessionService.IncrementStat(Player, "MoneyEarned", FinalReward or Reward)
 
 			if IsWinner then
 				DataService.IncrementStat(Player, "TotalWins")
@@ -274,8 +274,8 @@ local function DistributeRewards(Result)
 				SessionService.SetStat(WinPlayer, "LastStanding", true)
 				DataService.IncrementStat(WinPlayer, "TotalLastStanding")
 				local LastReward = RewardHelper.GetLastStandingReward()
-				RewardHelper.RewardAndSync(WinPlayer, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
-				SessionService.IncrementStat(WinPlayer, "MoneyEarned", LastReward)
+				local _, FinalLastReward = RewardHelper.RewardAndSync(WinPlayer, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+				SessionService.IncrementStat(WinPlayer, "MoneyEarned", FinalLastReward or LastReward)
 			end
 		end
 
@@ -284,8 +284,8 @@ local function DistributeRewards(Result)
 			local IsWinner = (Player == WinPlayer)
 			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
-			SessionService.IncrementStat(Player, "MoneyEarned", Reward)
+			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+			SessionService.IncrementStat(Player, "MoneyEarned", FinalReward or Reward)
 
 			if IsWinner then
 				DataService.IncrementStat(Player, "TotalWins")

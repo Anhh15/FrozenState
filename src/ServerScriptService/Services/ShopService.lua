@@ -13,6 +13,9 @@ local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
+-- Bộ nhớ đệm RAM lưu trạng thái sở hữu GamePass: { [Player] = { [PassKey: string] = boolean } }
+local _GamePassCache = {}
+
 -- =========================================================
 -- PRIVATE: WEIGHTED RANDOM
 -- =========================================================
@@ -223,7 +226,83 @@ function ShopService:Start()
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 
+	-- =========================================================
+	-- MARKETPLACESERVICE: GAMEPASS PURCHASE FINISHED (SERVER)
+	-- =========================================================
+
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(Player, PassId, WasPurchased)
+		if WasPurchased and Player and Player.Parent then
+			local _, PassKey = ProductConfig.GetGamePassById(PassId)
+			if PassKey then
+				if not _GamePassCache[Player] then
+					_GamePassCache[Player] = {}
+				end
+				_GamePassCache[Player][PassKey] = true
+				print(("[ShopService] %s đã mua thành công GamePass: %s (PassId: %s)"):format(
+					Player.Name, PassKey, tostring(PassId)
+				))
+			end
+		end
+	end)
+
+	-- Dọn dẹp cache khi người chơi rời khỏi server
+	Players.PlayerRemoving:Connect(function(Player)
+		_GamePassCache[Player] = nil
+	end)
+
 	print("[ShopService] Đang chạy.")
+end
+
+-- =========================================================
+-- PUBLIC GAMEPASS API
+-- =========================================================
+
+--- Kiểm tra người chơi có sở hữu GamePass hay không (có bộ nhớ đệm RAM chống HTTP 429)
+--- @param Player Player
+--- @param PassKey string -- "DoubleMatchMoney" | "UpgradeDailyQuests"
+--- @return boolean
+function ShopService.PlayerOwnsGamePass(Player, PassKey)
+	if not Player or not Player.Parent or not PassKey then return false end
+
+	-- 1. Kiểm tra cache trong RAM trước
+	local PlayerCache = _GamePassCache[Player]
+	if PlayerCache and PlayerCache[PassKey] ~= nil then
+		return PlayerCache[PassKey]
+	end
+
+	-- 2. Lấy cấu hình GamePass
+	local PassConfig = ProductConfig.GetGamePassByKey(PassKey)
+	if not PassConfig or not PassConfig.PassId or PassConfig.PassId <= 0 then
+		-- ID chưa được cấu hình hoặc = 0 (an toàn khi dev/test)
+		return false
+	end
+
+	-- 3. Gọi UserOwnsGamePassAsync với pcall để chống lỗi mạng
+	local Success, OwnsPass = pcall(function()
+		return MarketplaceService:UserOwnsGamePassAsync(Player.UserId, PassConfig.PassId)
+	end)
+
+	local Result = (Success and OwnsPass == true)
+
+	-- 4. Lưu kết quả vào RAM cache
+	if not _GamePassCache[Player] then
+		_GamePassCache[Player] = {}
+	end
+	_GamePassCache[Player][PassKey] = Result
+
+	return Result
+end
+
+--- Gán trực tiếp trạng thái sở hữu GamePass trong RAM cache (dùng cho testing/admin/override)
+--- @param Player Player
+--- @param PassKey string
+--- @param Owned boolean
+function ShopService.SetGamePassOwnership(Player, PassKey, Owned)
+	if not Player or not PassKey then return end
+	if not _GamePassCache[Player] then
+		_GamePassCache[Player] = {}
+	end
+	_GamePassCache[Player][PassKey] = (Owned == true)
 end
 
 return ShopService

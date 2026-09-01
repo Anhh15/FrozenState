@@ -11,6 +11,7 @@ local QuestConfig       = require(ReplicatedStorage.Shared.Config.QuestConfig)
 local ChestConfig       = require(ReplicatedStorage.Shared.Config.ChestConfig)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
@@ -32,6 +33,19 @@ local UpdateMoneyEvent    = nil
 -- =========================================================
 -- PRIVATE HELPERS
 -- =========================================================
+
+--- Lazy-require ShopService để kiểm tra quyền sở hữu GamePass
+local _ShopService = nil
+local function GetShopService()
+	if not _ShopService then
+		local Services = script.Parent
+		local Mod = Services:FindFirstChild("ShopService")
+		if Mod then
+			_ShopService = require(Mod)
+		end
+	end
+	return _ShopService
+end
 
 --- Lấy giá trị stat hiện tại của player
 --- @param Player Player
@@ -60,11 +74,22 @@ local function MatchesConditions(Conditions, EventData)
 	return true
 end
 
---- Random PoolCount quest từ Daily Pool, không trùng nhau
+--- Random PoolCount quest từ Daily Pool, không trùng nhau (Tự động mở rộng +2 slots nếu sở hữu UpgradeDailyQuests)
+--- @param Player Player?
 --- @return table
-local function PickRandomDailyQuests()
+local function PickRandomDailyQuests(Player)
 	local Pool = QuestConfig.Daily.Pool
-	local Count = math.min(QuestConfig.Daily.PoolCount, #Pool)
+	local TargetCount = QuestConfig.Daily.PoolCount
+
+	if Player then
+		local ShopSvc = GetShopService()
+		if ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+			local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
+			TargetCount = TargetCount + ((PassConfig and PassConfig.ExtraSlots) or 2)
+		end
+	end
+
+	local Count = math.min(TargetCount, #Pool)
 
 	local Indices = {}
 	for I = 1, #Pool do
@@ -87,12 +112,13 @@ end
 --- @param RawData table
 local function CheckAndResetDaily(Player, RawData)
 	local QuestData = RawData.QuestData or {}
-	local DailyData = QuestData.Daily or { ResetTimestamp = 0, Quests = {} }
+	local DailyData = QuestData.Daily or { ResetTimestamp = 0, ResetsUsed = 0, Quests = {} }
 	local Now = os.time()
 	local ResetSeconds = QuestConfig.Daily.ResetSeconds
+	local IsQuestsEmpty = (not DailyData.Quests) or (next(DailyData.Quests) == nil)
 
-	if DailyData.ResetTimestamp == 0 or (Now - DailyData.ResetTimestamp) >= ResetSeconds then
-		local PickedQuests = PickRandomDailyQuests()
+	if DailyData.ResetTimestamp == 0 or (Now - DailyData.ResetTimestamp) >= ResetSeconds or IsQuestsEmpty then
+		local PickedQuests = PickRandomDailyQuests(Player)
 		local NewQuestsMap = {}
 
 		for _, QuestEntry in ipairs(PickedQuests) do
@@ -105,6 +131,7 @@ local function CheckAndResetDaily(Player, RawData)
 
 		DataService.SetDailyQuestData(Player, {
 			ResetTimestamp = Now,
+			ResetsUsed     = 0,
 			Quests         = NewQuestsMap,
 		})
 
@@ -355,6 +382,10 @@ local function BuildQuestData(Player)
 	local DailyStored = (QuestData.Daily and QuestData.Daily.Quests) or {}
 	local MilestoneStored = (QuestData.Milestone and QuestData.Milestone.Quests) or {}
 
+	local ShopSvc = GetShopService()
+	local OwnsQuestPass = (ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests")) == true
+	local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
+
 	-- ── Daily ──
 	local DailyQuests = {}
 	for QuestId, StoredEntry in pairs(DailyStored) do
@@ -370,6 +401,12 @@ local function BuildQuestData(Player)
 				CurrentProgress = IsCompleted and Obj.Requirement or InMatchVal
 			end
 
+			local DisplayRewardAmount = ConfigEntry.Reward.Amount or 1
+			if OwnsQuestPass and ConfigEntry.Reward.Type == "Money" then
+				local Bonus = (PassConfig and PassConfig.RewardBonus) or 0.5
+				DisplayRewardAmount = math.round(DisplayRewardAmount * (1 + Bonus))
+			end
+
 			table.insert(DailyQuests, {
 				QuestId      = ConfigEntry.Id,
 				Description  = ConfigEntry.Description,
@@ -377,7 +414,7 @@ local function BuildQuestData(Player)
 				Requirement  = Obj.Requirement,
 				Reward       = ConfigEntry.Reward,
 				RewardType   = ConfigEntry.Reward.Type,
-				RewardAmount = ConfigEntry.Reward.Amount or 1,
+				RewardAmount = DisplayRewardAmount,
 				Completed    = IsCompleted or (CurrentProgress >= Obj.Requirement),
 				Claimed      = IsClaimed,
 				Repeatable   = false,
@@ -413,11 +450,78 @@ local function BuildQuestData(Player)
 	end
 
 	local ResetTimestamp = (QuestData.Daily and QuestData.Daily.ResetTimestamp) or os.time()
+	local ResetsUsed = (QuestData.Daily and QuestData.Daily.ResetsUsed) or 0
+	local MaxResets = (PassConfig and PassConfig.DailyResets) or 1
 
 	return {
 		Daily              = DailyQuests,
 		Milestone          = MilestoneQuests,
 		NextResetTimestamp = ResetTimestamp + QuestConfig.Daily.ResetSeconds,
+		OwnsQuestPass      = OwnsQuestPass,
+		ResetsUsed         = ResetsUsed,
+		MaxResets          = MaxResets,
+	}
+end
+
+-- =========================================================
+-- RESET DAILY QUEST LOGIC (GAMEPASS)
+-- =========================================================
+
+--- Xử lý làm mới toàn bộ Daily Quest cho người chơi sở hữu GamePass UpgradeDailyQuests (tối đa 1 lần/ngày)
+--- @param Player Player
+--- @return table -- { Success = boolean, Reason = string?, Data = table? }
+local function ResetDailyQuests(Player)
+	local ShopSvc = GetShopService()
+	if not ShopSvc or not ShopSvc.PlayerOwnsGamePass or not ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+		warn(("[QuestService] ResetDailyQuests: %s không sở hữu GamePass UpgradeDailyQuests."):format(Player.Name))
+		return { Success = false, Reason = "NOT_OWNED" }
+	end
+
+	local RawData = DataService.GetQuestRawData(Player)
+	if not RawData then
+		return { Success = false, Reason = "DATA_NOT_READY" }
+	end
+
+	local QuestData = RawData.QuestData or {}
+	local DailyData = QuestData.Daily or { ResetTimestamp = 0, ResetsUsed = 0, Quests = {} }
+	local ResetsUsed = DailyData.ResetsUsed or 0
+
+	local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
+	local MaxResets = (PassConfig and PassConfig.DailyResets) or 1
+
+	if ResetsUsed >= MaxResets then
+		warn(("[QuestService] ResetDailyQuests: %s đã dùng hết lượt reset trong ngày (%d/%d)."):format(
+			Player.Name, ResetsUsed, MaxResets
+		))
+		return { Success = false, Reason = "LIMIT_REACHED" }
+	end
+
+	local PickedQuests = PickRandomDailyQuests(Player)
+	local NewQuestsMap = {}
+
+	for _, QuestEntry in ipairs(PickedQuests) do
+		NewQuestsMap[QuestEntry.Id] = {
+			Progress  = 0,
+			Completed = false,
+			Claimed   = false,
+		}
+	end
+
+	local NewDailyData = {
+		ResetTimestamp = DailyData.ResetTimestamp or os.time(),
+		ResetsUsed     = ResetsUsed + 1,
+		Quests         = NewQuestsMap,
+	}
+
+	DataService.SetDailyQuestData(Player, NewDailyData)
+
+	print(("[QuestService] %s đã làm mới Daily Quests thành công (Lần %d/%d) — %d quest mới."):format(
+		Player.Name, NewDailyData.ResetsUsed, MaxResets, #PickedQuests
+	))
+
+	return {
+		Success = true,
+		Data    = BuildQuestData(Player),
 	}
 end
 
@@ -478,9 +582,19 @@ local function ClaimQuest(Player, QuestType, QuestId)
 	local Reward = ConfigEntry.Reward
 	local ReceivedItems = {}
 	local RefundAmount = 0
+	local ActualRewardAmount = Reward.Amount or 1
 
 	if Reward.Type == "Money" then
-		RewardHelper.RewardAndSync(Player, Reward.Amount, DataService, UpdateMoneyEvent)
+		if QuestType == "Daily" then
+			local ShopSvc = GetShopService()
+			if ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+				local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
+				local Bonus = (PassConfig and PassConfig.RewardBonus) or 0.5
+				ActualRewardAmount = math.round(ActualRewardAmount * (1 + Bonus))
+			end
+		end
+		-- Chỉ định rõ Multiplier = 1 để cô lập thưởng Quest không bị DoubleMatchMoney nhân đôi tiếp
+		RewardHelper.RewardAndSync(Player, ActualRewardAmount, DataService, UpdateMoneyEvent, 1)
 	elseif Reward.Type == "Chest" then
 		ReceivedItems, RefundAmount = ProcessChestReward(Player, Reward.ChestId, Reward.Amount or 1)
 		if UpdateMoneyEvent then
@@ -497,14 +611,14 @@ local function ClaimQuest(Player, QuestType, QuestId)
 
 	local FinalMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
 
-	print(("[QuestService] %s claim %s '%s' thành công — Thưởng: %s (Repeatable: %s)."):format(
-		Player.Name, QuestType, QuestId, Reward.Type, tostring(IsRepeatable)
+	print(("[QuestService] %s claim %s '%s' thành công — Thưởng: %s (Amount: %d, Repeatable: %s)."):format(
+		Player.Name, QuestType, QuestId, Reward.Type, ActualRewardAmount, tostring(IsRepeatable)
 	))
 
 	return {
 		Success       = true,
 		RewardType    = Reward.Type,
-		RewardAmount  = Reward.Amount or 1,
+		RewardAmount  = ActualRewardAmount,
 		ChestId       = Reward.ChestId,
 		ItemId        = Reward.ItemId,
 		ReceivedItems = ReceivedItems,
@@ -571,6 +685,12 @@ function QuestService:Start()
 		end
 
 		return ClaimQuest(Player, QuestType, QuestId)
+	end
+
+	-- Handler: Client làm mới toàn bộ Daily Quests (GamePass UpgradeDailyQuests)
+	local RequestResetDailyQuestsFn = RemoteDefinitions.GetFunction("RequestResetDailyQuests")
+	RequestResetDailyQuestsFn.OnServerInvoke = function(Player)
+		return ResetDailyQuests(Player)
 	end
 
 	print("[QuestService] Đang chạy.")

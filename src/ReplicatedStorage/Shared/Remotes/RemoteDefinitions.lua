@@ -94,6 +94,9 @@ local REMOTE_FUNCTIONS = {
 
 	-- Client → Server: Claim phần thưởng quest (Phase 7)
 	"ClaimQuest",
+
+	-- Client → Server: Làm mới toàn bộ daily quest (GamePass UpgradeDailyQuests)
+	"RequestResetDailyQuests",
 }
 
 -- =========================================================
