@@ -578,7 +578,7 @@ function DataService.SetQuestProgress(Player, QuestType, QuestId, Progress, Comp
 	end
 
 	Entry.Progress  = Progress
-	Entry.Completed = (Completed == true) or (Entry.Completed == true)
+	Entry.Completed = (Completed == true)
 end
 
 --- Đánh dấu một nhiệm vụ đã được claim phần thưởng

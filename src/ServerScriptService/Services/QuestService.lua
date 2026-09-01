@@ -259,7 +259,7 @@ function QuestService.DispatchEvent(Player, EventName, EventData)
 		local QuestId = ConfigEntry.Id
 		local WasCompleted = (StoredEntry and StoredEntry.Completed == true)
 		local WasClaimed = (StoredEntry and StoredEntry.Claimed == true)
-		local IsRepeatable = (ConfigEntry.Repeatable == true) or (QuestType == "Milestone")
+		local IsRepeatable = (ConfigEntry.Repeatable == true)
 
 		-- Nếu không phải Repeatable và đã Claim rồi thì bỏ qua
 		if not IsRepeatable and WasClaimed then return end
@@ -394,8 +394,9 @@ local function BuildQuestData(Player)
 		local StoredEntry = MilestoneStored[QuestId] or { Progress = 0, Completed = false, Claimed = false }
 		local Obj = ConfigEntry.Objective
 		local CurrentProgress = StoredEntry.Progress or 0
-		local IsCompleted = (CurrentProgress >= Obj.Requirement) or (StoredEntry.Completed == true)
-		local IsClaimed = (ConfigEntry.Repeatable ~= true) and (StoredEntry.Claimed == true)
+		local IsRepeatable = (ConfigEntry.Repeatable == true)
+		local IsCompleted = IsRepeatable and (CurrentProgress >= Obj.Requirement) or (StoredEntry.Completed == true or CurrentProgress >= Obj.Requirement)
+		local IsClaimed = (not IsRepeatable) and (StoredEntry.Claimed == true)
 
 		table.insert(MilestoneQuests, {
 			QuestId      = ConfigEntry.Id,
@@ -407,7 +408,7 @@ local function BuildQuestData(Player)
 			RewardAmount = ConfigEntry.Reward.Amount or 1,
 			Completed    = IsCompleted,
 			Claimed      = IsClaimed,
-			Repeatable   = (ConfigEntry.Repeatable == true),
+			Repeatable   = IsRepeatable,
 		})
 	end
 
@@ -445,16 +446,16 @@ local function ClaimQuest(Player, QuestType, QuestId)
 
 	local Obj = ConfigEntry.Objective
 	local CurrentProgress = (StoredEntry and StoredEntry.Progress) or 0
-	local IsCompleted = (StoredEntry and StoredEntry.Completed == true) or (CurrentProgress >= Obj.Requirement)
+	local IsRepeatable = (ConfigEntry.Repeatable == true)
 	local IsClaimed = (StoredEntry and StoredEntry.Claimed == true)
-	local IsRepeatable = (ConfigEntry.Repeatable == true) or (QuestType == "Milestone")
+	local IsCompleted = IsRepeatable and (CurrentProgress >= Obj.Requirement) or ((StoredEntry and StoredEntry.Completed == true) or (CurrentProgress >= Obj.Requirement))
 
 	if not IsRepeatable and IsClaimed then
 		warn(("[QuestService] ClaimQuest: %s đã claim '%s'."):format(Player.Name, QuestId))
 		return { Success = false }
 	end
 
-	if not IsCompleted and CurrentProgress < Obj.Requirement then
+	if not IsCompleted then
 		warn(("[QuestService] ClaimQuest: %s chưa hoàn thành '%s' (%.0f/%.0f)."):format(
 			Player.Name, QuestId, CurrentProgress, Obj.Requirement
 		))
