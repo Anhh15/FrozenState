@@ -384,6 +384,15 @@ local function RunSetup()
 	SessionService.ResetSession()
 	FreezeService.ResetRound()
 
+	-- Reset match progress cho QuestService (Objective Engine 2.0)
+	local QuestModule = script.Parent:FindFirstChild("QuestService")
+	if QuestModule then
+		local QuestService = require(QuestModule)
+		if QuestService and QuestService.ResetMatchProgress then
+			QuestService.ResetMatchProgress()
+		end
+	end
+
 	-- Danh sách player còn sống thực sự tham gia trận này
 	local ActivePlayers = GetAlivePlayers()
 
@@ -583,6 +592,29 @@ local function RunGameOver(Result)
 
 	-- Chuẩn bị dữ liệu thống kê cuối trận TRƯỚC KHI ClearTeam để giữ nguyên dữ liệu team và top players
 	local Payloads = PrepareGameOverPayloads(Result)
+
+	-- Dispatch Event OnMatchEnd cho QuestService (Objective Engine 2.0)
+	local QuestModule = script.Parent:FindFirstChild("QuestService")
+	if QuestModule then
+		local QuestService = require(QuestModule)
+		if QuestService and QuestService.DispatchEvent then
+			local ModeKey = SessionService.GetCurrentModeKey()
+			local WinCondition = GameModeHelper.GetWinCondition(ModeKey)
+			for Player, Payload in pairs(Payloads) do
+				QuestService.DispatchEvent(Player, "OnMatchEnd", {
+					Won          = Payload.Won,
+					WinTeam      = Payload.WinTeam,
+					WinPlayer    = Payload.WinPlayer,
+					ModeKey      = ModeKey,
+					WinCondition = WinCondition,
+					Freezes      = Payload.PersonalStats and Payload.PersonalStats.Freezes or 0,
+					Thaws        = Payload.PersonalStats and Payload.PersonalStats.Thaws or 0,
+					LastStanding = Payload.PersonalStats and Payload.PersonalStats.LastStanding or false,
+					FirstBlood   = Payload.PersonalStats and Payload.PersonalStats.FirstBlood or false,
+				})
+			end
+		end
+	end
 
 	-- Thaw tất cả người bị đóng băng
 	FreezeService.ThawAll()

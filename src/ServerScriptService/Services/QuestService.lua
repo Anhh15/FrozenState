@@ -1,6 +1,6 @@
 -- QuestService.lua
--- Quản lý toàn bộ logic Quest phía Server (Phase 7)
--- Bao gồm: tracking PlayTime, reset Daily, validate + cấp thưởng khi Claim
+-- Quản lý toàn bộ logic Quest & Objective Engine 2.0 phía Server
+-- Hỗ trợ Event-Driven Dispatcher, In-Match RAM Counter, Repeatable Milestone Quest và trao thưởng đa hình (Money, Chest, Item)
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,22 +8,34 @@ local RunService        = game:GetService("RunService")
 
 local DataService       = require(script.Parent.DataService)
 local QuestConfig       = require(ReplicatedStorage.Shared.Config.QuestConfig)
+local ChestConfig       = require(ReplicatedStorage.Shared.Config.ChestConfig)
+local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
+local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 
 -- =========================================================
 -- PRIVATE STATE
 -- =========================================================
 
--- Lưu thời điểm join của mỗi player để tính PlayTime khi rời
-local _sessionStart = {} -- { [Player] = os.time() }
+-- Lưu thời điểm join của mỗi player để tính PlayTime
+local _sessionStart     = {} -- { [Player] = os.time() }
+local _lastPlayTimeSync = {} -- { [Player] = os.time() }
+
+-- Bộ đếm tạm thời cho các nhiệm vụ InMatchCounter theo trận đấu trong RAM
+-- Cấu trúc: { [Player] = { [QuestId] = number } }
+local _matchProgress    = {}
+
+local NotifyAccoladeEvent = nil
+local UpdateMoneyEvent    = nil
 
 -- =========================================================
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Lấy giá trị stat hiện tại của player theo tên field (tự động cộng dồn PlayTime của session hiện tại)
+--- Lấy giá trị stat hiện tại của player
 --- @param Player Player
---- @param RawData table  -- kết quả từ DataService.GetQuestRawData
+--- @param RawData table
 --- @param StatKey string
 --- @return number
 local function GetStatValue(Player, RawData, StatKey)
@@ -34,13 +46,26 @@ local function GetStatValue(Player, RawData, StatKey)
 	return Value
 end
 
+--- So khớp các điều kiện lọc (Conditions) của Objective với EventData
+--- @param Conditions table?
+--- @param EventData table
+--- @return boolean
+local function MatchesConditions(Conditions, EventData)
+	if not Conditions then return true end
+	for Key, ExpectedValue in pairs(Conditions) do
+		if EventData[Key] ~= ExpectedValue then
+			return false
+		end
+	end
+	return true
+end
+
 --- Random PoolCount quest từ Daily Pool, không trùng nhau
---- @return table  -- mảng các quest entry từ QuestConfig.Daily.Pool
+--- @return table
 local function PickRandomDailyQuests()
 	local Pool = QuestConfig.Daily.Pool
 	local Count = math.min(QuestConfig.Daily.PoolCount, #Pool)
 
-	-- Shuffle bản sao index
 	local Indices = {}
 	for I = 1, #Pool do
 		Indices[I] = I
@@ -59,55 +84,250 @@ end
 
 --- Kiểm tra và reset Daily Quest nếu chu kỳ 24h đã kết thúc
 --- @param Player Player
---- @param RawData table  -- DataService.GetQuestRawData (đọc-only, tham chiếu)
+--- @param RawData table
 local function CheckAndResetDaily(Player, RawData)
-	local DailyData = RawData.DailyQuestData
+	local QuestData = RawData.QuestData or {}
+	local DailyData = QuestData.Daily or { ResetTimestamp = 0, Quests = {} }
 	local Now = os.time()
 	local ResetSeconds = QuestConfig.Daily.ResetSeconds
 
-	-- Chưa có chu kỳ nào hoặc đã hết 24h → reset
 	if DailyData.ResetTimestamp == 0 or (Now - DailyData.ResetTimestamp) >= ResetSeconds then
 		local PickedQuests = PickRandomDailyQuests()
-		local NewActiveQuests = {}
+		local NewQuestsMap = {}
 
 		for _, QuestEntry in ipairs(PickedQuests) do
-			-- Snapshot BaseProgress = stat hiện tại tại thời điểm reset
-			local BaseProgress = GetStatValue(Player, RawData, QuestEntry.StatKey)
-			table.insert(NewActiveQuests, {
-				QuestId      = QuestEntry.Id,
-				BaseProgress = BaseProgress,
-				Claimed      = false,
-			})
+			NewQuestsMap[QuestEntry.Id] = {
+				Progress  = 0,
+				Completed = false,
+				Claimed   = false,
+			}
 		end
 
 		DataService.SetDailyQuestData(Player, {
 			ResetTimestamp = Now,
-			ActiveQuests   = NewActiveQuests,
+			Quests         = NewQuestsMap,
 		})
 
-		print(("[QuestService] Daily reset cho %s — %d quest mới."):format(Player.Name, #NewActiveQuests))
+		print(("[QuestService] Daily reset cho %s — %d quest mới."):format(Player.Name, #PickedQuests))
 	end
-end
-
---- Tìm quest entry trong QuestConfig theo Id và loại
---- @param QuestType string  -- "Daily" | "Milestone"
---- @param QuestId string
---- @return table | nil
-local function FindQuestConfig(QuestType, QuestId)
-	if QuestType == "Daily" then
-		for _, Entry in ipairs(QuestConfig.Daily.Pool) do
-			if Entry.Id == QuestId then return Entry end
-		end
-	elseif QuestType == "Milestone" then
-		for _, Entry in ipairs(QuestConfig.Milestone.List) do
-			if Entry.Id == QuestId then return Entry end
-		end
-	end
-	return nil
 end
 
 -- =========================================================
--- BUILD QUEST DATA (dùng để gửi xuống Client)
+-- REWARD PROCESSORS (CHEST & ITEM)
+-- =========================================================
+
+--- Rút thăm ngẫu nhiên item từ rương theo trọng số DropRate
+--- @param Items table
+--- @return string
+local function WeightedRandomItem(Items)
+	local Roll = math.random(1, 100)
+	local Cumulative = 0
+	for _, Entry in ipairs(Items) do
+		Cumulative = Cumulative + Entry.DropRate
+		if Roll <= Cumulative then
+			return Entry.ItemId
+		end
+	end
+	return Items[#Items].ItemId
+end
+
+--- Xử lý trao thưởng mở rương (hỗ trợ mở 1 lần nhận X vật phẩm)
+--- @param Player Player
+--- @param ChestId string
+--- @param Quantity number
+--- @return table, number -- ReceivedItems, TotalRefund
+local function ProcessChestReward(Player, ChestId, Quantity)
+	local Chest = ChestConfig.GetChest(ChestId)
+	if not Chest then
+		warn(("[QuestService] ProcessChestReward: Không tìm thấy ChestId '%s'."):format(tostring(ChestId)))
+		return {}, 0
+	end
+
+	Quantity = math.max(1, math.floor(Quantity or 1))
+	local RefundBasePrice = Chest.Price1 or 1000
+	local TotalRefund     = 0
+	local ReceivedItems   = {}
+
+	for _ = 1, Quantity do
+		local ItemId = WeightedRandomItem(Chest.Items)
+		local AlreadyOwned = DataService.HasItem(Player, Chest.Type, ItemId)
+
+		if AlreadyOwned then
+			local ItemEntry   = ItemRegistry.GetItem(ItemId, Chest.Type)
+			local RarityEntry = ItemEntry and RarityConfig[ItemEntry.Rarity]
+			local RefundAmount = 0
+			if RarityEntry then
+				RefundAmount = math.round(RefundBasePrice * RarityEntry.RefundPercent)
+			end
+			table.insert(ReceivedItems, {
+				ItemId       = ItemId,
+				Type         = Chest.Type,
+				WasDuplicate = true,
+				Refund       = RefundAmount,
+			})
+			TotalRefund = TotalRefund + RefundAmount
+		else
+			if Chest.Type == "Icicle" then
+				DataService.AddIcicle(Player, ItemId)
+			else
+				DataService.AddBlock(Player, ItemId)
+			end
+			table.insert(ReceivedItems, {
+				ItemId       = ItemId,
+				Type         = Chest.Type,
+				WasDuplicate = false,
+				Refund       = 0,
+			})
+		end
+	end
+
+	if TotalRefund > 0 then
+		DataService.AddMoney(Player, TotalRefund)
+	end
+
+	return ReceivedItems, TotalRefund
+end
+
+--- Xử lý trao thưởng Item cụ thể (Icicle hoặc Block)
+--- @param Player Player
+--- @param ItemType string
+--- @param ItemId string
+--- @return table, number -- ReceivedItems, TotalRefund
+local function ProcessItemReward(Player, ItemType, ItemId)
+	local AlreadyOwned = DataService.HasItem(Player, ItemType, ItemId)
+	local TotalRefund = 0
+	local ReceivedItems = {}
+
+	if AlreadyOwned then
+		local ItemEntry   = ItemRegistry.GetItem(ItemId, ItemType)
+		local RarityEntry = ItemEntry and RarityConfig[ItemEntry.Rarity]
+		local BasePrice   = 1000
+		if RarityEntry then
+			TotalRefund = math.round(BasePrice * RarityEntry.RefundPercent)
+		end
+		DataService.AddMoney(Player, TotalRefund)
+		table.insert(ReceivedItems, {
+			ItemId       = ItemId,
+			Type         = ItemType,
+			WasDuplicate = true,
+			Refund       = TotalRefund,
+		})
+	else
+		if ItemType == "Icicle" then
+			DataService.AddIcicle(Player, ItemId)
+		else
+			DataService.AddBlock(Player, ItemId)
+		end
+		table.insert(ReceivedItems, {
+			ItemId       = ItemId,
+			Type         = ItemType,
+			WasDuplicate = false,
+			Refund       = 0,
+		})
+	end
+
+	return ReceivedItems, TotalRefund
+end
+
+-- =========================================================
+-- EVENT-DRIVEN DISPATCHER (OBJECTIVE ENGINE 2.0)
+-- =========================================================
+
+local QuestService = {}
+
+--- Xử lý sự kiện gameplay gửi tới từ FreezeService / MatchService / ShopService
+--- @param Player Player
+--- @param EventName string -- "OnFreeze" | "OnThaw" | "OnMatchEnd" | "OnChestOpened" | "OnPlayTime"
+--- @param EventData table
+function QuestService.DispatchEvent(Player, EventName, EventData)
+	if not Player or not Player:IsDescendantOf(Players) then return end
+
+	local RawData = DataService.GetQuestRawData(Player)
+	if not RawData then return end
+
+	local QuestData = RawData.QuestData or {}
+	local DailyStored = (QuestData.Daily and QuestData.Daily.Quests) or {}
+	local MilestoneStored = (QuestData.Milestone and QuestData.Milestone.Quests) or {}
+
+	local function EvaluateQuest(QuestType, ConfigEntry, StoredEntry)
+		if not ConfigEntry or not ConfigEntry.Objective then return end
+		local Obj = ConfigEntry.Objective
+
+		if Obj.Event ~= EventName then return end
+		if not MatchesConditions(Obj.Conditions, EventData) then return end
+
+		local QuestId = ConfigEntry.Id
+		local WasCompleted = (StoredEntry and StoredEntry.Completed == true)
+		local WasClaimed = (StoredEntry and StoredEntry.Claimed == true)
+		local IsRepeatable = (ConfigEntry.Repeatable == true) or (QuestType == "Milestone")
+
+		-- Nếu không phải Repeatable và đã Claim rồi thì bỏ qua
+		if not IsRepeatable and WasClaimed then return end
+
+		local Amount = EventData.Amount or 1
+		local JustCompleted = false
+
+		if Obj.Type == "InMatchCounter" then
+			if not _matchProgress[Player] then
+				_matchProgress[Player] = {}
+			end
+			local Current = (_matchProgress[Player][QuestId] or 0) + Amount
+			_matchProgress[Player][QuestId] = Current
+
+			if Current >= Obj.Requirement and not WasCompleted then
+				DataService.SetQuestProgress(Player, QuestType, QuestId, Obj.Requirement, true)
+				JustCompleted = true
+			end
+
+		elseif Obj.Type == "Accumulative" then
+			local Current = ((StoredEntry and StoredEntry.Progress) or 0) + Amount
+			local IsDone = (Current >= Obj.Requirement)
+			-- Lưu toàn bộ tiến trình kể cả khi vượt mốc Requirement để bảo lưu cho vòng lặp tiếp theo
+			DataService.SetQuestProgress(Player, QuestType, QuestId, Current, IsDone)
+
+			if IsDone and not WasCompleted then
+				JustCompleted = true
+			end
+
+		elseif Obj.Type == "MatchCondition" then
+			DataService.SetQuestProgress(Player, QuestType, QuestId, 1, true)
+			if not WasCompleted then
+				JustCompleted = true
+			end
+		end
+
+		if JustCompleted and NotifyAccoladeEvent then
+			NotifyAccoladeEvent:FireClient(Player, {
+				Type       = "QuestComplete",
+				QuestTitle = ConfigEntry.Description,
+			})
+			print(("[QuestService] 🎉 %s hoàn thành nhiệm vụ: '%s'!"):format(Player.Name, ConfigEntry.Description))
+		end
+	end
+
+	-- Duyệt Daily Active Quests
+	for QuestId, StoredEntry in pairs(DailyStored) do
+		local ConfigEntry = QuestConfig.FindQuest("Daily", QuestId)
+		if ConfigEntry then
+			EvaluateQuest("Daily", ConfigEntry, StoredEntry)
+		end
+	end
+
+	-- Duyệt Milestone Quests
+	for _, ConfigEntry in ipairs(QuestConfig.Milestone.List) do
+		local QuestId = ConfigEntry.Id
+		local StoredEntry = MilestoneStored[QuestId]
+		EvaluateQuest("Milestone", ConfigEntry, StoredEntry)
+	end
+end
+
+--- Reset toàn bộ bộ đếm InMatch trong RAM (gọi khi bắt đầu ván mới hoặc kết thúc ván)
+function QuestService.ResetMatchProgress()
+	_matchProgress = {}
+end
+
+-- =========================================================
+-- BUILD QUEST DATA (GỬI XUỐNG CLIENT)
 -- =========================================================
 
 --- Xây dựng bảng dữ liệu Quest đầy đủ để gửi xuống Client
@@ -117,55 +337,86 @@ local function BuildQuestData(Player)
 	local RawData = DataService.GetQuestRawData(Player)
 	if not RawData then return nil end
 
-	-- Kiểm tra và reset daily nếu cần TRƯỚC khi build data
-	CheckAndResetDaily(Player, RawData)
+	-- Đồng bộ PlayTime session trôi qua kể từ lần sync trước
+	local Now = os.time()
+	local LastSync = _lastPlayTimeSync[Player] or _sessionStart[Player] or Now
+	local Elapsed = Now - LastSync
+	_lastPlayTimeSync[Player] = Now
+	if Elapsed > 0 then
+		QuestService.DispatchEvent(Player, "OnPlayTime", { Amount = Elapsed })
+	end
 
-	-- Đọc lại sau khi có thể vừa reset
+	-- Kiểm tra và reset daily nếu cần
+	CheckAndResetDaily(Player, RawData)
 	RawData = DataService.GetQuestRawData(Player)
 	if not RawData then return nil end
 
+	local QuestData = RawData.QuestData or {}
+	local DailyStored = (QuestData.Daily and QuestData.Daily.Quests) or {}
+	local MilestoneStored = (QuestData.Milestone and QuestData.Milestone.Quests) or {}
+
 	-- ── Daily ──
 	local DailyQuests = {}
-	for _, ActiveEntry in ipairs(RawData.DailyQuestData.ActiveQuests) do
-		local ConfigEntry = FindQuestConfig("Daily", ActiveEntry.QuestId)
+	for QuestId, StoredEntry in pairs(DailyStored) do
+		local ConfigEntry = QuestConfig.FindQuest("Daily", QuestId)
 		if ConfigEntry then
-			local CurrentStat  = GetStatValue(Player, RawData, ConfigEntry.StatKey)
-			local Progress     = CurrentStat - ActiveEntry.BaseProgress
-			local Requirement  = ConfigEntry.Requirement
-			DailyQuests[#DailyQuests + 1] = {
+			local Obj = ConfigEntry.Objective
+			local CurrentProgress = StoredEntry.Progress or 0
+			local IsCompleted = StoredEntry.Completed == true
+			local IsClaimed = StoredEntry.Claimed == true
+
+			if Obj.Type == "InMatchCounter" then
+				local InMatchVal = (_matchProgress[Player] and _matchProgress[Player][QuestId]) or 0
+				CurrentProgress = IsCompleted and Obj.Requirement or InMatchVal
+			end
+
+			table.insert(DailyQuests, {
 				QuestId      = ConfigEntry.Id,
 				Description  = ConfigEntry.Description,
-				Progress     = math.clamp(Progress, 0, Requirement),
-				Requirement  = Requirement,
-				RewardType   = ConfigEntry.RewardType,
-				RewardAmount = ConfigEntry.RewardAmount,
-				Claimed      = ActiveEntry.Claimed,
-			}
+				Progress     = math.clamp(CurrentProgress, 0, Obj.Requirement),
+				Requirement  = Obj.Requirement,
+				Reward       = ConfigEntry.Reward,
+				RewardType   = ConfigEntry.Reward.Type,
+				RewardAmount = ConfigEntry.Reward.Amount or 1,
+				Completed    = IsCompleted or (CurrentProgress >= Obj.Requirement),
+				Claimed      = IsClaimed,
+				Repeatable   = false,
+			})
 		end
 	end
 
-	-- ── Milestone ──
+	table.sort(DailyQuests, function(A, B) return A.QuestId < B.QuestId end)
+
+	-- ── Milestone (Repeatable) ──
 	local MilestoneQuests = {}
 	for _, ConfigEntry in ipairs(QuestConfig.Milestone.List) do
-		local BaseProgress = RawData.MilestoneQuestData[ConfigEntry.Id] or 0
-		local CurrentStat  = GetStatValue(Player, RawData, ConfigEntry.StatKey)
-		local Progress     = CurrentStat - BaseProgress
-		local Requirement  = ConfigEntry.Requirement
-		MilestoneQuests[#MilestoneQuests + 1] = {
+		local QuestId = ConfigEntry.Id
+		local StoredEntry = MilestoneStored[QuestId] or { Progress = 0, Completed = false, Claimed = false }
+		local Obj = ConfigEntry.Objective
+		local CurrentProgress = StoredEntry.Progress or 0
+		local IsCompleted = (CurrentProgress >= Obj.Requirement) or (StoredEntry.Completed == true)
+		local IsClaimed = (ConfigEntry.Repeatable ~= true) and (StoredEntry.Claimed == true)
+
+		table.insert(MilestoneQuests, {
 			QuestId      = ConfigEntry.Id,
 			Description  = ConfigEntry.Description,
-			Progress     = math.clamp(Progress, 0, Requirement),
-			Requirement  = Requirement,
-			RewardType   = ConfigEntry.RewardType,
-			RewardAmount = ConfigEntry.RewardAmount,
-			Claimed      = false, -- Milestone không có trạng thái Claimed cố định
-		}
+			Progress     = math.clamp(CurrentProgress, 0, Obj.Requirement),
+			Requirement  = Obj.Requirement,
+			Reward       = ConfigEntry.Reward,
+			RewardType   = ConfigEntry.Reward.Type,
+			RewardAmount = ConfigEntry.Reward.Amount or 1,
+			Completed    = IsCompleted,
+			Claimed      = IsClaimed,
+			Repeatable   = (ConfigEntry.Repeatable == true),
+		})
 	end
+
+	local ResetTimestamp = (QuestData.Daily and QuestData.Daily.ResetTimestamp) or os.time()
 
 	return {
 		Daily              = DailyQuests,
 		Milestone          = MilestoneQuests,
-		NextResetTimestamp = RawData.DailyQuestData.ResetTimestamp + QuestConfig.Daily.ResetSeconds,
+		NextResetTimestamp = ResetTimestamp + QuestConfig.Daily.ResetSeconds,
 	}
 end
 
@@ -173,130 +424,110 @@ end
 -- CLAIM LOGIC
 -- =========================================================
 
---- Xử lý claim Daily Quest
+--- Xử lý claim nhiệm vụ
 --- @param Player Player
+--- @param QuestType string -- "Daily" | "Milestone"
 --- @param QuestId string
---- @return boolean, string, number  -- Success, RewardType, RewardAmount
-local function ClaimDailyQuest(Player, QuestId)
+--- @return table -- Result payload
+local function ClaimQuest(Player, QuestType, QuestId)
 	local RawData = DataService.GetQuestRawData(Player)
-	if not RawData then return false, "", 0 end
+	if not RawData then return { Success = false } end
 
-	local ConfigEntry = FindQuestConfig("Daily", QuestId)
+	local ConfigEntry = QuestConfig.FindQuest(QuestType, QuestId)
 	if not ConfigEntry then
-		warn(("[QuestService] ClaimDaily: QuestId '%s' không hợp lệ."):format(QuestId))
-		return false, "", 0
+		warn(("[QuestService] ClaimQuest: QuestId '%s' không tồn tại trong %s."):format(QuestId, QuestType))
+		return { Success = false }
 	end
 
-	-- Tìm entry trong ActiveQuests
-	local ActiveQuests = RawData.DailyQuestData.ActiveQuests
-	local FoundEntry = nil
-	local FoundIndex = nil
-	for I, Entry in ipairs(ActiveQuests) do
-		if Entry.QuestId == QuestId then
-			FoundEntry = Entry
-			FoundIndex = I
-			break
+	local QuestData = RawData.QuestData or {}
+	local CategoryStored = (QuestData[QuestType] and QuestData[QuestType].Quests) or {}
+	local StoredEntry = CategoryStored[QuestId]
+
+	local Obj = ConfigEntry.Objective
+	local CurrentProgress = (StoredEntry and StoredEntry.Progress) or 0
+	local IsCompleted = (StoredEntry and StoredEntry.Completed == true) or (CurrentProgress >= Obj.Requirement)
+	local IsClaimed = (StoredEntry and StoredEntry.Claimed == true)
+	local IsRepeatable = (ConfigEntry.Repeatable == true) or (QuestType == "Milestone")
+
+	if not IsRepeatable and IsClaimed then
+		warn(("[QuestService] ClaimQuest: %s đã claim '%s'."):format(Player.Name, QuestId))
+		return { Success = false }
+	end
+
+	if not IsCompleted and CurrentProgress < Obj.Requirement then
+		warn(("[QuestService] ClaimQuest: %s chưa hoàn thành '%s' (%.0f/%.0f)."):format(
+			Player.Name, QuestId, CurrentProgress, Obj.Requirement
+		))
+		return { Success = false }
+	end
+
+	-- Xử lý Reset Tiến trình cho Quest Repeatable vs One-time
+	if IsRepeatable then
+		-- Trừ Requirement khỏi Progress, bảo lưu toàn bộ tiến trình dôi dư cho vòng lặp tiếp theo!
+		local NewProgress = math.max(0, CurrentProgress - Obj.Requirement)
+		local IsCompletedNow = (NewProgress >= Obj.Requirement)
+		DataService.SetQuestProgress(Player, QuestType, QuestId, NewProgress, IsCompletedNow)
+		DataService.SetQuestClaimed(Player, QuestType, QuestId, false)
+	else
+		-- Đánh dấu Claimed vĩnh viễn trong chu kỳ
+		DataService.SetQuestClaimed(Player, QuestType, QuestId, true)
+	end
+
+	-- Cấp phần thưởng đa hình
+	local Reward = ConfigEntry.Reward
+	local ReceivedItems = {}
+	local RefundAmount = 0
+
+	if Reward.Type == "Money" then
+		RewardHelper.RewardAndSync(Player, Reward.Amount, DataService, UpdateMoneyEvent)
+	elseif Reward.Type == "Chest" then
+		ReceivedItems, RefundAmount = ProcessChestReward(Player, Reward.ChestId, Reward.Amount or 1)
+		if UpdateMoneyEvent then
+			local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
+			UpdateMoneyEvent:FireClient(Player, NewMoney)
+		end
+	elseif Reward.Type == "Item" then
+		ReceivedItems, RefundAmount = ProcessItemReward(Player, Reward.ItemType, Reward.ItemId)
+		if UpdateMoneyEvent and RefundAmount > 0 then
+			local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
+			UpdateMoneyEvent:FireClient(Player, NewMoney)
 		end
 	end
 
-	if not FoundEntry then
-		warn(("[QuestService] ClaimDaily: %s không có quest '%s' active."):format(Player.Name, QuestId))
-		return false, "", 0
-	end
+	local FinalMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
 
-	if FoundEntry.Claimed then
-		warn(("[QuestService] ClaimDaily: %s đã claim quest '%s'."):format(Player.Name, QuestId))
-		return false, "", 0
-	end
+	print(("[QuestService] %s claim %s '%s' thành công — Thưởng: %s (Repeatable: %s)."):format(
+		Player.Name, QuestType, QuestId, Reward.Type, tostring(IsRepeatable)
+	))
 
-	-- Kiểm tra tiến trình đủ chưa
-	local CurrentStat = GetStatValue(Player, RawData, ConfigEntry.StatKey)
-	local Progress    = CurrentStat - FoundEntry.BaseProgress
-	if Progress < ConfigEntry.Requirement then
-		warn(("[QuestService] ClaimDaily: %s chưa đủ tiến trình (%.0f/%.0f)."):format(
-			Player.Name, Progress, ConfigEntry.Requirement))
-		return false, "", 0
-	end
-
-	-- Đánh dấu Claimed
-	FoundEntry.Claimed = true
-	DataService.SetDailyQuestData(Player, RawData.DailyQuestData)
-
-	-- Cấp thưởng
-	if ConfigEntry.RewardType == "Money" then
-		DataService.AddMoney(Player, ConfigEntry.RewardAmount)
-		-- Sync tiền xuống client
-		local UpdateMoney = RemoteDefinitions.GetEvent("UpdateMoney")
-		local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
-		UpdateMoney:FireClient(Player, NewMoney)
-	end
-
-	print(("[QuestService] %s claim Daily '%s' — +%d %s."):format(
-		Player.Name, QuestId, ConfigEntry.RewardAmount, ConfigEntry.RewardType))
-	return true, ConfigEntry.RewardType, ConfigEntry.RewardAmount
-end
-
---- Xử lý claim Milestone Quest
---- @param Player Player
---- @param QuestId string
---- @return boolean, string, number
-local function ClaimMilestoneQuest(Player, QuestId)
-	local RawData = DataService.GetQuestRawData(Player)
-	if not RawData then return false, "", 0 end
-
-	local ConfigEntry = FindQuestConfig("Milestone", QuestId)
-	if not ConfigEntry then
-		warn(("[QuestService] ClaimMilestone: QuestId '%s' không hợp lệ."):format(QuestId))
-		return false, "", 0
-	end
-
-	local BaseProgress = RawData.MilestoneQuestData[QuestId] or 0
-	local CurrentStat  = GetStatValue(Player, RawData, ConfigEntry.StatKey)
-	local Progress     = CurrentStat - BaseProgress
-
-	if Progress < ConfigEntry.Requirement then
-		warn(("[QuestService] ClaimMilestone: %s chưa đủ tiến trình (%.0f/%.0f)."):format(
-			Player.Name, Progress, ConfigEntry.Requirement))
-		return false, "", 0
-	end
-
-	-- Reset BaseProgress về mốc tiếp theo (tùy thuộc cấu hình StackExcessProgress)
-	local NewBase
-	if QuestConfig.Milestone.StackExcessProgress then
-		NewBase = BaseProgress + ConfigEntry.Requirement
-	else
-		NewBase = CurrentStat
-	end
-	DataService.SetMilestoneBase(Player, QuestId, NewBase)
-
-	-- Cấp thưởng
-	if ConfigEntry.RewardType == "Money" then
-		DataService.AddMoney(Player, ConfigEntry.RewardAmount)
-		local UpdateMoney = RemoteDefinitions.GetEvent("UpdateMoney")
-		local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
-		UpdateMoney:FireClient(Player, NewMoney)
-	end
-
-	print(("[QuestService] %s claim Milestone '%s' — +%d %s. NewBase=%d."):format(
-		Player.Name, QuestId, ConfigEntry.RewardAmount, ConfigEntry.RewardType, NewBase))
-	return true, ConfigEntry.RewardType, ConfigEntry.RewardAmount
+	return {
+		Success       = true,
+		RewardType    = Reward.Type,
+		RewardAmount  = Reward.Amount or 1,
+		ChestId       = Reward.ChestId,
+		ItemId        = Reward.ItemId,
+		ReceivedItems = ReceivedItems,
+		RefundAmount  = RefundAmount,
+		NewMoney      = FinalMoney,
+	}
 end
 
 -- =========================================================
--- PUBLIC API
+-- KHỞI TẠO SERVICE
 -- =========================================================
-
-local QuestService = {}
 
 function QuestService:Init()
 	assert(RunService:IsServer(), "QuestService chỉ được chạy trên Server")
 
-	-- Tracking PlayTime: lưu thời điểm join
+	NotifyAccoladeEvent = RemoteDefinitions.GetEvent("NotifyAccolade")
+	UpdateMoneyEvent    = RemoteDefinitions.GetEvent("UpdateMoney")
+
+	-- Tracking PlayTime & Dọn dẹp RAM session
 	Players.PlayerAdded:Connect(function(Player)
-		_sessionStart[Player] = os.time()
+		_sessionStart[Player]     = os.time()
+		_lastPlayTimeSync[Player] = os.time()
 	end)
 
-	-- Khi player rời: cộng dồn PlayTime vào DataStore
 	Players.PlayerRemoving:Connect(function(Player)
 		local JoinTime = _sessionStart[Player]
 		if JoinTime then
@@ -304,18 +535,27 @@ function QuestService:Init()
 			DataService.AddPlayTime(Player, SessionSeconds)
 			_sessionStart[Player] = nil
 		end
+		local LastSync = _lastPlayTimeSync[Player]
+		if LastSync then
+			local Elapsed = os.time() - LastSync
+			if Elapsed > 0 then
+				QuestService.DispatchEvent(Player, "OnPlayTime", { Amount = Elapsed })
+			end
+			_lastPlayTimeSync[Player] = nil
+		end
+		_matchProgress[Player] = nil
 	end)
 
-	-- Xử lý player đã join trước khi Init (chạy trong Studio)
 	for _, Player in ipairs(Players:GetPlayers()) do
-		_sessionStart[Player] = os.time()
+		_sessionStart[Player]     = os.time()
+		_lastPlayTimeSync[Player] = os.time()
 	end
 
-	print("[QuestService] Đã khởi tạo.")
+	print("[QuestService] Đã khởi tạo Objective Engine 2.0 (Hỗ trợ Repeatable Quests).")
 end
 
 function QuestService:Start()
-	-- Handler: Client lấy dữ liệu quest
+	-- Handler: Client lấy dữ liệu quest (gọi 1 lần duy nhất khi mở GUI)
 	local GetQuestDataFn = RemoteDefinitions.GetFunction("GetQuestData")
 	GetQuestDataFn.OnServerInvoke = function(Player)
 		return BuildQuestData(Player)
@@ -324,27 +564,12 @@ function QuestService:Start()
 	-- Handler: Client claim quest
 	local ClaimQuestFn = RemoteDefinitions.GetFunction("ClaimQuest")
 	ClaimQuestFn.OnServerInvoke = function(Player, QuestType, QuestId)
-		-- Validate input
 		if type(QuestType) ~= "string" or type(QuestId) ~= "string" then
-			warn(("[QuestService] ClaimQuest: tham số không hợp lệ từ %s."):format(Player.Name))
+			warn(("[QuestService] ClaimQuest: Tham số không hợp lệ từ %s."):format(Player.Name))
 			return { Success = false }
 		end
 
-		local Success, RewardType, RewardAmount
-		if QuestType == "Daily" then
-			Success, RewardType, RewardAmount = ClaimDailyQuest(Player, QuestId)
-		elseif QuestType == "Milestone" then
-			Success, RewardType, RewardAmount = ClaimMilestoneQuest(Player, QuestId)
-		else
-			warn(("[QuestService] ClaimQuest: QuestType '%s' không hợp lệ."):format(QuestType))
-			return { Success = false }
-		end
-
-		return {
-			Success      = Success,
-			RewardType   = RewardType,
-			RewardAmount = RewardAmount,
-		}
+		return ClaimQuest(Player, QuestType, QuestId)
 	end
 
 	print("[QuestService] Đang chạy.")

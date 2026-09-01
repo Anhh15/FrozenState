@@ -1,5 +1,5 @@
 # ProgressionAndEconomy
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Daily/Milestone, Hiệu ứng Mở rương và Đồng bộ Dữ liệu).
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Objective Engine 2.0, Hiệu ứng Mở rương, Phần thưởng Đa hình, Nhiệm vụ Lặp Vô hạn và Đồng bộ Dữ liệu).
 > Cập nhật lần cuối: 01-09-2026
 
 ---
@@ -16,18 +16,20 @@
 - **Điều kiện Reset Streak:** Streak chỉ bị reset khi: (1) Bản thân đạt đủ mốc `EconomyConfig.Spree.Threshold` để nhận thưởng Spree Bonus (tính qua `RewardHelper`), hoặc (2) Bản thân người chơi bị đối thủ đóng băng (`Victim`).
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua)
 
-### 3. Thiết kế Delta-Progress cho Hệ thống Nhiệm vụ (Quest System)
-- **Chi tiết:** Để theo dõi tiến trình nhiệm vụ dựa trên các chỉ số sẵn có (`TotalFreezes`, `TotalWins`, `PlayTime`) mà không cần tạo nhiều biến đếm độc lập hay reset stat gốc khi hoàn thành, hệ thống sử dụng cơ chế mốc bắt đầu (`BaseProgress`).
-- **Công thức:**
-  $$\text{Tiến trình thực tế} = \text{CurrentStat} - \text{BaseProgress}$$
-- **Daily Quest:** `BaseProgress` được chụp lại (snapshot) tại thời điểm reset daily (chu kỳ 24h độc lập tính theo thời điểm join của từng player).
-- **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua)
+### 3. Kiến trúc Objective Engine 2.0 & Event-Driven Quest Dispatcher
+- **Chi tiết:** Thay thế hoàn toàn cơ chế lấy hiệu số snapshot trọn đời (`CurrentStat - BaseProgress`) bằng mô hình hướng sự kiện (Event-Driven). Gameplay Services (`FreezeService`, `MatchService`, `ShopService`) chỉ phát sự kiện qua `QuestService.DispatchEvent(Player, EventName, EventData)`.
+- **4 Loại Objective Chuẩn Hóa:**
+  - `InMatchCounter`: Yêu cầu đạt số lượng trong **duy nhất 1 trận** (vd: Freeze 10 người trong 1 trận).
+  - `Accumulative`: Tích lũy cộng dồn qua nhiều trận kèm điều kiện lọc `Conditions` (vd: Thaw 3 đồng đội trong FrozenState, Open 2 Chests).
+  - `MatchCondition`: Điều kiện kết thúc trận (vd: Thắng mode Chaos, thắng khi là Last Standing).
+  - `LifetimeStat`: Dựa trên DataStore/Thời gian chơi (vd: PlayTime 30 phút).
+- **File liên quan:** [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
 
-### 4. Cấu hình Tùy chọn Reset Tiến trình Milestone Quest (StackExcessProgress)
-- **Chi tiết:** Cấu hình tùy chọn `StackExcessProgress` trong `QuestConfig.lua`:
-  - `StackExcessProgress = false`: Tại thời điểm nhận thưởng (claim), Server gán `BaseProgress = CurrentStat` để reset tiến trình dôi dư về 0.
-  - `StackExcessProgress = true`: Server tịnh tiến `BaseProgress = BaseProgress + Requirement` để cộng dồn tiến trình dôi dư vào chu kỳ tiếp theo.
-- **File liên quan:** [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+### 4. Quản lý Tiến Trình RAM Theo Trận Đấu & Lưu Trữ Bền Vững QuestData
+- **Chi tiết:** Tách biệt 2 tầng lưu trữ dữ liệu nhiệm vụ:
+  - *Tầng RAM In-Match (`_matchProgress[Player][QuestId]`)*: Đếm tiến trình tạm thời của `InMatchCounter`. Nếu kết thúc trận mà chưa đạt $\ge \text{Requirement}$, bộ đếm tự hủy về 0 mà không ghi vào DataStore.
+  - *Tầng Bền Vững (`QuestData`)*: Lưu trực tiếp `{ Progress, Completed, Claimed }` trong `PROFILE_TEMPLATE` của ProfileService cho các quest `Accumulative` và `Milestone`.
+- **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
 
 ### 5. Theo dõi PlayTime Tối Giản Hiệu Năng Thời Gian Thực
 - **Chi tiết:** Server lưu thời điểm join (`_sessionStart`). Khi tính toán tiến trình cho `PlayTime`, Server tự động cộng thêm thời gian session hiện tại:
@@ -70,14 +72,32 @@
 - **Standard Rounding Engine (`math.round`):** Khi tính toán các tỷ lệ phần trăm kinh tế (ví dụ: hoàn tiền khi mua trùng skin theo công thức $\text{RefundBasePrice} \times \text{RarityEntry.RefundPercent}$), Server sử dụng `math.round()` thay vì `math.floor()`. Điều này thực thi quy tắc làm tròn chuẩn ($\ge 0.5$ làm tròn lên, $< 0.5$ làm tròn xuống), vừa đảm bảo quyền lợi công bằng cho người chơi vừa bảo toàn dữ liệu số nguyên tuyệt đối.
 - **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [RarityConfig.lua](../../src/ReplicatedStorage/Shared/Config/RarityConfig.lua), [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua)
 
+### 11. Hệ Sinh Thái Phần Thưởng Đa Hình & Quy Tắc Mở Nhiều Rương Nhận X Vật Phẩm (Polymorphic Rewards & Single-Open Multi-Draw Pattern)
+- **Chi tiết:** Chuẩn hóa phần thưởng nhiệm vụ hỗ trợ 3 loại vật phẩm đơn nhất (`Money`, `Chest`, `Item`):
+  - *Quy tắc Mở Nhiều Rương ($X$ Chests)*: Server rút thăm $X$ lần dựa trên drop rate của `ChestConfig` (tự động hoàn tiền qua `RarityConfig` nếu trùng), Client kích hoạt `ItemRewardController.ShowChestReward` chạy animation mở rương **1 lần duy nhất** và bung nở hiển thị đồng thời $X$ thẻ bài.
+  - *Phần thưởng Item*: Trao trực tiếp qua `DataService.AddIcicle` / `AddBlock` (hoàn tiền nếu đã sở hữu), Client kích hoạt `ItemRewardController.ShowItemReward`.
+- **File liên quan:** [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
+
+### 12. Cơ Chế Nhiệm Vụ Lặp Lại Vô Hạn & Bảo Lưu Tiến Trình Dôi Dư (Infinite Repeatable Quests & Excess Progress Retention Pattern)
+- **Chi tiết:** Thiết lập cờ `Repeatable = true` trong `QuestConfig` cho phép nhiệm vụ lặp lại vô hạn chu kỳ ngay sau khi nhận thưởng:
+  - *Duy trì trạng thái cày:* Server không gán `Claimed = true` vĩnh viễn, mà giữ `Claimed = false` sau mỗi lần claim thành công.
+  - *Bảo lưu tiến trình dôi dư (Excess Progress Retention):* Khi nhận thưởng, hệ thống chỉ trừ đi đúng mức yêu cầu:
+    $$\text{Progress mới} = \max(0, \text{Progress cũ} - \text{Requirement})$$
+    *(Ví dụ: Người chơi đạt $65/50$, sau khi claim sẽ còn $15/50$ cho chu kỳ tiếp theo thay vì bị reset về $0$).*
+  - *Liên tục cộng dồn:* `DispatchEvent` vẫn cho phép tiếp tục tích lũy tiến trình vượt quá `Requirement` kể cả khi người chơi chưa kịp bấm nhận thưởng.
+- **File liên quan:** [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
 
-### 1. Tiến trình PlayTime Không Cập Nhật Thời Gian Thực Trên GUI và Cuộn UI Bị Reset
-- **Vấn đề:** Nhiệm vụ `PlayTime` không nhảy số trên GUI khi mở lên, chỉ khi thoát rồi vào lại mới thấy tiến trình. Ngoài ra, việc xóa và render lại toàn bộ list làm vị trí cuộn của ScrollingFrame bị nhảy về đầu trang.
-- **Giải pháp:** Server tính dồn session trong `GetStatValue`. Client bật vòng lặp cập nhật ngầm 1s/lần khi GUI mở và áp dụng cơ chế cập nhật in-place (chỉ gán lại thuộc tính text/size của Frame cũ) để giữ nguyên `CanvasPosition`.
-- **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)
+### 1. Triệt Tiêu Hoàn Toàn Polling 1s và Đồng Bộ Dữ Liệu Quest Theo Nhu Cầu (Zero-Polling Event-Driven Quest Sync)
+- **Vấn đề:** Thiết kế cũ dùng vòng lặp polling 1s/lần (`_autoRefreshTask`) khi mở GUI Quest gây spam RemoteFunction `GetQuestData`, làm nghẽn băng thông và lãng phí CPU server.
+- **Giải pháp:**
+  1. *Fetch on Demand*: Client chỉ gọi `GetQuestData` **1 lần duy nhất** khi mở menu (`OpenQuest`) hoặc khi bấm chuyển tab.
+  2. *Local Countdown*: Bộ đếm thời gian reset chu kỳ tự chạy bằng `os.time()` ở local client, không gửi request mạng.
+  3. *In-Match Notification*: Khi hoàn thành nhiệm vụ giữa trận, Server chủ động bắn RemoteEvent `NotifyAccoladeEvent` chúc mừng tức thì mà không cần client refresh lại toàn bộ danh sách quest.
+- **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
 
 ### 2. Chỉ số Profile & Inventory Không Cập Nhật Sau Khi Kết Thúc Trận Đấu (Lỗi Cache Tĩnh)
 - **Vấn đề:** Khi người chơi có thêm chiến thắng hoặc đóng băng/giải cứu trong trận, các chỉ số trong Profile không thay đổi khi mở lại ở Sảnh.
@@ -131,3 +151,22 @@
 - **Nguyên nhân:** Các cơ chế tự động tương tác ngầm (implicit side-effects) phụ thuộc vào sự kiện gameplay chung làm phân mảnh quyền kiểm soát và dễ phát sinh lỗ hổng.
 - **Giải pháp:** Áp dụng nguyên tắc *Explicit Command-Driven*: Loại bỏ 100% các hook thụ động trong vòng đời trận đấu. Mọi thao tác can thiệp dữ liệu (tiền, stats, skin, reset, ban/kick) phải do Admin chủ động gõ lệnh trực tiếp qua CLI với đầy đủ Server-side Validation và Audit Log.
 - **File liên quan:** [AdminService.lua](../../src/ServerScriptService/Services/AdminService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [AdminConfig.lua](../../src/ReplicatedStorage/Shared/Config/AdminConfig.lua)
+
+### 9. Rò Rỉ Bộ Nhớ RAM Từ Bộ Đếm In-Match và Giải Pháp Dọn Dẹp Vòng Đời Trận Đấu (In-Match RAM Lifecycle & Memory Leak Guard)
+- **Vấn đề:** Bộ đếm `_matchProgress[Player]` lưu trong RAM server của `QuestService` có nguy cơ tích tụ rác bộ nhớ nếu người chơi thoát game giữa trận hoặc sau hàng trăm ván đấu liên tiếp.
+- **Giải pháp:**
+  1. Kết nối sự kiện `Players.PlayerRemoving` để giải phóng ngay lập tức bảng `_matchProgress[Player] = nil` khi người chơi rời game.
+  2. `MatchService.RunSetup` chủ động gọi `QuestService.ResetMatchProgress()` khi bắt đầu ván mới để làm sạch toàn bộ dữ liệu trận trước.
+- **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+
+### 10. Xung Đột Schema Dữ Liệu Quest Cũ-Mới và Cơ Chế Tự Động Chuyển Đổi (Safe DataStore Migration Pattern)
+- **Vấn đề:** Người chơi cũ có Profile lưu dữ liệu `DailyQuestData` / `MilestoneQuestData` dạng cũ. Khi server nạp code mới, nếu truy cập thẳng vào `QuestData` sẽ bị crash do `nil indexing`.
+- **Giải pháp:** Trong `DataService.OnProfileLoaded`, bổ sung bộ lọc kiểm tra: nếu `Profile.Data.QuestData == nil`, tự động khởi tạo cấu trúc `{ Daily = { ResetTimestamp, Quests = {} }, Milestone = { Quests = {} } }` kế thừa timestamp cũ trước khi gameplay truy cập.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
+### 11. Kẹt Trạng Thái Claimed Khiến Nhiệm Vụ Milestone Biến Thành Nhiệm Vụ Một Lần (Repeatable Quest Lock Pitfall)
+- **Vấn đề:** Khi claim nhiệm vụ, nếu server tự động gán `Claimed = true` và `DispatchEvent` chặn không cho cộng tiến trình cho các quest đã claim, toàn bộ nhiệm vụ Milestone sẽ bị biến thành nhiệm vụ 1 lần và khóa nút thành `"Claimed"`.
+- **Giải pháp:** Phân nhánh xử lý theo cờ `ConfigEntry.Repeatable`:
+  - Nếu `Repeatable == true` (Milestone): Trừ đúng mức `Requirement` khỏi `Progress`, giữ `Claimed = false` để tiếp tục chu kỳ cày mới, và cho phép `DispatchEvent` tiếp tục cộng dồn tiến trình kể cả khi vượt mốc.
+  - Nếu `Repeatable == false` (Daily): Đánh dấu `Claimed = true` vĩnh viễn trong chu kỳ 24h.
+- **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua)

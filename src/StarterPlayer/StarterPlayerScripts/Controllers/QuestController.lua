@@ -1,11 +1,11 @@
 -- QuestController.lua
--- Quản lý GUI Quest phía Client (Phase 7)
--- Pattern: 1 ScrollingFrame chung, TabContainer chuyển tab thì clear + re-clone (giống ShopController)
+-- Quản lý GUI Quest phía Client (Objective Engine 2.0)
+-- Pattern: 1 ScrollingFrame chung, TabContainer chuyển tab thì in-place update / re-render
+-- Loại bỏ hoàn toàn vòng lặp Polling; hỗ trợ hiển thị và nhận thưởng đa hình (Money, Chest, Item)
 
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Debris            = game:GetService("Debris")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local QuestConfig       = require(ReplicatedStorage.Shared.Config.QuestConfig)
@@ -44,9 +44,8 @@ local _currentTab = "Daily"
 -- Cache dữ liệu quest nhận từ server
 local _questData = nil  -- { Daily = {...}, Milestone = {...}, NextResetTimestamp = number }
 
--- Task quản lý vòng lặp đếm ngược và auto refresh UI
+-- Task quản lý vòng lặp đếm ngược thời gian reset
 local _countdownTask = nil
-local _autoRefreshTask = nil
 local _staggerThread = nil
 
 --- Dừng animation stagger đang chạy dở
@@ -57,7 +56,7 @@ local function StopStaggerAnimation()
 	end
 end
 
--- Tab active color và inactive color (dùng BackgroundColor3 giống pattern InventoryController)
+-- Tab active color và inactive color (dùng BackgroundColor3)
 local COLOR_ACTIVE   = Color3.fromRGB(255, 255, 255)
 local COLOR_INACTIVE = Color3.fromRGB(47, 47, 47)
 
@@ -74,15 +73,6 @@ end
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Lazy-require PlayerDataController để tránh circular dependency
-local _playerDataController = nil
-local function GetPlayerDataController()
-	if not _playerDataController then
-		_playerDataController = require(script.Parent.PlayerDataController)
-	end
-	return _playerDataController
-end
-
 --- Lazy-require MenuController để điều phối mở/đóng cửa sổ
 local _menuController = nil
 local function GetMenuController()
@@ -94,6 +84,19 @@ local function GetMenuController()
 		end
 	end
 	return _menuController
+end
+
+--- Lazy-require ItemRewardController để kích hoạt hiệu ứng mở rương/vật phẩm
+local _itemRewardController = nil
+local function GetItemRewardController()
+	if not _itemRewardController then
+		local Controllers = script.Parent
+		local Module = Controllers:FindFirstChild("ItemRewardController")
+		if Module then
+			_itemRewardController = require(Module)
+		end
+	end
+	return _itemRewardController
 end
 
 --- Highlight tab button đang active
@@ -130,7 +133,6 @@ local function RenderProgressBar(ProgressBarFrame, Current, Requirement)
 	local Ratio = (Requirement > 0) and math.clamp(Current / Requirement, 0, 1) or 1
 
 	if ProgressFill then
-		-- Điều chỉnh theo trục X (UDim2 Scale)
 		ProgressFill.Size = UDim2.new(Ratio, 0, 1, 0)
 	end
 
@@ -138,7 +140,7 @@ local function RenderProgressBar(ProgressBarFrame, Current, Requirement)
 		if Current >= Requirement then
 			ProgressText.Text = "DONE"
 		else
-			ProgressText.Text = ("%s/%s"):format(GuiHelper.FormatNumber(Current), GuiHelper.FormatNumber(Requirement))
+			ProgressText.Text = ("%d/%d"):format(Current, Requirement)
 		end
 	end
 end
@@ -149,9 +151,13 @@ end
 local function ShowRewardAnnouncement(RewardType, RewardAmount)
 	if not _rewardAnnouncement then return end
 
-	-- Set nội dung
+	-- Cập nhật Icon và Text chính xác
+	if _rewardIcon then
+		_rewardIcon.Image = QuestConfig.GetRewardIcon({ Type = RewardType, Amount = RewardAmount })
+	end
+
 	if _rewardAmount then
-		_rewardAmount.Text = "+" .. GuiHelper.FormatNumber(RewardAmount) .. " " .. RewardType
+		_rewardAmount.Text = "+" .. tostring(RewardAmount) .. " " .. RewardType
 	end
 
 	-- Lấy kích thước gốc được lưu từ UI trong Studio
@@ -183,7 +189,7 @@ local function ShowRewardAnnouncement(RewardType, RewardAmount)
 end
 
 -- =========================================================
--- NOTIFICATION & COUNTDOWN LOGIC
+-- NOTIFICATION & COUNTDOWN LOGIC (LOCAL ONLY - NO POLLING)
 -- =========================================================
 
 --- Format thời gian còn lại thành chuỗi "Time remain: hh:mm:ss"
@@ -197,32 +203,6 @@ local function FormatTimeRemaining(TotalSeconds)
 	return string.format(FORMAT_DAILY_TIME, Hours, Mins, Secs)
 end
 
---- Hủy thread auto refresh nếu đang chạy
-local function StopAutoRefreshLoop()
-	if _autoRefreshTask then
-		task.cancel(_autoRefreshTask)
-		_autoRefreshTask = nil
-	end
-end
-
--- Khai báo trước hàm RefreshQuestUI để vòng lặp countdown và auto-refresh sử dụng
-local RefreshQuestUI
-
---- Chạy thread auto refresh dữ liệu từ server khi GUI đang mở (mỗi 1 giây)
-local function StartAutoRefreshLoop()
-	StopAutoRefreshLoop()
-
-	_autoRefreshTask = task.spawn(function()
-		while _questGui and _questGui.Visible do
-			task.wait(1)
-			if _questGui and _questGui.Visible and RefreshQuestUI then
-				RefreshQuestUI()
-			end
-		end
-		_autoRefreshTask = nil
-	end)
-end
-
 --- Hủy thread đếm ngược nếu đang chạy
 local function StopCountdownLoop()
 	if _countdownTask then
@@ -231,7 +211,10 @@ local function StopCountdownLoop()
 	end
 end
 
---- Chạy thread đếm ngược cập nhật NotificationText khi ở tab Daily
+-- Khai báo trước hàm RefreshQuestUI để vòng lặp countdown sử dụng khi hết giờ
+local RefreshQuestUI
+
+--- Chạy thread đếm ngược cục bộ cập nhật NotificationText khi ở tab Daily (Không gọi RemoteFunction)
 local function StartCountdownLoop()
 	StopCountdownLoop()
 
@@ -243,10 +226,11 @@ local function StartCountdownLoop()
 					if _notificationText then
 						_notificationText.Text = string.format(FORMAT_DAILY_TIME, 0, 0, 0)
 					end
-					-- Tự động làm mới dữ liệu Quest từ server khi hết giờ
+					-- Tự động làm mới dữ liệu từ server khi hết chu kỳ
 					if RefreshQuestUI then
-						RefreshQuestUI()
+						RefreshQuestUI(false)
 					end
+					break
 				else
 					if _notificationText then
 						_notificationText.Text = FormatTimeRemaining(Remaining)
@@ -275,9 +259,9 @@ end
 -- RENDER LOGIC
 -- =========================================================
 
---- Render danh sách quest vào QuestList (cập nhật mượt không làm mất vị trí cuộn UI)
---- @param QuestList table  -- mảng quest data từ server
---- @param TriggerStagger boolean? -- cờ kích hoạt animation stagger khi mở GUI hoặc đổi tab
+--- Render danh sách quest vào QuestList (in-place update giữ nguyên vị trí cuộn)
+--- @param QuestList table
+--- @param TriggerStagger boolean?
 local function RenderQuestList(QuestList, TriggerStagger)
 	if not _templates or not _questList then return end
 
@@ -309,12 +293,16 @@ local function RenderQuestList(QuestList, TriggerStagger)
 			DescriptionText.Text = QuestEntry.Description
 		end
 
-		-- Reward
+		-- Reward (Động theo loại phần thưởng)
 		local RewardFrame = Frame:FindFirstChild("Reward")
 		if RewardFrame then
 			local AmountLabel = RewardFrame:FindFirstChild("Amount")
 			if AmountLabel then
-				AmountLabel.Text = GuiHelper.FormatNumber(QuestEntry.RewardAmount)
+				AmountLabel.Text = QuestConfig.GetRewardDisplayText(QuestEntry.Reward or { Type = QuestEntry.RewardType, Amount = QuestEntry.RewardAmount })
+			end
+			local IconLabel = RewardFrame:FindFirstChild("Icon") or RewardFrame:FindFirstChildOfClass("ImageLabel")
+			if IconLabel then
+				IconLabel.Image = QuestConfig.GetRewardIcon(QuestEntry.Reward or { Type = QuestEntry.RewardType, Amount = QuestEntry.RewardAmount })
 			end
 		end
 
@@ -330,9 +318,8 @@ local function RenderQuestList(QuestList, TriggerStagger)
 			ClaimButton.Visible = true
 
 			local IsClaimed = QuestEntry.Claimed == true
-			local CanClaim  = (not IsClaimed) and (QuestEntry.Progress >= QuestEntry.Requirement)
+			local CanClaim  = (not IsClaimed) and (QuestEntry.Completed or QuestEntry.Progress >= QuestEntry.Requirement)
 
-			-- Cập nhật hình nền background và thuộc tính tương tác dựa trên trạng thái
 			local TargetImage = nil
 			local ButtonText  = "Claim"
 
@@ -350,10 +337,8 @@ local function RenderQuestList(QuestList, TriggerStagger)
 				ClaimButton.Active = false
 			end
 
-			if TargetImage then
-				if ClaimButton:IsA("ImageButton") or ClaimButton:IsA("ImageLabel") then
-					ClaimButton.Image = TargetImage
-				end
+			if TargetImage and (ClaimButton:IsA("ImageButton") or ClaimButton:IsA("ImageLabel")) then
+				ClaimButton.Image = TargetImage
 			end
 
 			local ButtonTextLabel = ClaimButton:FindFirstChildOfClass("TextLabel")
@@ -383,7 +368,21 @@ local function RenderQuestList(QuestList, TriggerStagger)
 
 					if Result and Result.Success then
 						PlayGuiSound(AudioConfig.Quest.RewardClaim)
-						ShowRewardAnnouncement(Result.RewardType, Result.RewardAmount)
+
+						-- Phân phối hiệu ứng nhận thưởng theo loại phần thưởng
+						if Result.RewardType == "Chest" and Result.ReceivedItems and #Result.ReceivedItems > 0 then
+							local ItemRewardCtrl = GetItemRewardController()
+							if ItemRewardCtrl and ItemRewardCtrl.ShowChestReward then
+								ItemRewardCtrl.ShowChestReward(Result.ReceivedItems, Result.ChestId)
+							end
+						elseif Result.RewardType == "Item" and Result.ReceivedItems and #Result.ReceivedItems > 0 then
+							local ItemRewardCtrl = GetItemRewardController()
+							if ItemRewardCtrl and ItemRewardCtrl.ShowItemReward then
+								ItemRewardCtrl.ShowItemReward(Result.ReceivedItems)
+							end
+						else
+							ShowRewardAnnouncement(Result.RewardType, Result.RewardAmount)
+						end
 
 						task.spawn(function()
 							task.wait(0.3)
@@ -416,7 +415,7 @@ local function RenderQuestList(QuestList, TriggerStagger)
 	end
 end
 
---- Refresh toàn bộ dữ liệu từ server rồi render tab hiện tại
+--- Refresh dữ liệu từ server rồi render tab hiện tại (gọi 1 lần khi mở hoặc khi đổi tab)
 --- @param TriggerStagger boolean?
 RefreshQuestUI = function(TriggerStagger)
 	local GetQuestDataFn = RemoteDefinitions.GetFunction("GetQuestData")
@@ -440,7 +439,7 @@ end
 --- @param TabName string  -- "Daily" | "Milestone"
 local function SwitchTab(TabName)
 	if _currentTab == TabName and _questData then
-		return -- Không cần làm gì
+		return
 	end
 	_currentTab = TabName
 	UpdateTabHighlight(TabName)
@@ -451,6 +450,8 @@ local function SwitchTab(TabName)
 		local QuestList = (TabName == "Daily") and _questData.Daily or _questData.Milestone
 		RenderQuestList(QuestList, true)
 		UpdateNotificationDisplay()
+	else
+		RefreshQuestUI(true)
 	end
 end
 
@@ -463,21 +464,17 @@ local QuestController = {}
 local function CloseQuest()
 	if not _questGui then return end
 	StopCountdownLoop()
-	StopAutoRefreshLoop()
 	StopStaggerAnimation()
 end
 
 local function OpenQuest()
 	if not _questGui then return end
 
-	-- Reset tab về Daily khi mở mới
 	_currentTab = "Daily"
 	UpdateTabHighlight("Daily")
 
-	-- Refresh dữ liệu từ server và kích hoạt tự động làm mới (kèm stagger animation lần đầu)
 	task.spawn(function()
 		RefreshQuestUI(true)
-		StartAutoRefreshLoop()
 	end)
 end
 
@@ -486,13 +483,10 @@ end
 -- =========================================================
 
 function QuestController:Init()
-	-- Chờ PlayerGui sẵn sàng
 	local Menu = PlayerGui:WaitForChild("Menu")
 	_menuFrame  = Menu
-
 	_questGui   = Menu:WaitForChild("Quest")
 
-	-- Đảm bảo GUI không bị reset khi character chết
 	local MenuGui = Menu.Parent
 	if MenuGui and MenuGui:IsA("ScreenGui") then
 		MenuGui.ResetOnSpawn = false
@@ -501,7 +495,7 @@ function QuestController:Init()
 	-- Templates folder
 	_templates = _questGui:FindFirstChild("Templates") or _questGui:WaitForChild("Templates", GuiConfig.Timeouts.ShortWait)
 
-	-- QuestList ScrollingFrame: Hỗ trợ cấu trúc mới (Quest.QuestList.ScrollingFrame) và cũ (Quest.MainFrame.QuestList)
+	-- QuestList ScrollingFrame
 	local QuestListContainer = _questGui:FindFirstChild("QuestList")
 		or _questGui:WaitForChild("QuestList", GuiConfig.Timeouts.ShortWait)
 
@@ -523,7 +517,7 @@ function QuestController:Init()
 		_questList = _questGui:FindFirstChildWhichIsA("ScrollingFrame", true)
 	end
 
-	-- NotificationText (tìm linh hoạt)
+	-- NotificationText
 	_notificationText = _questGui:FindFirstChild("NotificationText", true)
 
 	-- TabContainer
@@ -553,14 +547,12 @@ function QuestController:Init()
 		})
 	end
 
-	-- ── AUTO BIND BUTTONS (Scale & SFX cho toàn bộ nút trong Quest) ─────────
+	-- Gắn SFX và Animation Scale tự động
 	if _questGui then
 		GuiHelper.AutoBindButtons(_questGui, { MenuName = "Quest" })
 	end
 
-	-- ── Kết nối sự kiện ──
-
-	-- CloseButton
+	-- Kết nối sự kiện nút bấm
 	if _closeButton then
 		_closeButton.MouseButton1Click:Connect(function()
 			local MenuC = GetMenuController()
@@ -572,7 +564,6 @@ function QuestController:Init()
 		end)
 	end
 
-	-- Tab buttons
 	if _tabDaily then
 		_tabDaily.MouseButton1Click:Connect(function()
 			SwitchTab("Daily")
@@ -584,14 +575,11 @@ function QuestController:Init()
 		end)
 	end
 
-	-- Highlight tab mặc định
 	UpdateTabHighlight("Daily")
 
-	print("[QuestController] Đã khởi tạo.")
+	print("[QuestController] Đã khởi tạo Objective Engine 2.0.")
 end
 
---- Hàm public để đóng/mở Quest từ bên ngoài (ví dụ GameStateController)
---- @param Visible boolean
 function QuestController.SetVisible(Visible)
 	if not _questGui then return end
 	if Visible then

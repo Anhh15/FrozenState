@@ -150,6 +150,19 @@ function ShopService:Start()
 			Player.Name, ChestId, Quantity, #ReceivedItems, TotalRefund
 		))
 
+		-- Dispatch Event cho QuestService (Objective Engine 2.0)
+		local QuestModule = script.Parent:FindFirstChild("QuestService")
+		if QuestModule then
+			local QuestService = require(QuestModule)
+			if QuestService and QuestService.DispatchEvent then
+				QuestService.DispatchEvent(Player, "OnChestOpened", {
+					ChestId  = ChestId,
+					Quantity = Quantity,
+					Amount   = Quantity,
+				})
+			end
+		end
+
 		return {
 			Success       = true,
 			ReceivedItems = ReceivedItems,

@@ -262,13 +262,30 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	end
 
 	-- First Blood: người đầu tiên freeze trong trận
+	local IsFirstBlood = false
 	if not _firstBloodClaimed then
 		_firstBloodClaimed = true
+		IsFirstBlood = true
 		SessionService.SetStat(Attacker, "FirstBlood", true)
 		DataService.IncrementStat(Attacker, "TotalFirstBlood")
 		RewardAndSync(Attacker, RewardHelper.GetFirstBloodReward())
 		NotifyAccoladeEvent:FireClient(Attacker, { Type = "FirstBlood" })
 		print(("[FreezeService] 🩸 %s đạt First Blood!"):format(Attacker.Name))
+	end
+
+	-- Dispatch Event cho QuestService (Objective Engine 2.0)
+	local QuestModule = script.Parent:FindFirstChild("QuestService")
+	if QuestModule then
+		local QuestService = require(QuestModule)
+		if QuestService and QuestService.DispatchEvent then
+			QuestService.DispatchEvent(Attacker, "OnFreeze", {
+				Victim        = Victim,
+				IsSpree       = IsSpree,
+				IsFirstBlood  = IsFirstBlood,
+				ModeKey       = SessionService.GetCurrentModeKey(),
+				IsFrozenState = SessionService.GetFrozenState(),
+			})
+		end
 	end
 
 	print(("[FreezeService] %s đã đóng băng %s"):format(Attacker.Name, Victim.Name))
@@ -357,6 +374,20 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 		SessionService.ResetThawStreak(Rescuer)
 		NotifyAccoladeEvent:FireClient(Rescuer, { Type = "ThawingSpree" })
 		print(("[FreezeService] 💧 %s đạt Thawing Spree!"):format(Rescuer.Name))
+	end
+
+	-- Dispatch Event cho QuestService (Objective Engine 2.0)
+	local QuestModule = script.Parent:FindFirstChild("QuestService")
+	if QuestModule then
+		local QuestService = require(QuestModule)
+		if QuestService and QuestService.DispatchEvent then
+			QuestService.DispatchEvent(Rescuer, "OnThaw", {
+				Victim        = Victim,
+				IsSpree       = IsSpree,
+				ModeKey       = ModeKey,
+				IsFrozenState = SessionService.GetFrozenState(),
+			})
+		end
 	end
 
 	print(("[FreezeService] %s đã giải cứu %s"):format(Rescuer.Name, Victim.Name))

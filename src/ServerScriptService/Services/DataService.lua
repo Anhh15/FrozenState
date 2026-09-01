@@ -32,13 +32,22 @@ local PROFILE_TEMPLATE = {
 	EquippedIcicle      = "Default",
 	EquippedIceBlock    = "Default",
 
-	-- Phase 7: Quest System
+	-- Phase 7 / Objective Engine 2.0: Quest & Milestone Data
 	PlayTime            = 0,    -- Tổng thời gian chơi (giây), cộng dồn mỗi session
-	DailyQuestData      = {     -- Dữ liệu Daily Quest của chu kỳ hiện tại
-		ResetTimestamp = 0,     -- Unix timestamp thời điểm chu kỳ bắt đầu
-		ActiveQuests   = {},    -- Mảng 5 phần tử: { QuestId, BaseProgress, Claimed }
+	QuestData           = {
+		Daily = {
+			ResetTimestamp = 0,
+			Quests = {}, -- { [QuestId] = { Progress = 0, Completed = false, Claimed = false } }
+		},
+		Milestone = {
+			Quests = {}, -- { [QuestId] = { Progress = 0, Completed = false, Claimed = false } }
+		},
 	},
-	MilestoneQuestData  = {},   -- { [QuestId] = BaseProgress } mốc stat đã claim
+	DailyQuestData      = {     -- Giữ lại để tương thích ngược
+		ResetTimestamp = 0,
+		ActiveQuests   = {},
+	},
+	MilestoneQuestData  = {},   -- Giữ lại để tương thích ngược
 
 	-- Settings (Âm lượng & Thiết lập cá nhân)
 	Settings            = {
@@ -70,6 +79,25 @@ local _ProfileLoadedBindable = Instance.new("BindableEvent")
 local function OnProfileLoaded(Player, Profile)
 	-- Reconcile: điền vào những field còn thiếu so với template (data migration)
 	Profile:Reconcile()
+
+	-- Đảm bảo cấu trúc QuestData 2.0 luôn tồn tại (Migration an toàn)
+	if not Profile.Data.QuestData then
+		Profile.Data.QuestData = {
+			Daily = {
+				ResetTimestamp = (Profile.Data.DailyQuestData and Profile.Data.DailyQuestData.ResetTimestamp) or 0,
+				Quests = {},
+			},
+			Milestone = {
+				Quests = {},
+			},
+		}
+	end
+	if not Profile.Data.QuestData.Daily then
+		Profile.Data.QuestData.Daily = { ResetTimestamp = 0, Quests = {} }
+	end
+	if not Profile.Data.QuestData.Milestone then
+		Profile.Data.QuestData.Milestone = { Quests = {} }
+	end
 
 	-- Lắng nghe nếu profile bị release từ bên ngoài (server khác force-load)
 	Profile:ListenToRelease(function()
@@ -492,21 +520,90 @@ function DataService.GetQuestRawData(Player)
 		TotalThawingSpree  = Data.TotalThawingSpree,
 		TotalFirstBlood    = Data.TotalFirstBlood,
 		TotalLastStanding  = Data.TotalLastStanding,
+		QuestData          = Data.QuestData,
 		DailyQuestData     = Data.DailyQuestData,
 		MilestoneQuestData = Data.MilestoneQuestData,
 	}
 end
 
---- Ghi lại toàn bộ DailyQuestData sau khi QuestService tính toán
+--- Lấy dữ liệu QuestData 2.0 của người chơi
 --- @param Player Player
---- @param NewDailyData table  -- { ResetTimestamp, ActiveQuests }
+--- @return table | nil
+function DataService.GetQuestData(Player)
+	local Profile = DataService.WaitForProfile(Player)
+	if not Profile then return nil end
+	return Profile.Data.QuestData
+end
+
+--- Ghi lại dữ liệu Daily Quest (ResetTimestamp và Quests map)
+--- @param Player Player
+--- @param NewDailyData table -- { ResetTimestamp = number, Quests = table }
 function DataService.SetDailyQuestData(Player, NewDailyData)
 	local Profile = ActiveProfiles[Player]
 	if not Profile then return end
-	Profile.Data.DailyQuestData = NewDailyData
+	if not Profile.Data.QuestData then
+		Profile.Data.QuestData = { Daily = { ResetTimestamp = 0, Quests = {} }, Milestone = { Quests = {} } }
+	end
+	Profile.Data.QuestData.Daily = NewDailyData
+	-- Đồng bộ lại trường cũ nếu cần
+	Profile.Data.DailyQuestData = {
+		ResetTimestamp = NewDailyData.ResetTimestamp or 0,
+		ActiveQuests   = {},
+	}
 end
 
---- Cập nhật BaseProgress của 1 Milestone Quest (khi claim thành công)
+--- Cập nhật tiến trình của một nhiệm vụ (Daily hoặc Milestone)
+--- @param Player Player
+--- @param QuestType string -- "Daily" | "Milestone"
+--- @param QuestId string
+--- @param Progress number
+--- @param Completed boolean
+function DataService.SetQuestProgress(Player, QuestType, QuestId, Progress, Completed)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+	if not Profile.Data.QuestData then
+		Profile.Data.QuestData = { Daily = { ResetTimestamp = 0, Quests = {} }, Milestone = { Quests = {} } }
+	end
+
+	local TargetCategory = Profile.Data.QuestData[QuestType]
+	if not TargetCategory then return end
+	if not TargetCategory.Quests then
+		TargetCategory.Quests = {}
+	end
+
+	local Entry = TargetCategory.Quests[QuestId]
+	if not Entry then
+		Entry = { Progress = 0, Completed = false, Claimed = false }
+		TargetCategory.Quests[QuestId] = Entry
+	end
+
+	Entry.Progress  = Progress
+	Entry.Completed = (Completed == true) or (Entry.Completed == true)
+end
+
+--- Đánh dấu một nhiệm vụ đã được claim phần thưởng
+--- @param Player Player
+--- @param QuestType string -- "Daily" | "Milestone"
+--- @param QuestId string
+--- @param Claimed boolean
+function DataService.SetQuestClaimed(Player, QuestType, QuestId, Claimed)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then return end
+	if not Profile.Data.QuestData then return end
+
+	local TargetCategory = Profile.Data.QuestData[QuestType]
+	if not TargetCategory or not TargetCategory.Quests then return end
+
+	local Entry = TargetCategory.Quests[QuestId]
+	if not Entry then
+		Entry = { Progress = 0, Completed = true, Claimed = false }
+		TargetCategory.Quests[QuestId] = Entry
+	end
+
+	Entry.Claimed = (Claimed ~= false)
+end
+
+--- Cập nhật BaseProgress của 1 Milestone Quest (giữ lại cho tương thích ngược)
 --- @param Player Player
 --- @param QuestId string
 --- @param NewBase number
