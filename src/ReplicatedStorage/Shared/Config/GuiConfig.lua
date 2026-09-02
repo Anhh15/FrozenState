@@ -228,10 +228,10 @@ local GuiConfig = {
 	-- TÊN CÁC COLLECTIONSERVICE TAGS ĐIỀU KHIỂN GUI INTERACTION
 	-- =========================================================
 	Tags = {
-		GuiButtonPrimary   = "GuiButtonPrimary",
-		GuiButtonSecondary = "GuiButtonSecondary",
-		GuiButtonTab       = "GuiButtonTab",
-		GuiButtonCard      = "GuiButtonCard",
+		GuiButtonPrimary   = "GuiButtonPrimary",   -- Scale 1.05, Easing Back.Out, SFX click lớn rõ
+		GuiButtonSecondary = "GuiButtonSecondary", -- Scale 1.03, Easing Quad.Out, SFX nhẹ
+		GuiButtonTab       = "GuiButtonTab",       -- Không scale (tránh lệch thanh bar), SFX chuyển tab riêng
+		GuiButtonCard      = "GuiButtonCard",      -- Scale 1.04, SFX hover có áp dụng Audio Throttling
 	},
 
 	-- =========================================================

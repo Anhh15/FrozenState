@@ -11,9 +11,9 @@ local AudioConfig = {
 	-- =========================================================
 	Gui = {
 		Default = {
-			ButtonClick      = { Id = 7249903719,       Volume = 0.8 },
-			MouseEnter       = { Id = 137872392480008,  Volume = 0.35 }, -- Âm lượng hover dịu nhẹ
-			CloseButtonClick = { Id = 103307955424380,  Volume = 0.8 },
+			ButtonClick      = { Id = 122864933081871,       Volume = 0.8 },
+			MouseEnter       = { Id = 109229969764947,  Volume = 0.35 }, -- Âm lượng hover dịu nhẹ
+			CloseButtonClick = { Id = 72721943153013,  Volume = 0.8 },
 			HoverThrottle    = 0.045, -- Khoảng cách tối thiểu giữa 2 lần phát âm thanh hover (giây)
 		},
 		-- Ghi đè âm thanh theo từng Menu cụ thể nếu cần
@@ -41,54 +41,54 @@ local AudioConfig = {
 	-- 3. ÂM THANH ITEM REWARD (HIỆU ỨNG MỞ RƯƠNG VÀ PHẦN THƯỞNG)
 	-- =========================================================
 	ItemReward = {
-		ChestClick        = { Id = 74139702398034, Volumes = { 0.5, 0.75, 1.0 } },
-		Phase2Transition  = { Id = 4612378086,     Volume = 0.9 },
+		ChestClick        = { Id = 83435558466111, Volumes = { 0.5, 0.75, 1.0 } },
+		Phase2Transition  = { Id = 126145655157087,     Volume = 0.9 },
 	},
 
 	-- =========================================================
 	-- 4. ÂM THANH MÀN HÌNH ĐẶC BIỆT (SPECIAL GUI)
 	-- =========================================================
 	Special = {
-		ModeAnnouncement        = { Id = 75713209190949,  Volume = 1.0 },
-		FrozenStateAnnouncement = { Id = 117797923415428, Volume = 1.0 },
+		ModeAnnouncement        = { Id = 134883419157810,  Volume = 1.0 },
+		FrozenStateAnnouncement = { Id = 74630540117682, Volume = 1.0 },
 	},
 
 	-- =========================================================
 	-- 5. ÂM THANH DANH HIỆU (ACCOLADES)
 	-- =========================================================
 	Accolades = {
-		Announcement      = { Id = 96102213526905, Volume = 1.0 },
+		Announcement      = { Id = 103587786530239, Volume = 1.0 },
 	},
 
 	-- =========================================================
 	-- 6. ÂM THANH CỬA HÀNG (SHOP)
 	-- =========================================================
 	Shop = {
-		ChestBuy          = { Id = 113890702074571, Volume = 1.0 },
-		BuyFail           = { Id = 128827503277042, Volume = 0.7 },
+		ChestBuy          = { Id = 137722121327821, Volume = 1.0 },
+		BuyFail           = { Id = 117176506709990, Volume = 0.7 },
 	},
 
 	-- =========================================================
 	-- 7. ÂM THANH NHIỆM VỤ (QUEST)
 	-- =========================================================
 	Quest = {
-		RewardClaim       = { Id = 116439187028468, Volume = 0.8 },
+		RewardClaim       = { Id = 130050054455907, Volume = 0.8 },
 	},
 
 	-- =========================================================
 	-- 8. ÂM THANH THỐNG KÊ (STATS & MATCH END)
 	-- =========================================================
 	Stats = {
-		Overall           = { Id = 119804136935260, Volume = 0.8 },
-		StaggerCount      = { Id = 132948338000932, Volume = 0.4 },
+		Overall           = { Id = 119173352926690, Volume = 0.8 },
+		StaggerCount      = { Id = 138587907495783, Volume = 0.4 },
 	},
 
 	-- =========================================================
 	-- 9. ÂM THANH CÀI ĐẶT (SETTING)
 	-- =========================================================
 	Setting = {
-		Toggle            = { Id = 139077385959653, Volume = 0.8 },
-		SliderTick        = { Id = 139077385959653, Volume = 0.5 },
+		Toggle            = { Id = 133112966503280, Volume = 0.8 },
+		SliderTick        = { Id = 133112966503280, Volume = 0.5 },
 	},
 
 	-- =========================================================
@@ -96,9 +96,9 @@ local AudioConfig = {
 	-- =========================================================
 	Gameplay = {
 		Default = {
-			SwingAudios   = { Ids = { 136455914086398 }, Volume = 0.8, MaxDistance = 60 },
-			FreezeAudio   = { Id = 92048469072346,     Volume = 1.0, MaxDistance = 80 },
-			ThawAudio     = { Id = 138690892117059,    Volume = 1.0, MaxDistance = 80 },
+			SwingAudios   = { Ids = { 125182608718995 }, Volume = 0.8, MaxDistance = 60 },
+			FreezeAudio   = { Id = 134176159335752,     Volume = 1.0, MaxDistance = 80 },
+			ThawAudio     = { Id = 110306515292423,    Volume = 1.0, MaxDistance = 80 },
 		},
 		Overrides = {
 			-- Skin overrides theo SkinId (vd: "GoldenIcicle", "CrystalBlock")
@@ -107,9 +107,9 @@ local AudioConfig = {
 
 	-- Tương thích ngược (Fallback compatibility)
 	Default = {
-		SwingAudios = { 136455914086398 },
-		FreezeAudio = 92048469072346,
-		ThawAudio   = 138690892117059,
+		SwingAudios = { 125182608718995 },
+		FreezeAudio = 134176159335752,
+		ThawAudio   = 110306515292423,
 	},
 	Overrides = {},
 
