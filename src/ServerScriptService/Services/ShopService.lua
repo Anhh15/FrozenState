@@ -16,6 +16,9 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 -- Bộ nhớ đệm RAM lưu trạng thái sở hữu GamePass: { [Player] = { [PassKey: string] = boolean } }
 local _GamePassCache = {}
 
+-- Mutex lock per player chống double-spend khi mua rương: { [UserId: number] = boolean }
+local _BuyLocks = {}
+
 -- =========================================================
 -- PRIVATE: WEIGHTED RANDOM
 -- =========================================================
@@ -91,87 +94,108 @@ function ShopService:Start()
 	--- @param Quantity number  -- Số lượng mua (1 — 5)
 	--- @return table           -- { Success, ReceivedItems, RefundAmount, NewMoney }
 	BuyChestFn.OnServerInvoke = function(Player, ChestId, Quantity)
-		-- ─── VALIDATE ────────────────────────────────────────────
-		local Chest = ChestConfig.GetChest(ChestId)
-		if not Chest then
-			warn(("[ShopService] BuyChest: ChestId '%s' không tồn tại."):format(tostring(ChestId)))
-			return { Success = false, Reason = "INVALID_CHEST" }
+		if not Player or not Player:IsA("Player") then
+			return { Success = false, Reason = "INVALID_PLAYER" }
 		end
 
-		local MinQty = 1
-		local MaxQty = 5
-		if type(Quantity) ~= "number"
-			or math.floor(Quantity) ~= Quantity
-			or Quantity < MinQty
-			or Quantity > MaxQty
-		then
-			warn(("[ShopService] BuyChest: Quantity không hợp lệ: %s"):format(tostring(Quantity)))
-			return { Success = false, Reason = "INVALID_QUANTITY" }
+		-- Mutex lock per player chống double-spend / spam request đồng thời
+		if _BuyLocks[Player.UserId] then
+			return { Success = false, Reason = "BUSY" }
 		end
+		_BuyLocks[Player.UserId] = true
 
-		local Data = DataService.GetData(Player)
-		if not Data then
-			return { Success = false, Reason = "DATA_NOT_READY" }
-		end
-
-		-- ─── TÍNH GIÁ ────────────────────────────────────────────
-		local TotalPrice = Chest.Price1 * Quantity
-
-		if Data.Money < TotalPrice then
-			return { Success = false, Reason = "NOT_ENOUGH_MONEY" }
-		end
-
-		-- ─── TRỪ TIỀN TRƯỚC (để tránh double-spend) ──────────────
-		DataService.AddMoney(Player, -TotalPrice)
-
-		-- ─── MỞ RƯƠNG ────────────────────────────────────────────
-		-- RefundBasePrice = Price1 (hoàn tiền dựa trên giá 1 lần mở, không phải giá gói)
-		local RefundBasePrice = Chest.Price1
-		local TotalRefund     = 0
-		local ReceivedItems   = {}
-
-		for _ = 1, Quantity do
-			local ItemId, RefundAmount, WasDuplicate = ProcessOneDraw(Player, Chest, RefundBasePrice)
-			table.insert(ReceivedItems, {
-				ItemId       = ItemId,
-				WasDuplicate = WasDuplicate,
-				Refund       = RefundAmount,
-			})
-			TotalRefund = TotalRefund + RefundAmount
-		end
-
-		-- ─── HOÀN TIỀN (nếu có) ──────────────────────────────────
-		if TotalRefund > 0 then
-			DataService.AddMoney(Player, TotalRefund)
-		end
-
-		-- ─── CẬP NHẬT TIỀN VỀ CLIENT ─────────────────────────────
-		local NewMoney = DataService.GetData(Player).Money
-		UpdateMoneyEv:FireClient(Player, NewMoney)
-
-		print(("[ShopService] %s mua %s x%d — Nhận: %d item, Hoàn: %d Cash"):format(
-			Player.Name, ChestId, Quantity, #ReceivedItems, TotalRefund
-		))
-
-		-- Dispatch Event cho QuestService (Objective Engine 2.0)
-		local QuestModule = script.Parent:FindFirstChild("QuestService")
-		if QuestModule then
-			local QuestService = require(QuestModule)
-			if QuestService and QuestService.DispatchEvent then
-				QuestService.DispatchEvent(Player, "OnChestOpened", {
-					ChestId  = ChestId,
-					Quantity = Quantity,
-					Amount   = Quantity,
-				})
+		local Success, Result = pcall(function()
+			-- ─── VALIDATE ────────────────────────────────────────────
+			local Chest = ChestConfig.GetChest(ChestId)
+			if not Chest then
+				warn(("[ShopService] BuyChest: ChestId '%s' không tồn tại."):format(tostring(ChestId)))
+				return { Success = false, Reason = "INVALID_CHEST" }
 			end
+
+			local MinQty = 1
+			local MaxQty = 5
+			if type(Quantity) ~= "number"
+				or math.floor(Quantity) ~= Quantity
+				or Quantity < MinQty
+				or Quantity > MaxQty
+			then
+				warn(("[ShopService] BuyChest: Quantity không hợp lệ: %s"):format(tostring(Quantity)))
+				return { Success = false, Reason = "INVALID_QUANTITY" }
+			end
+
+			local Data = DataService.GetData(Player)
+			if not Data then
+				return { Success = false, Reason = "DATA_NOT_READY" }
+			end
+
+			-- ─── TÍNH GIÁ ────────────────────────────────────────────
+			local TotalPrice = Chest.Price1 * Quantity
+
+			if Data.Money < TotalPrice then
+				return { Success = false, Reason = "NOT_ENOUGH_MONEY" }
+			end
+
+			-- ─── TRỪ TIỀN TRƯỚC (để tránh double-spend) ──────────────
+			DataService.AddMoney(Player, -TotalPrice)
+
+			-- ─── MỞ RƯƠNG ────────────────────────────────────────────
+			-- RefundBasePrice = Price1 (hoàn tiền dựa trên giá 1 lần mở, không phải giá gói)
+			local RefundBasePrice = Chest.Price1
+			local TotalRefund     = 0
+			local ReceivedItems   = {}
+
+			for _ = 1, Quantity do
+				local ItemId, RefundAmount, WasDuplicate = ProcessOneDraw(Player, Chest, RefundBasePrice)
+				table.insert(ReceivedItems, {
+					ItemId       = ItemId,
+					WasDuplicate = WasDuplicate,
+					Refund       = RefundAmount,
+				})
+				TotalRefund = TotalRefund + RefundAmount
+			end
+
+			-- ─── HOÀN TIỀN (nếu có) ──────────────────────────────────
+			if TotalRefund > 0 then
+				DataService.AddMoney(Player, TotalRefund)
+			end
+
+			-- ─── CẬP NHẬT TIỀN VỀ CLIENT ─────────────────────────────
+			local NewMoney = DataService.GetData(Player).Money
+			UpdateMoneyEv:FireClient(Player, NewMoney)
+
+			print(("[ShopService] %s mua %s x%d — Nhận: %d item, Hoàn: %d Cash"):format(
+				Player.Name, ChestId, Quantity, #ReceivedItems, TotalRefund
+			))
+
+			-- Dispatch Event cho QuestService (Objective Engine 2.0)
+			local QuestModule = script.Parent:FindFirstChild("QuestService")
+			if QuestModule then
+				local QuestService = require(QuestModule)
+				if QuestService and QuestService.DispatchEvent then
+					QuestService.DispatchEvent(Player, "OnChestOpened", {
+						ChestId  = ChestId,
+						Quantity = Quantity,
+						Amount   = Quantity,
+					})
+				end
+			end
+
+			return {
+				Success       = true,
+				ReceivedItems = ReceivedItems,
+				RefundAmount  = TotalRefund,
+				NewMoney      = NewMoney,
+			}
+		end)
+
+		_BuyLocks[Player.UserId] = nil
+
+		if not Success then
+			warn(("[ShopService] Lỗi khi xử lý BuyChest cho %s: %s"):format(Player.Name, tostring(Result)))
+			return { Success = false, Reason = "INTERNAL_ERROR" }
 		end
 
-		return {
-			Success       = true,
-			ReceivedItems = ReceivedItems,
-			RefundAmount  = TotalRefund,
-			NewMoney      = NewMoney,
-		}
+		return Result
 	end
 
 	-- =========================================================
@@ -245,9 +269,10 @@ function ShopService:Start()
 		end
 	end)
 
-	-- Dọn dẹp cache khi người chơi rời khỏi server
+	-- Dọn dẹp cache và lock khi người chơi rời khỏi server
 	Players.PlayerRemoving:Connect(function(Player)
 		_GamePassCache[Player] = nil
+		_BuyLocks[Player.UserId] = nil
 	end)
 
 	print("[ShopService] Đang chạy.")

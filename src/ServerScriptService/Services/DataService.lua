@@ -121,14 +121,23 @@ end
 local function OnPlayerAdded(Player)
 	local Profile = PlayerStore:LoadProfileAsync(
 		("Player_%d"):format(Player.UserId),
-		"ForceLoad"
+		function(PlaceId, GameJobId)
+			-- Nếu player đã rời server trong lúc chờ session giải phóng -> hủy
+			if not Player:IsDescendantOf(Players) then
+				return "Cancel"
+			end
+			-- Chờ server cũ hoàn tất lưu và nhả session lock an toàn
+			return "Repeat"
+		end
 	)
 
 	if Profile ~= nil then
 		OnProfileLoaded(Player, Profile)
 	else
-		-- ProfileService không thể load (DataStore bị lỗi)
-		Player:Kick("[FrozenState] Không thể tải dữ liệu. Vui lòng thử lại.")
+		-- ProfileService không thể load (DataStore bị lỗi hoặc session bị hủy)
+		if Player:IsDescendantOf(Players) then
+			Player:Kick("[FrozenState] Không thể tải dữ liệu. Vui lòng thử lại.")
+		end
 	end
 end
 
@@ -654,6 +663,11 @@ function DataService.SetSetting(Player, Key, Value)
 	local Profile = ActiveProfiles[Player]
 	if not Profile then return false end
 
+	-- Validate: Value bắt buộc phải là number hữu hạn (không chấp nhận string, table, boolean, NaN hay huge)
+	if type(Value) ~= "number" or Value ~= Value or math.abs(Value) == math.huge then
+		return false
+	end
+
 	if not Profile.Data.Settings then
 		Profile.Data.Settings = {
 			MasterVolume = DataConfig.DefaultSettings.MasterVolume,
@@ -663,10 +677,8 @@ function DataService.SetSetting(Player, Key, Value)
 		}
 	end
 
-	if type(Value) == "number" then
-		-- Clamp và làm tròn theo bước 10 (0, 10, ..., 100)
-		Value = math.clamp(math.round(Value / 10) * 10, 0, 100)
-	end
+	-- Clamp và làm tròn theo bước 10 (0, 10, ..., 100)
+	Value = math.clamp(math.round(Value / 10) * 10, 0, 100)
 
 	Profile.Data.Settings[Key] = Value
 	return true
@@ -742,7 +754,7 @@ function DataService:Start()
 		if type(Payload) ~= "table" then return end
 		local Key   = Payload.Key
 		local Value = Payload.Value
-		if type(Key) == "string" and Value ~= nil then
+		if type(Key) == "string" and type(Value) == "number" and Value == Value and math.abs(Value) ~= math.huge then
 			DataService.SetSetting(Player, Key, Value)
 		end
 	end)

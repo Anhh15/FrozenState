@@ -27,6 +27,10 @@ local _lastPlayTimeSync = {} -- { [Player] = os.time() }
 -- Cấu trúc: { [Player] = { [QuestId] = number } }
 local _matchProgress    = {}
 
+-- Mutex locks per player chống race condition / spam request
+local _ResetLocks       = {} -- { [UserId: number] = boolean }
+local _ClaimLocks       = {} -- { [UserId: number] = { [QuestId: string] = boolean } }
+
 local NotifyAccoladeEvent = nil
 local UpdateMoneyEvent    = nil
 
@@ -471,58 +475,79 @@ end
 --- @param Player Player
 --- @return table -- { Success = boolean, Reason = string?, Data = table? }
 local function ResetDailyQuests(Player)
-	local ShopSvc = GetShopService()
-	if not ShopSvc or not ShopSvc.PlayerOwnsGamePass or not ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
-		warn(("[QuestService] ResetDailyQuests: %s không sở hữu GamePass UpgradeDailyQuests."):format(Player.Name))
-		return { Success = false, Reason = "NOT_OWNED" }
+	if not Player or not Player:IsA("Player") then
+		return { Success = false, Reason = "INVALID_PLAYER" }
 	end
 
-	local RawData = DataService.GetQuestRawData(Player)
-	if not RawData then
-		return { Success = false, Reason = "DATA_NOT_READY" }
+	-- Mutex lock per player chống spam request đồng thời khi đang yield
+	if _ResetLocks[Player.UserId] then
+		return { Success = false, Reason = "BUSY" }
 	end
+	_ResetLocks[Player.UserId] = true
 
-	local QuestData = RawData.QuestData or {}
-	local DailyData = QuestData.Daily or { ResetTimestamp = 0, ResetsUsed = 0, Quests = {} }
-	local ResetsUsed = DailyData.ResetsUsed or 0
+	local Success, Result = pcall(function()
+		local ShopSvc = GetShopService()
+		if not ShopSvc or not ShopSvc.PlayerOwnsGamePass or not ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+			warn(("[QuestService] ResetDailyQuests: %s không sở hữu GamePass UpgradeDailyQuests."):format(Player.Name))
+			return { Success = false, Reason = "NOT_OWNED" }
+		end
 
-	local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
-	local MaxResets = (PassConfig and PassConfig.DailyResets) or 1
+		local RawData = DataService.GetQuestRawData(Player)
+		if not RawData then
+			return { Success = false, Reason = "DATA_NOT_READY" }
+		end
 
-	if ResetsUsed >= MaxResets then
-		warn(("[QuestService] ResetDailyQuests: %s đã dùng hết lượt reset trong ngày (%d/%d)."):format(
-			Player.Name, ResetsUsed, MaxResets
-		))
-		return { Success = false, Reason = "LIMIT_REACHED" }
-	end
+		local QuestData = RawData.QuestData or {}
+		local DailyData = QuestData.Daily or { ResetTimestamp = 0, ResetsUsed = 0, Quests = {} }
+		local ResetsUsed = DailyData.ResetsUsed or 0
 
-	local PickedQuests = PickRandomDailyQuests(Player)
-	local NewQuestsMap = {}
+		local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
+		local MaxResets = (PassConfig and PassConfig.DailyResets) or 1
 
-	for _, QuestEntry in ipairs(PickedQuests) do
-		NewQuestsMap[QuestEntry.Id] = {
-			Progress  = 0,
-			Completed = false,
-			Claimed   = false,
+		if ResetsUsed >= MaxResets then
+			warn(("[QuestService] ResetDailyQuests: %s đã dùng hết lượt reset trong ngày (%d/%d)."):format(
+				Player.Name, ResetsUsed, MaxResets
+			))
+			return { Success = false, Reason = "LIMIT_REACHED" }
+		end
+
+		local PickedQuests = PickRandomDailyQuests(Player)
+		local NewQuestsMap = {}
+
+		for _, QuestEntry in ipairs(PickedQuests) do
+			NewQuestsMap[QuestEntry.Id] = {
+				Progress  = 0,
+				Completed = false,
+				Claimed   = false,
+			}
+		end
+
+		local NewDailyData = {
+			ResetTimestamp = DailyData.ResetTimestamp or os.time(),
+			ResetsUsed     = ResetsUsed + 1,
+			Quests         = NewQuestsMap,
 		}
+
+		DataService.SetDailyQuestData(Player, NewDailyData)
+
+		print(("[QuestService] %s đã làm mới Daily Quests thành công (Lần %d/%d) — %d quest mới."):format(
+			Player.Name, NewDailyData.ResetsUsed, MaxResets, #PickedQuests
+		))
+
+		return {
+			Success = true,
+			Data    = BuildQuestData(Player),
+		}
+	end)
+
+	_ResetLocks[Player.UserId] = nil
+
+	if not Success then
+		warn(("[QuestService] Lỗi khi xử lý ResetDailyQuests cho %s: %s"):format(Player.Name, tostring(Result)))
+		return { Success = false, Reason = "INTERNAL_ERROR" }
 	end
 
-	local NewDailyData = {
-		ResetTimestamp = DailyData.ResetTimestamp or os.time(),
-		ResetsUsed     = ResetsUsed + 1,
-		Quests         = NewQuestsMap,
-	}
-
-	DataService.SetDailyQuestData(Player, NewDailyData)
-
-	print(("[QuestService] %s đã làm mới Daily Quests thành công (Lần %d/%d) — %d quest mới."):format(
-		Player.Name, NewDailyData.ResetsUsed, MaxResets, #PickedQuests
-	))
-
-	return {
-		Success = true,
-		Data    = BuildQuestData(Player),
-	}
+	return Result
 end
 
 -- =========================================================
@@ -535,96 +560,122 @@ end
 --- @param QuestId string
 --- @return table -- Result payload
 local function ClaimQuest(Player, QuestType, QuestId)
-	local RawData = DataService.GetQuestRawData(Player)
-	if not RawData then return { Success = false } end
-
-	local ConfigEntry = QuestConfig.FindQuest(QuestType, QuestId)
-	if not ConfigEntry then
-		warn(("[QuestService] ClaimQuest: QuestId '%s' không tồn tại trong %s."):format(QuestId, QuestType))
-		return { Success = false }
+	if not Player or not Player:IsA("Player") or not QuestId then
+		return { Success = false, Reason = "INVALID_ARGUMENTS" }
 	end
 
-	local QuestData = RawData.QuestData or {}
-	local CategoryStored = (QuestData[QuestType] and QuestData[QuestType].Quests) or {}
-	local StoredEntry = CategoryStored[QuestId]
-
-	local Obj = ConfigEntry.Objective
-	local CurrentProgress = (StoredEntry and StoredEntry.Progress) or 0
-	local IsRepeatable = (ConfigEntry.Repeatable == true)
-	local IsClaimed = (StoredEntry and StoredEntry.Claimed == true)
-	local IsCompleted = IsRepeatable and (CurrentProgress >= Obj.Requirement) or ((StoredEntry and StoredEntry.Completed == true) or (CurrentProgress >= Obj.Requirement))
-
-	if not IsRepeatable and IsClaimed then
-		warn(("[QuestService] ClaimQuest: %s đã claim '%s'."):format(Player.Name, QuestId))
-		return { Success = false }
+	-- Mutex lock per player per quest chống claim đồng thời
+	if not _ClaimLocks[Player.UserId] then
+		_ClaimLocks[Player.UserId] = {}
 	end
-
-	if not IsCompleted then
-		warn(("[QuestService] ClaimQuest: %s chưa hoàn thành '%s' (%.0f/%.0f)."):format(
-			Player.Name, QuestId, CurrentProgress, Obj.Requirement
-		))
-		return { Success = false }
+	if _ClaimLocks[Player.UserId][QuestId] then
+		return { Success = false, Reason = "BUSY" }
 	end
+	_ClaimLocks[Player.UserId][QuestId] = true
 
-	-- Xử lý Reset Tiến trình cho Quest Repeatable vs One-time
-	if IsRepeatable then
-		-- Trừ Requirement khỏi Progress, bảo lưu toàn bộ tiến trình dôi dư cho vòng lặp tiếp theo!
-		local NewProgress = math.max(0, CurrentProgress - Obj.Requirement)
-		local IsCompletedNow = (NewProgress >= Obj.Requirement)
-		DataService.SetQuestProgress(Player, QuestType, QuestId, NewProgress, IsCompletedNow)
-		DataService.SetQuestClaimed(Player, QuestType, QuestId, false)
-	else
-		-- Đánh dấu Claimed vĩnh viễn trong chu kỳ
-		DataService.SetQuestClaimed(Player, QuestType, QuestId, true)
-	end
+	local Success, Result = pcall(function()
+		local RawData = DataService.GetQuestRawData(Player)
+		if not RawData then return { Success = false, Reason = "DATA_NOT_READY" } end
 
-	-- Cấp phần thưởng đa hình
-	local Reward = ConfigEntry.Reward
-	local ReceivedItems = {}
-	local RefundAmount = 0
-	local ActualRewardAmount = Reward.Amount or 1
+		local ConfigEntry = QuestConfig.FindQuest(QuestType, QuestId)
+		if not ConfigEntry then
+			warn(("[QuestService] ClaimQuest: QuestId '%s' không tồn tại trong %s."):format(QuestId, QuestType))
+			return { Success = false, Reason = "INVALID_QUEST" }
+		end
 
-	if Reward.Type == "Money" then
-		if QuestType == "Daily" then
-			local ShopSvc = GetShopService()
-			if ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
-				local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
-				local Bonus = (PassConfig and PassConfig.RewardBonus) or 0.5
-				ActualRewardAmount = math.round(ActualRewardAmount * (1 + Bonus))
+		local QuestData = RawData.QuestData or {}
+		local CategoryStored = (QuestData[QuestType] and QuestData[QuestType].Quests) or {}
+		local StoredEntry = CategoryStored[QuestId]
+
+		local Obj = ConfigEntry.Objective
+		local CurrentProgress = (StoredEntry and StoredEntry.Progress) or 0
+		local IsRepeatable = (ConfigEntry.Repeatable == true)
+		local IsClaimed = (StoredEntry and StoredEntry.Claimed == true)
+		local IsCompleted = IsRepeatable and (CurrentProgress >= Obj.Requirement) or ((StoredEntry and StoredEntry.Completed == true) or (CurrentProgress >= Obj.Requirement))
+
+		if not IsRepeatable and IsClaimed then
+			warn(("[QuestService] ClaimQuest: %s đã claim '%s'."):format(Player.Name, QuestId))
+			return { Success = false, Reason = "ALREADY_CLAIMED" }
+		end
+
+		if not IsCompleted then
+			warn(("[QuestService] ClaimQuest: %s chưa hoàn thành '%s' (%.0f/%.0f)."):format(
+				Player.Name, QuestId, CurrentProgress, Obj.Requirement
+			))
+			return { Success = false, Reason = "NOT_COMPLETED" }
+		end
+
+		-- Xử lý Reset Tiến trình cho Quest Repeatable vs One-time
+		if IsRepeatable then
+			-- Trừ Requirement khỏi Progress, bảo lưu toàn bộ tiến trình dôi dư cho vòng lặp tiếp theo!
+			local NewProgress = math.max(0, CurrentProgress - Obj.Requirement)
+			local IsCompletedNow = (NewProgress >= Obj.Requirement)
+			DataService.SetQuestProgress(Player, QuestType, QuestId, NewProgress, IsCompletedNow)
+			DataService.SetQuestClaimed(Player, QuestType, QuestId, false)
+		else
+			-- Đánh dấu Claimed vĩnh viễn trong chu kỳ
+			DataService.SetQuestClaimed(Player, QuestType, QuestId, true)
+		end
+
+		-- Cấp phần thưởng đa hình
+		local Reward = ConfigEntry.Reward
+		local ReceivedItems = {}
+		local RefundAmount = 0
+		local ActualRewardAmount = Reward.Amount or 1
+
+		if Reward.Type == "Money" then
+			if QuestType == "Daily" then
+				local ShopSvc = GetShopService()
+				if ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+					local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
+					local Bonus = (PassConfig and PassConfig.RewardBonus) or 0.5
+					ActualRewardAmount = math.round(ActualRewardAmount * (1 + Bonus))
+				end
+			end
+			-- Chỉ định rõ Multiplier = 1 để cô lập thưởng Quest không bị DoubleMatchMoney nhân đôi tiếp
+			RewardHelper.RewardAndSync(Player, ActualRewardAmount, DataService, UpdateMoneyEvent, 1)
+		elseif Reward.Type == "Chest" then
+			ReceivedItems, RefundAmount = ProcessChestReward(Player, Reward.ChestId, Reward.Amount or 1)
+			if UpdateMoneyEvent then
+				local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
+				UpdateMoneyEvent:FireClient(Player, NewMoney)
+			end
+		elseif Reward.Type == "Item" then
+			ReceivedItems, RefundAmount = ProcessItemReward(Player, Reward.ItemType, Reward.ItemId)
+			if UpdateMoneyEvent and RefundAmount > 0 then
+				local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
+				UpdateMoneyEvent:FireClient(Player, NewMoney)
 			end
 		end
-		-- Chỉ định rõ Multiplier = 1 để cô lập thưởng Quest không bị DoubleMatchMoney nhân đôi tiếp
-		RewardHelper.RewardAndSync(Player, ActualRewardAmount, DataService, UpdateMoneyEvent, 1)
-	elseif Reward.Type == "Chest" then
-		ReceivedItems, RefundAmount = ProcessChestReward(Player, Reward.ChestId, Reward.Amount or 1)
-		if UpdateMoneyEvent then
-			local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
-			UpdateMoneyEvent:FireClient(Player, NewMoney)
-		end
-	elseif Reward.Type == "Item" then
-		ReceivedItems, RefundAmount = ProcessItemReward(Player, Reward.ItemType, Reward.ItemId)
-		if UpdateMoneyEvent and RefundAmount > 0 then
-			local NewMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
-			UpdateMoneyEvent:FireClient(Player, NewMoney)
-		end
+
+		local FinalMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
+
+		print(("[QuestService] %s claim %s '%s' thành công — Thưởng: %s (Amount: %d, Repeatable: %s)."):format(
+			Player.Name, QuestType, QuestId, Reward.Type, ActualRewardAmount, tostring(IsRepeatable)
+		))
+
+		return {
+			Success       = true,
+			RewardType    = Reward.Type,
+			RewardAmount  = ActualRewardAmount,
+			ChestId       = Reward.ChestId,
+			ItemId        = Reward.ItemId,
+			ReceivedItems = ReceivedItems,
+			RefundAmount  = RefundAmount,
+			NewMoney      = FinalMoney,
+		}
+	end)
+
+	if _ClaimLocks[Player.UserId] then
+		_ClaimLocks[Player.UserId][QuestId] = nil
 	end
 
-	local FinalMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
+	if not Success then
+		warn(("[QuestService] Lỗi khi xử lý ClaimQuest cho %s ('%s'): %s"):format(Player.Name, QuestId, tostring(Result)))
+		return { Success = false, Reason = "INTERNAL_ERROR" }
+	end
 
-	print(("[QuestService] %s claim %s '%s' thành công — Thưởng: %s (Amount: %d, Repeatable: %s)."):format(
-		Player.Name, QuestType, QuestId, Reward.Type, ActualRewardAmount, tostring(IsRepeatable)
-	))
-
-	return {
-		Success       = true,
-		RewardType    = Reward.Type,
-		RewardAmount  = ActualRewardAmount,
-		ChestId       = Reward.ChestId,
-		ItemId        = Reward.ItemId,
-		ReceivedItems = ReceivedItems,
-		RefundAmount  = RefundAmount,
-		NewMoney      = FinalMoney,
-	}
+	return Result
 end
 
 -- =========================================================
@@ -659,6 +710,8 @@ function QuestService:Init()
 			_lastPlayTimeSync[Player] = nil
 		end
 		_matchProgress[Player] = nil
+		_ResetLocks[Player.UserId] = nil
+		_ClaimLocks[Player.UserId] = nil
 	end)
 
 	for _, Player in ipairs(Players:GetPlayers()) do

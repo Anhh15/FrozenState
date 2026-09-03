@@ -35,6 +35,7 @@ local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelp
 -- =========================================================
 
 local _firstBloodClaimed = false
+local _LastHitTimes = {}
 
 -- Cache IceBlock theo UserId — để RemoveIceBlock chạy O(1) thay vì scan workspace
 -- { [UserId: number] = BlockModel: Model }
@@ -485,17 +486,41 @@ local function HandleToolHit(Attacker, Target)
 	-- Attacker phải ở trạng thái Normal
 	if SessionService.GetState(Attacker) ~= "Normal" then return end
 
-	-- Server-side distance validation (chống lag exploit)
 	local AttackerChar = Attacker.Character
 	local TargetChar   = Target.Character
 	if not AttackerChar or not TargetChar then return end
 
+	-- 1. Xác thực Attacker đang cầm vũ khí trên tay (Tool Equipped check)
+	local Tool = AttackerChar:FindFirstChild("Icicle") or AttackerChar:FindFirstChildOfClass("Tool")
+	if not Tool then return end
+
+	-- 2. Server Cooldown Debounce Rate-limit
+	local Now = os.clock()
+	local LastHit = _LastHitTimes[Attacker.UserId] or 0
+	local DebounceWindow = (GameConfig.Tool and GameConfig.Tool.HitDebounceWindow) or 0.8
+	if (Now - LastHit) < DebounceWindow then
+		return
+	end
+	_LastHitTimes[Attacker.UserId] = Now
+
+	-- 3. Server-side distance validation (chống lag exploit)
 	local AttackerHRP = AttackerChar:FindFirstChild("HumanoidRootPart")
 	local TargetHRP   = TargetChar:FindFirstChild("HumanoidRootPart")
 	if not AttackerHRP or not TargetHRP then return end
 
 	local Distance = (AttackerHRP.Position - TargetHRP.Position).Magnitude
-	if Distance > GameConfig.Tool.HitboxRange * 1.5 then return end  -- 1.5x tolerance lag
+	local Tolerance = (GameConfig.Tool and GameConfig.Tool.HitLagTolerance) or 1.5
+	if Distance > GameConfig.Tool.HitboxRange * Tolerance then return end
+
+	-- 4. Raycast Line-of-Sight validation (chống đánh xuyên tường / địa hình)
+	local RayParams = RaycastParams.new()
+	RayParams.FilterType = Enum.RaycastFilterType.Exclude
+	RayParams.FilterDescendantsInstances = { AttackerChar, TargetChar }
+	local RayDirection = TargetHRP.Position - AttackerHRP.Position
+	local RayResult = workspace:Raycast(AttackerHRP.Position, RayDirection, RayParams)
+	if RayResult and RayResult.Instance and RayResult.Instance.CanCollide then
+		return
+	end
 
 	local ModeKey = SessionService.GetCurrentModeKey()
 
@@ -540,9 +565,10 @@ function FreezeService:Init()
 
 	OnToolHitEvent.OnServerEvent:Connect(HandleToolHit)
 
-	-- Dọn cache IceBlock khi player rời game (tránh memory leak)
+	-- Dọn cache và IceBlock khi player rời game (tránh memory leak & part orphan)
 	Players.PlayerRemoving:Connect(function(Player)
-		_iceBlocks[Player.UserId] = nil
+		_LastHitTimes[Player.UserId] = nil
+		RemoveIceBlock(Player)
 	end)
 
 	print("[FreezeService] Đã khởi tạo.")

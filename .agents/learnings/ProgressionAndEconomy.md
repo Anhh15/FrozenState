@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Objective Engine 2.0, Hiệu ứng Mở rương, Phần thưởng Đa hình, Nhiệm vụ Lặp Vô hạn và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 01-09-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Objective Engine 2.0, Hiệu ứng Mở rương, Phần thưởng Đa hình, Nhiệm vụ Lặp Vô hạn, Mutex In-Flight Lock và Đồng bộ Dữ liệu).
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -100,6 +100,13 @@
   - *Gamepass 2 (`UpgradeDailyQuests`):* Kết hợp bộ 3 đặc quyền: mở rộng $+2$ slots (tổng $7$ quests), thưởng thêm $+50\%$ tiền quest khi claim (`math.round(BaseAmount * 1.5)`), và cấp $1$ lượt Instant Full Restock mỗi $24\text{h}$ (`ResetsUsed < 1`).
   - *Tạo Động Lực Chiến Thuật:* Buộc người chơi đưa ra quyết định cày trọn $14$ nhiệm vụ/ngày ($\approx 2,100$ tiền) để tối ưu lợi nhuận, chuyển hóa trực tiếp thành thời gian chơi thực tế (Playtime).
 - **File liên quan:** [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
+### 15. Kiến trúc Mutex In-Flight Lock & Giao dịch Nguyên tử (Atomic In-Flight Mutex Pattern)
+- **Chi tiết:** Mọi giao dịch kinh tế tiêu tốn tiền tệ hoặc yield bất đồng bộ qua mạng (`BuyChest`, `ResetDailyQuests`, `ClaimQuest`) bắt buộc phải bảo vệ bằng bảng khóa tạm thời theo người chơi:
+  1. *In-Flight Mutex:* Tra cứu `_Locks[Player.UserId]`. Nếu đang bị khóa, trả về ngay `{ Success = false, Reason = "BUSY" }`.
+  2. *Exception Safety (`pcall`):* Bọc toàn bộ khối kiểm tra điều kiện, trừ tiền/progress và trao thưởng trong `pcall` để đảm bảo cờ khóa luôn được giải phóng về `nil` ở cuối luồng kể cả khi phát sinh lỗi runtime ngoài ý muốn.
+  3. *Lifecycle Guard:* Giải phóng toàn bộ lock trong `Players.PlayerRemoving` để tránh kẹt trạng thái vĩnh viễn khi người chơi thoát game đột ngột.
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
 
 ---
 
@@ -203,3 +210,22 @@
 - **Vấn đề:** Nếu profile người chơi có `ResetTimestamp > 0` (do dữ liệu cũ, wipe test hoặc lỗi migration), nhưng bảng `DailyData.Quests` đang rỗng `{}` hoặc `nil`, điều kiện kiểm tra chu kỳ `(Now - ResetTimestamp) >= ResetSeconds` trả về `false`. `PickRandomDailyQuests` không được gọi, dẫn đến server trả về mảng rỗng `Daily = {}` và giao diện nhiệm vụ của người chơi bị trống hoàn toàn cho đến hết 24h.
 - **Giải pháp:** Bổ sung guard clause kiểm tra bảng rỗng: `IsQuestsEmpty = (not DailyData.Quests) or (next(DailyData.Quests) == nil)` trực tiếp vào điều kiện kích hoạt `CheckAndResetDaily`, đảm bảo luôn tự động sinh danh sách nhiệm vụ nếu dữ liệu bị thiếu.
 - **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua)
+
+### 15. Race Condition Mua Rương Gây Double-Spend & Âm Tiền Khi Spam Mạng
+- **Vấn đề:** Khoảng cách giữa dòng đọc số dư `Data.Money < TotalPrice` và dòng trừ tiền `DataService.AddMoney` không có cơ chế khóa. Nếu client gửi đồng thời nhiều request `BuyChest` trong cùng 1 frame, tất cả các luồng đều vượt qua bước kiểm tra số dư ban đầu dẫn đến mua nhiều rương vượt số tiền thực có, gây âm tiền hoặc nhân bản vật phẩm.
+- **Giải pháp:** Sử dụng Mutex Lock `_BuyLocks[Player.UserId] = true` trước khi đọc số dư tài khoản kết hợp bọc khối giao dịch trong `pcall`, đảm bảo mỗi người chơi chỉ được thực thi tuần tự 1 giao dịch mở rương tại 1 thời điểm.
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
+
+### 16. Race Condition Yielding Bất Đồng Bộ Vượt Giới Hạn Reset Nhiệm Vụ Hàng Ngày
+- **Vấn đề:** Khi client gọi `RequestResetDailyQuests`, `QuestService` gọi `ShopService.PlayerOwnsGamePass`. Hàm này thực hiện yield luồng khi gọi `MarketplaceService:UserOwnsGamePassAsync`. Trong thời gian yield chờ Roblox Cloud phản hồi, biến đếm `ResetsUsed` chưa kịp tăng. Kẻ tấn công gửi nhiều request đồng thời sẽ reset nhiệm vụ hàng ngày nhiều lần liên tiếp, phá vỡ giới hạn `MaxResets = 1`.
+- **Giải pháp:** Áp dụng khóa luồng `_ResetLocks[Player.UserId] = true` ngay tại dòng đầu tiên của hàm trước khi yield hoặc kiểm tra GamePass, chặn đứng mọi request trùng lặp phát sinh khi giao dịch trước đó đang xử lý.
+- **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua)
+
+### 17. Nguy Cơ Ghi Đè Mất Dữ Liệu Do Cướp Session Lock Bằng "ForceLoad" & Type Injection Gây Hỏng Profile
+- **Vấn đề:** 
+  1. `DataService` nạp profile bằng cờ `"ForceLoad"` thô bạo. Khi người chơi chuyển server nhanh lúc server cũ đang Final Save, session lock bị cướp dẫn đến ghi đè dữ liệu cũ chưa kịp lưu (Rollback).
+  2. Handler `SaveSetting` chỉ clamp số nhưng cho phép ghi trực tiếp dữ liệu dạng string/table/NaN vào `Profile.Data.Settings`, làm quá tải giới hạn 4MB DataStore và crash client.
+- **Giải pháp:**
+  1. Chuyển `"ForceLoad"` thành hàm release handler: trả về `"Repeat"` để chờ server cũ lưu và nhả lock an toàn nếu player còn trong game, trả về `"Cancel"` nếu player đã thoát.
+  2. Ép kiểu nghiêm ngặt `typeof(Value) == "number"` và loại trừ `NaN`/`math.huge` ở cả tầng Remote lẫn `DataService.SetSetting`.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ProfileService.lua](../../src/ReplicatedStorage/Shared/Lib/ProfileService.lua)

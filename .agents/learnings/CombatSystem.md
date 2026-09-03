@@ -1,6 +1,6 @@
 # CombatSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống chiến đấu (Icicle Tool, Hitbox Spatial Query, Freeze/Thaw mechanics, IceBlock Model và Tags CollectionService).
-> Cập nhật lần cuối: 21-08-2026
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -38,6 +38,14 @@
 - **Highlight khối băng xuyên vật thể:** Khi mục tiêu bị đóng băng (`State == "Frozen"`), Client gán `Highlight.Adornee = HighlightHelper` (Part nằm trong Model khối băng) với `DepthMode = Enum.HighlightDepthMode.AlwaysOnTop` để người chơi định vị rõ vị trí đồng minh/kẻ địch bị đóng băng xuyên qua các bức tường. Khi giải cứu (`Thaw`), `Adornee` được trả lại cho `Character`.
 - **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
 
+### 7. Mô hình Xác thực Đòn đánh Đa tầng Server Authority (Server-Assisted Hitreg)
+- **Chi tiết:** Client xử lý Spatial Query nhận diện va chạm cục bộ để giữ gameplay feel mượt mà, nhưng Server giữ quyền phán quyết tối cao (`Server Authority`) qua 4 lớp xác thực nghiêm ngặt khi nhận remote `OnToolHit`:
+  1. *Tool State:* Xác minh nhân vật Attacker đang thực sự cầm vũ khí trên tay (`Character:FindFirstChild("Icicle") or Character:FindFirstChildOfClass("Tool")`).
+  2. *Server Rate-limit Debounce:* Duy trì cache `_LastHitTimes[UserId]` đảm bảo khoảng cách giữa 2 đòn đánh không vi phạm ngưỡng `GameConfig.Tool.HitDebounceWindow`.
+  3. *Distance & Latency Tolerance:* Tính khoảng cách $D \le \text{HitboxRange} \times \text{HitLagTolerance}$.
+  4. *Raycast Line-of-Sight (LOS):* Bắn tia Raycast loại trừ 2 nhân vật (`Enum.RaycastFilterType.Exclude`). Nếu va chạm vật thể solid (`CanCollide == true`), lập tức từ chối đòn đánh nhằm triệt tiêu hoàn toàn wallhack.
+- **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -63,3 +71,8 @@
 - **Nguyên nhân:** Client không dọn dẹp `KnownTeams` khi nhận trạng thái `Dead`, đồng thời `CharacterAdded` ở sảnh không kiểm tra cờ `IsInMatch`.
 - **Giải pháp:** Trong `HighlightController`, xóa ngay player khỏi `KnownTeams` khi `State == "Dead"`, kiểm tra nghiêm ngặt `PlayerStateHelper.IsInMatch(Player) == true` và `State ~= "Dead"` trước khi gán Highlight. Lắng nghe `PlayerStateHelper.ObserveMatchState` để cập nhật lại toàn bộ khi trạng thái tham gia trận của `LocalPlayer` thay đổi.
 - **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+
+### 5. Rò rỉ Model Khối Băng (Orphaned IceBlock) trong Workspace khi Nạn nhân Thoát Game
+- **Vấn đề:** Khi người chơi bị đóng băng (`Frozen`) thoát khỏi server, sự kiện `PlayerRemoving` chỉ gán `nil` trong bảng cache `_iceBlocks[UserId]`, bỏ quên việc gọi `:Destroy()` trên Model trong Workspace. Part và WeldConstraint tàn dư tồn tại vĩnh viễn gây rò rỉ RAM máy chủ và quá tải engine vật lý.
+- **Giải pháp:** Trong `Players.PlayerRemoving` của `FreezeService`, gọi hàm `RemoveIceBlock(Player)` để tháo gỡ tag `TagConfig.Tags.IceBlock` và gọi `:Destroy()` trên Model trước khi giải phóng tham chiếu khỏi bảng cache.
+- **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [TagHelper.lua](../../src/ReplicatedStorage/Shared/Tools/TagHelper.lua)

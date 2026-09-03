@@ -1,6 +1,6 @@
 # SpectateSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống quan sát trận đấu (ObserverGui, Phân biệt Lobby Spectator vs Frozen Spectator, Streaming ReplicationFocus và Camera Management).
-> Cập nhật lần cuối: 21-08-2026
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -67,3 +67,8 @@
 - **Nguyên nhân:** Server chỉ broadcast danh sách mục tiêu tại thời điểm bắt đầu phase `InGame` hoặc khi có thay đổi trạng thái đóng băng/rã đông.
 - **Giải pháp:** Trong `MatchService:Init()`, lắng nghe `Players.PlayerAdded`. Nếu game đang trong phase `InGame`, Server gửi riêng danh sách người chơi còn sống hiện tại cho người mới tham gia qua `FireClient`.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+
+### 5. Lỗ Hổng Crash Server Do Type Injection Qua Remote RequestSpectateTarget
+- **Vấn đề:** Listener `RequestSpectateTargetEvent.OnServerEvent` không kiểm tra kiểu dữ liệu của đối số `TargetPlayer` mà trực tiếp gọi phương thức `:IsDescendantOf(Players)`. Kẻ tấn công có thể cố ý gửi payload sai kiểu (string, number, table, boolean) khiến server phát sinh ngoại lệ không được bắt (unhandled runtime exception), gây crash luồng xử lý hoặc nghẽn Event Loop.
+- **Giải pháp:** Bổ sung type guard ngay tại đầu listener kiểm tra nghiêm ngặt: `if TargetPlayer ~= nil and (typeof(TargetPlayer) ~= "Instance" or not TargetPlayer:IsA("Player")) then return end`.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)

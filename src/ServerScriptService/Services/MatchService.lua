@@ -792,6 +792,11 @@ function MatchService:Init()
 
 	-- Spectator yêu cầu focus vào target hoặc reset về chính mình
 	RequestSpectateTargetEvent.OnServerEvent:Connect(function(SpectatorPlayer, TargetPlayer)
+		-- Validate TargetPlayer: phải là nil hoặc một Instance kiểu Player
+		if TargetPlayer ~= nil and (typeof(TargetPlayer) ~= "Instance" or not TargetPlayer:IsA("Player")) then
+			return
+		end
+
 		-- Nếu TargetPlayer là nil: reset ReplicationFocus về chính spectator (cho phép ở mọi phase)
 		if TargetPlayer == nil then
 			local SpectatorCharacter = SpectatorPlayer.Character
