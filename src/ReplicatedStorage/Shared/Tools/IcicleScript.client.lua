@@ -134,6 +134,17 @@ local function PlaySwingAnimation(IcicleSkinId)
 end
 
 -- =========================================================
+-- PRIVATE: Dừng Heartbeat poll nếu đang chạy
+-- =========================================================
+
+local function StopHitboxPoll()
+	if _HitboxConnection then
+		_HitboxConnection:Disconnect()
+		_HitboxConnection = nil
+	end
+end
+
+-- =========================================================
 -- TOOL UNEQUIPPED: Dừng animation ngay lập tức
 -- =========================================================
 
@@ -144,17 +155,6 @@ Tool.Unequipped:Connect(function()
 	end
 	StopHitboxPoll()
 end)
-
--- =========================================================
--- PRIVATE: Dừng Heartbeat poll nếu đang chạy
--- =========================================================
-
-local function StopHitboxPoll()
-	if _HitboxConnection then
-		_HitboxConnection:Disconnect()
-		_HitboxConnection = nil
-	end
-end
 
 -- =========================================================
 -- PRIVATE: Bắt đầu Heartbeat poll trong cửa sổ HitStart→HitEnd

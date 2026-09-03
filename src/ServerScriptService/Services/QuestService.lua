@@ -685,8 +685,8 @@ function QuestService:Init()
 	end
 
 	-- Đảm bảo flush toàn bộ PlayTime và Quest Progress vào DataStore TRƯỚC KHI Profile bị đóng
-	if DataService.BeforeProfileRelease then
-		DataService.BeforeProfileRelease:Connect(FlushSession)
+	if DataService.RegisterBeforeProfileRelease then
+		DataService.RegisterBeforeProfileRelease(FlushSession)
 	end
 
 	Players.PlayerRemoving:Connect(FlushSession)

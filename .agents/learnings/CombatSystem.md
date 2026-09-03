@@ -1,6 +1,6 @@
 # CombatSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống chiến đấu (Icicle Tool, Hitbox Spatial Query, Freeze/Thaw mechanics, IceBlock Model và Tags CollectionService).
-> Cập nhật lần cuối: 03-09-2026
+> Cập nhật lần cuối: 04-09-2026
 
 ---
 
@@ -41,7 +41,7 @@
 ### 7. Mô hình Xác thực Đòn đánh Đa tầng Server Authority (Server-Assisted Hitreg)
 - **Chi tiết:** Client xử lý Spatial Query nhận diện va chạm cục bộ để giữ gameplay feel mượt mà, nhưng Server giữ quyền phán quyết tối cao (`Server Authority`) qua 4 lớp xác thực nghiêm ngặt khi nhận remote `OnToolHit`:
   1. *Tool State:* Xác minh nhân vật Attacker đang thực sự cầm vũ khí trên tay (`Character:FindFirstChild("Icicle") or Character:FindFirstChildOfClass("Tool")`).
-  2. *Server Rate-limit Debounce:* Duy trì cache `_LastHitTimes[UserId]` đảm bảo khoảng cách giữa 2 đòn đánh không vi phạm ngưỡng `GameConfig.Tool.HitDebounceWindow`.
+  2. *Server Attack Session & AoE Window:* Quản lý phiên đánh `_AttackSessions[UserId] = { SwingStart, HitTargets }`. Trong cửa sổ `GameConfig.Tool.HitSwingWindow` (0.4s), cho phép trúng nhiều mục tiêu phân biệt (AoE) nhưng chặn đánh lặp lại cùng một người (`HitTargets[TargetId]`). Đòn đánh của phiên mới phải cách phiên cũ tối thiểu `GameConfig.Tool.HitDebounceWindow` (0.8s).
   3. *Distance & Latency Tolerance:* Tính khoảng cách $D \le \text{HitboxRange} \times \text{HitLagTolerance}$.
   4. *Raycast Line-of-Sight (LOS):* Bắn tia Raycast loại trừ 2 nhân vật (`Enum.RaycastFilterType.Exclude`). Nếu va chạm vật thể solid (`CanCollide == true`), lập tức từ chối đòn đánh nhằm triệt tiêu hoàn toàn wallhack.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
@@ -95,3 +95,8 @@
 - **Vấn đề:** Trong `HighlightController`, sự kiện `Workspace.ChildAdded` và `ChildRemoved` lắng nghe trên toàn bộ Workspace. Mỗi khi bất kỳ instance nào sinh ra hoặc mất đi (kể cả hiệu ứng hạt particle, mảnh vụn), hàm `RefreshAll()` được gọi duyệt qua toàn bộ danh sách người chơi, gây drop FPS nghiêm trọng trong giao tranh đông người.
 - **Giải pháp:** Gỡ bỏ hoàn toàn `Workspace.ChildAdded/Removed`. Sử dụng `TagHelper.ObserveTagAdded` và `ObserveTagRemoved` trên tag `TagConfig.Tags.IceBlock`. Khi có khối băng thay đổi, chỉ tra cứu `VictimUserId` và cập nhật Adornee $O(1)$ cho duy nhất người chơi tương ứng qua hàm `UpdateSinglePlayerHighlight`.
 - **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [TagHelper.lua](../../src/ReplicatedStorage/Shared/Tools/TagHelper.lua)
+
+### 8. Lỗi Runtime và Hỏng Dọn Dẹp Hitbox Do Khai Báo Hàm Cục Bộ Sau Sự Kiện (Function Hoisting & Scope Pitfall)
+- **Vấn đề:** Trong Luau/Lua 5.1, khai báo `local function StopHitboxPoll()` nằm bên dưới sự kiện `Tool.Unequipped:Connect` khiến handler tra cứu biến toàn cục `StopHitboxPoll` (`nil`). Khi người chơi cất vũ khí hoặc bị đóng băng/hạ gục giữa lúc vung đòn, game văng exception `attempt to call a nil value`, làm chết đứng luồng dọn dẹp animation.
+- **Giải pháp:** Bắt buộc đặt toàn bộ định nghĩa hàm tiện ích hoặc forward declaration (`local StopHitboxPoll`) lên trước các kết nối sự kiện lắng nghe vòng đời Tool.
+- **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)

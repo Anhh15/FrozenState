@@ -89,6 +89,9 @@ function ShopService:Start()
 		end
 		_BuyLocks[Player.UserId] = true
 
+		local MoneyDeducted  = false
+		local DeductedAmount = 0
+
 		local Success, Result = pcall(function()
 			-- ─── VALIDATE ────────────────────────────────────────────
 			local Chest = ChestConfig.GetChest(ChestId)
@@ -122,6 +125,8 @@ function ShopService:Start()
 
 			-- ─── TRỪ TIỀN TRƯỚC (để tránh double-spend) ──────────────
 			DataService.AddMoney(Player, -TotalPrice)
+			MoneyDeducted  = true
+			DeductedAmount = TotalPrice
 
 			-- ─── MỞ RƯƠNG ────────────────────────────────────────────
 			-- RefundBasePrice = Price1 (hoàn tiền dựa trên giá 1 lần mở, không phải giá gói)
@@ -172,6 +177,16 @@ function ShopService:Start()
 		_BuyLocks[Player.UserId] = nil
 
 		if not Success then
+			if MoneyDeducted and DeductedAmount > 0 then
+				DataService.AddMoney(Player, DeductedAmount)
+				local CurrentData = DataService.GetData(Player)
+				local FallbackMoney = CurrentData and CurrentData.Money or 0
+				local UpdateMoneyEv = RemoteDefinitions.GetEvent("UpdateMoney")
+				if UpdateMoneyEv then
+					UpdateMoneyEv:FireClient(Player, FallbackMoney)
+				end
+				warn(("[ShopService] Đã rollback hoàn trả %d tiền cho %s do lỗi mở rương."):format(DeductedAmount, Player.Name))
+			end
 			warn(("[ShopService] Lỗi khi xử lý BuyChest cho %s: %s"):format(Player.Name, tostring(Result)))
 			return { Success = false, Reason = "INTERNAL_ERROR" }
 		end

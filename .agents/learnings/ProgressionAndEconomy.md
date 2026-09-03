@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Objective Engine 2.0, Hiệu ứng Mở rương, Phần thưởng Đa hình, Nhiệm vụ Lặp Vô hạn, Mutex In-Flight Lock và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 03-09-2026
+> Cập nhật lần cuối: 04-09-2026
 
 ---
 
@@ -101,16 +101,16 @@
   - *Tạo Động Lực Chiến Thuật:* Buộc người chơi đưa ra quyết định cày trọn $14$ nhiệm vụ/ngày ($\approx 2,100$ tiền) để tối ưu lợi nhuận, chuyển hóa trực tiếp thành thời gian chơi thực tế (Playtime).
 - **File liên quan:** [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
 
-### 15. Kiến trúc Mutex In-Flight Lock & Giao dịch Nguyên tử (Atomic In-Flight Mutex Pattern)
+### 15. Kiến trúc Mutex In-Flight Lock & Giao dịch Nguyên tử (Atomic In-Flight Mutex & Rollback Pattern)
 - **Chi tiết:** Mọi giao dịch kinh tế tiêu tốn tiền tệ hoặc yield bất đồng bộ qua mạng (`BuyChest`, `ResetDailyQuests`, `ClaimQuest`) bắt buộc phải bảo vệ bằng bảng khóa tạm thời theo người chơi:
   1. *In-Flight Mutex:* Tra cứu `_Locks[Player.UserId]`. Nếu đang bị khóa, trả về ngay `{ Success = false, Reason = "BUSY" }`.
-  2. *Exception Safety (`pcall`):* Bọc toàn bộ khối kiểm tra điều kiện, trừ tiền/progress và trao thưởng trong `pcall` để đảm bảo cờ khóa luôn được giải phóng về `nil` ở cuối luồng kể cả khi phát sinh lỗi runtime ngoài ý muốn.
+  2. *Exception Safety & Transactional Rollback:* Bọc toàn bộ khối kiểm tra điều kiện, trừ tiền/progress và trao thưởng trong `pcall`. Đối với giao dịch trừ tiền trước (`BuyChest`), sử dụng cờ `MoneyDeducted`. Nếu phát sinh bất kỳ ngoại lệ runtime nào, tự động hoàn lại tiền (`DataService.AddMoney(Player, DeductedAmount)`) và đồng bộ số dư về Client trước khi trả về `INTERNAL_ERROR`, bảo đảm tính nguyên tử tuyệt đối (All-or-Nothing).
   3. *Lifecycle Guard:* Giải phóng toàn bộ lock trong `Players.PlayerRemoving` để tránh kẹt trạng thái vĩnh viễn khi người chơi thoát game đột ngột.
-- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
 
-### 16. Vòng Đời Thoát Game Tập Trung & Đồng Bộ Tránh Race Condition (`BeforeProfileRelease`)
-- **Chi tiết:** Roblox không bảo đảm thứ tự chạy giữa các kết nối `Players.PlayerRemoving` độc lập của các service khác nhau. Khi player thoát game, nếu `DataService` giải phóng Profile trước, `QuestService` sẽ ghi dữ liệu vào một profile đã giải phóng dẫn đến mất mát thời gian chơi (PlayTime) và tiến độ nhiệm vụ.
-- **Giải pháp Kiến trúc:** `DataService` cung cấp `DataService.BeforeProfileRelease` (sử dụng `BindableEvent`). Trong `OnPlayerRemoving`, `DataService` phát sự kiện này **trước** khi gọi `Profile:Release()`. Do `BindableEvent:Fire` thực thi đồng bộ ngay lập tức, `QuestService` flush toàn bộ tiến trình vào DataStore một cách an toàn và bảo đảm 100% không mất dữ liệu.
+### 16. Vòng Đời Thoát Game Tập Trung & Synchronous Callback Pipeline (`RegisterBeforeProfileRelease`)
+- **Chi tiết:** Roblox không bảo đảm thứ tự chạy giữa các kết nối `Players.PlayerRemoving` độc lập của các service khác nhau, đồng thời cơ chế `BindableEvent` trong môi trường Deferred Signal Mode bị hoãn thực thi sang cuối frame, khiến Profile bị giải phóng trước khi các service kịp lưu dữ liệu.
+- **Giải pháp Kiến trúc (Pure Luau Synchronous Pipeline):** Thay thế hoàn toàn `BindableEvent` bằng cơ chế đăng ký callback đồng bộ `DataService.RegisterBeforeProfileRelease(Callback)`. Trong `OnPlayerRemoving`, `DataService` duyệt mảng callback và thực thi tuần tự bằng `pcall(Callback, Player)` **TRƯỚC KHI** gọi `Profile:Release()` và hủy tham chiếu `ActiveProfiles[Player]`. Đảm bảo 100% các nghiệp vụ flush dữ liệu cuối cùng (`QuestService.FlushSession`, tính `PlayTime`, quest progress) luôn được ghi nhận an toàn vào Profile còn mở.
 - **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
 
 ### 17. Quản Lý Kích Thước Bền Vững & Hàng Đợi FIFO Cho Lịch Sử Giao Dịch (PurchaseHistory FIFO Queue)
@@ -262,3 +262,13 @@
   3. Lắng nghe `Players.PlayerRemoving`: nếu người chơi thoát game khi đang chờ, lập tức hủy yield và resume `nil` không chờ timeout.
   4. Lên lịch `task.delay(Timeout)` để resume `nil` an toàn nếu quá hạn nạp. Tự động ngắt kết nối mọi listener ngay khi resume.
 - **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua)
+
+### 21. Mất Mát Dữ Liệu Phiên Chơi Cuối Do Cơ Chế Deferred Signal Khi Giải Phóng Profile
+- **Vấn đề:** Khi lắng nghe sự kiện giải phóng profile qua `BindableEvent:Fire(Player)` trong `OnPlayerRemoving`, do cơ chế Deferred Signal của Roblox, listener `FlushSession` của `QuestService` bị đẩy vào hàng đợi thực thi sau khi luồng của `DataService` kết thúc. Lúc này `Profile:Release()` đã chạy và `ActiveProfiles[Player]` đã là `nil`, khiến toàn bộ PlayTime và tiến trình quest phiên cuối bị hủy bỏ trong âm thầm.
+- **Giải pháp:** Bỏ `BindableEvent`. Chuyển sang mô hình mảng callback đăng ký đồng bộ thuần Luau `DataService.RegisterBeforeProfileRelease(Callback)`. `OnPlayerRemoving` lặp qua mảng và gọi trực tiếp từng callback trong `pcall` trước khi giải phóng Profile, triệt tiêu hoàn toàn race condition tín hiệu mạng.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
+### 22. Nuốt Tiền Người Chơi Khi Quá Trình Mở Rương Gặp Lỗi Runtime (Missing Transaction Rollback)
+- **Vấn đề:** Trong `ShopService.BuyChest`, tiền của người chơi bị trừ trước vòng lặp gacha (`ProcessOneDraw`) để chống double-spend. Nếu vòng lặp mở rương phát sinh ngoại lệ runtime (lỗi item cấu hình, drop rate rỗng...), khối `pcall` bắt lỗi và trả về `INTERNAL_ERROR` nhưng không hoàn tiền, khiến người chơi mất trắng tiền mà không nhận được item nào.
+- **Giải pháp:** Bổ sung cờ theo dõi `MoneyDeducted = true`. Khi `not Success`, kiểm tra nếu tiền đã bị trừ thì lập tức gọi `DataService.AddMoney(Player, DeductedAmount)` và phát RemoteEvent `UpdateMoney` đồng bộ lại số dư ví về Client, bảo đảm nguyên tắc giao dịch nguyên tử (All-or-Nothing).
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)

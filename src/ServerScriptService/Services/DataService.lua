@@ -72,7 +72,7 @@ local PlayerStore = ProfileService.GetProfileStore(DataConfig.ProfileStoreName, 
 -- Lưu trữ profile đang active: { [player] = profile }
 local ActiveProfiles = {}
 local _ProfileLoadedBindable = Instance.new("BindableEvent")
-local _BeforeProfileReleaseBindable = Instance.new("BindableEvent")
+local _BeforeProfileReleaseCallbacks = {}
 
 -- =========================================================
 -- PRIVATE FUNCTIONS
@@ -145,9 +145,15 @@ end
 
 --- Xử lý khi player rời server
 local function OnPlayerRemoving(Player)
-	-- Phát tín hiệu cho các Service khác flush dữ liệu trước khi giải phóng Profile
-	_BeforeProfileReleaseBindable:Fire(Player)
+	-- 1. Chạy tuần tự tất cả callback đã đăng ký đồng bộ TRƯỚC KHI giải phóng Profile
+	for _, Callback in ipairs(_BeforeProfileReleaseCallbacks) do
+		local Success, Error = pcall(Callback, Player)
+		if not Success then
+			warn(("[DataService] Lỗi trong BeforeProfileRelease callback: %s"):format(tostring(Error)))
+		end
+	end
 
+	-- 2. Giải phóng Profile
 	local Profile = ActiveProfiles[Player]
 	if Profile ~= nil then
 		Profile:Release()
@@ -162,9 +168,14 @@ end
 
 local DataService = {}
 
---- Sự kiện phát ra ngay trước khi Profile của người chơi được giải phóng khi thoát game
---- Các Service khác nên lắng nghe sự kiện này để flush dữ liệu cuối cùng vào DataStore
-DataService.BeforeProfileRelease = _BeforeProfileReleaseBindable.Event
+--- Đăng ký callback đồng bộ chạy trước khi Profile của người chơi được giải phóng khi thoát game
+--- Các Service khác sử dụng hàm này để flush dữ liệu cuối cùng (PlayTime, Quest...) vào Profile trước khi đóng
+--- @param Callback (Player: Player) -> ()
+function DataService.RegisterBeforeProfileRelease(Callback)
+	if type(Callback) == "function" then
+		table.insert(_BeforeProfileReleaseCallbacks, Callback)
+	end
+end
 
 --- Chờ cho đến khi Profile của player được nạp xong từ DataStore (hoặc hết timeout)
 --- @param Player Player

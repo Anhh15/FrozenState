@@ -39,7 +39,7 @@ local QuestService = nil
 -- =========================================================
 
 local _firstBloodClaimed = false
-local _LastHitTimes = {}
+local _AttackSessions = {} -- { [AttackerUserId: number] = { SwingStart = number, HitTargets = { [TargetUserId: number] = boolean } } }
 
 -- Cache IceBlock theo UserId — để RemoveIceBlock chạy O(1) thay vì scan workspace
 -- { [UserId: number] = BlockModel: Model }
@@ -495,14 +495,28 @@ local function HandleToolHit(Attacker, Target)
 	local Tool = AttackerChar:FindFirstChild("Icicle") or AttackerChar:FindFirstChildOfClass("Tool")
 	if not Tool then return end
 
-	-- 2. Server Cooldown Debounce Rate-limit
+	-- 2. Server Cooldown & AoE Swing Window Validation
 	local Now = os.clock()
-	local LastHit = _LastHitTimes[Attacker.UserId] or 0
 	local DebounceWindow = (GameConfig.Tool and GameConfig.Tool.HitDebounceWindow) or 0.8
-	if (Now - LastHit) < DebounceWindow then
+	local SwingWindow    = (GameConfig.Tool and GameConfig.Tool.HitSwingWindow) or 0.4
+	local Session        = _AttackSessions[Attacker.UserId]
+
+	if not Session or (Now - Session.SwingStart) >= DebounceWindow then
+		-- Khởi tạo phiên vung kiếm mới
+		_AttackSessions[Attacker.UserId] = {
+			SwingStart = Now,
+			HitTargets = { [Target.UserId] = true },
+		}
+	elseif (Now - Session.SwingStart) <= SwingWindow then
+		-- Trong cùng một cú vung kiếm: hỗ trợ chém lan (AoE) nhưng chặn đánh lặp lại cùng một người
+		if Session.HitTargets[Target.UserId] then
+			return
+		end
+		Session.HitTargets[Target.UserId] = true
+	else
+		-- Đòn đánh gửi đến sau khi cửa sổ vung kết thúc nhưng chưa hết thời gian hồi chiêu
 		return
 	end
-	_LastHitTimes[Attacker.UserId] = Now
 
 	-- 3. Server-side distance validation (chống lag exploit)
 	local AttackerHRP = AttackerChar:FindFirstChild("HumanoidRootPart")
@@ -568,7 +582,7 @@ function FreezeService:Init()
 
 	-- Dọn cache và IceBlock khi player rời game (tránh memory leak & part orphan)
 	Players.PlayerRemoving:Connect(function(Player)
-		_LastHitTimes[Player.UserId] = nil
+		_AttackSessions[Player.UserId] = nil
 		RemoveIceBlock(Player)
 	end)
 

@@ -31,6 +31,7 @@ local GameConfig = {
 		HitboxRange       = 20,   -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
 		HitLagTolerance   = 1.5,  -- Hệ số bù trừ độ trễ mạng cho khoảng cách
 		HitDebounceWindow = 0.8,  -- Khoảng cách tối thiểu giữa 2 lần nhận hit trên server (giây)
+		HitSwingWindow    = 0.4,  -- Cửa sổ thời gian tối đa cho 1 cú vung (giây, cho phép chém lan AoE nhiều mục tiêu)
 	},
 
 	-- =========================================================
