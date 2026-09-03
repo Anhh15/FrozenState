@@ -37,33 +37,43 @@ local HotbarController               = require(Controllers:WaitForChild("HotbarC
 local FrozenStateAnnouncementController = require(Controllers:WaitForChild("FrozenStateAnnouncementController"))
 local SettingController              = require(Controllers:WaitForChild("SettingController"))
 
--- Bước 3: Init tất cả controller
--- GameLoadingController khởi tạo trước để che màn hình và bắt đầu preload
-GameLoadingController:Init()
+-- Bước 3: Init tất cả controller có bảo vệ pcall (Fault Isolation)
+local CONTROLLERS_ORDER = {
+	{ Name = "GameLoadingController", Controller = GameLoadingController },
+	{ Name = "MenuController", Controller = MenuController },
+	{ Name = "NavigationController", Controller = NavigationController },
+	{ Name = "PlayerDataController", Controller = PlayerDataController },
+	{ Name = "GameStateController", Controller = GameStateController },
+	{ Name = "GameStatisticController", Controller = GameStatisticController },
+	{ Name = "HighlightController", Controller = HighlightController },
+	{ Name = "InventoryController", Controller = InventoryController },
+	{ Name = "ProfileController", Controller = ProfileController },
+	{ Name = "ShopController", Controller = ShopController },
+	{ Name = "ItemRewardController", Controller = ItemRewardController },
+	{ Name = "SpectateController", Controller = SpectateController },
+	{ Name = "QuestController", Controller = QuestController },
+	{ Name = "MusicController", Controller = MusicController },
+	{ Name = "SoundController", Controller = SoundController },
+	{ Name = "PlayerStatusController", Controller = PlayerStatusController },
+	{ Name = "ScoreBoardController", Controller = ScoreBoardController },
+	{ Name = "AccoladesController", Controller = AccoladesController },
+	{ Name = "ModeAnnouncementController", Controller = ModeAnnouncementController },
+	{ Name = "RoundLoadingScreenController", Controller = RoundLoadingScreenController },
+	{ Name = "GameOverAnnouncementController", Controller = GameOverAnnouncementController },
+	{ Name = "HotbarController", Controller = HotbarController },
+	{ Name = "FrozenStateAnnouncementController", Controller = FrozenStateAnnouncementController },
+	{ Name = "SettingController", Controller = SettingController },
+}
 
--- MenuController & NavigationController khởi tạo tiếp theo để sẵn sàng đăng ký tab và bind sự kiện
-MenuController:Init()
-NavigationController:Init()
-PlayerDataController:Init()
-GameStateController:Init()
-GameStatisticController:Init()
-HighlightController:Init()
-InventoryController:Init()
-ProfileController:Init()
-ShopController:Init()
-ItemRewardController:Init()
-SpectateController:Init()
-QuestController:Init()
-MusicController:Init()
-SoundController:Init()
-PlayerStatusController:Init()
-ScoreBoardController:Init()
-AccoladesController:Init()
-ModeAnnouncementController:Init()
-RoundLoadingScreenController:Init()
-GameOverAnnouncementController:Init()
-HotbarController:Init()
-FrozenStateAnnouncementController:Init()
-SettingController:Init()
+for _, Entry in ipairs(CONTROLLERS_ORDER) do
+	if Entry.Controller and type(Entry.Controller.Init) == "function" then
+		local Success, ErrorMessage = pcall(function()
+			Entry.Controller:Init()
+		end)
+		if not Success then
+			warn(string.format("[Client] Khởi tạo %s thất bại: %s", Entry.Name, tostring(ErrorMessage)))
+		end
+	end
+end
 
 print("[Client] FrozenState đã sẵn sàng.")

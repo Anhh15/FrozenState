@@ -1,6 +1,6 @@
 # GuiControllers
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống điều phối giao diện sảnh, menu và chuyển cảnh (MenuController, NavigationController, GameStateController, GameLoadingScreen, RoundLoadingScreen, ModeAnnouncement, GameOverAnnouncement và các Menu con).
-> Cập nhật lần cuối: 01-09-2026
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -92,6 +92,10 @@
 - **Vòng đời chuẩn hóa:** Module scope chỉ khai báo các biến cục bộ bằng `nil`. Toàn bộ việc truy xuất `WaitForChild` chỉ được thực hiện bên trong phương thức `:Init()`, sử dụng tham số thời gian chờ `GuiConfig.Timeouts.DefaultWaitForGui` (10s) kết hợp nil-guards an toàn. Mô hình này bảo đảm luồng `require()` của bootloader không bao giờ bị nghẽn (Zero Boot Deadlock) kể cả khi assets màn hình tải chậm.
 - **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
+### 13. Kiến Trúc Khởi Động Client Độc Lập & Cách Ly Lỗi (Client Bootloader Fault Isolation Pattern)
+- **Chi tiết:** Thay vì gọi trực tiếp phương thức `Init()` tuần tự trần trụi, `Main.client.lua` định nghĩa mảng `CONTROLLERS_ORDER` và duyệt qua từng Controller bằng khối bọc `pcall`. Nếu một Controller (đặc biệt là các module hiệu ứng phụ như Accolades) phát sinh ngoại lệ runtime, lỗi được cô lập và ghi log cảnh báo chi tiết mà không làm gián đoạn luồng khởi tạo của các Controller trọng yếu đứng sau (`SettingController`, `HotbarController`, `RoundLoadingScreenController`). Mô hình này đảm bảo tính nhất quán kiến trúc với `ServiceLoader` 2 pha phía Server.
+- **File liên quan:** [Main.client.lua](../../src/StarterPlayer/StarterPlayerScripts/Main.client.lua), [ServiceLoader.lua](../../src/ServerScriptService/Services/ServiceLoader.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -173,3 +177,8 @@
   2. Dời toàn bộ logic tìm kiếm cây UI vào hàm `:Init()` với timeout an toàn từ `GuiConfig.Timeouts.DefaultWaitForGui` (10s).
   3. Bổ sung nil-guards trước mọi thao tác cập nhật Text hay gắn sự kiện nút bấm.
 - **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 13. Lỗi Kẹt Giao Diện & Mất Thanh Điều Hướng Do Ẩn Container Trước Khi Xác Thực Tab (Premature UI Mutation & Defensive Tab Guard)
+- **Vấn đề:** Khi mở một tab menu (`MenuController.OpenTab`), hệ thống vội vàng ẩn thanh điều hướng (`NavCtrl.SetButtonsContainerVisible(false)`) trước khi tra cứu tab trong `_RegisteredTabs`. Nếu tab chưa được đăng ký (do controller nạp lỗi hoặc chưa hoàn tất khởi tạo), hàm in cảnh báo rồi kết thúc mà không mở menu, đồng thời thanh NavigationButtons bị ẩn vĩnh viễn khiến người chơi kẹt giao diện hoàn toàn.
+- **Giải pháp:** Áp dụng Defensive Guard Clause: Tra cứu `local TargetData = _RegisteredTabs[TabName]` ngay tại dòng đầu tiên của `OpenTab`. Nếu `not TargetData`, lập tức hủy luồng thực thi và tuyệt đối không thực hiện bất kỳ thay đổi trạng thái nào trên các container giao diện cha (`ButtonsContainer`, `SpectateGui`).
+- **File liên quan:** [MenuController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua)

@@ -95,6 +95,12 @@ end
 function MenuController.OpenTab(TabName)
 	if not TabName then return end
 
+	local TargetData = _RegisteredTabs[TabName]
+	if not TargetData then
+		warn(string.format("[MenuController] Tab '%s' chưa được đăng ký trong hệ thống.", tostring(TabName)))
+		return
+	end
+
 	-- Nếu đang mở Spectate thì tắt Spectate để nhường chỗ cho Menu tab
 	local SpecCtrl = GetSpectateController()
 	if SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating() then
@@ -129,17 +135,12 @@ function MenuController.OpenTab(TabName)
 	end
 
 	-- Mở tab mới kèm hiệu ứng PopOpen
-	local TargetData = _RegisteredTabs[TabName]
-	if TargetData then
-		_ActiveTab = TabName
-		if TargetData.Open then
-			TargetData.Open()
-		end
-		if TargetData.Frame then
-			GuiHelper.PopOpen(TargetData.Frame)
-		end
-	else
-		warn(string.format("[MenuController] Tab '%s' chưa được đăng ký trong hệ thống.", tostring(TabName)))
+	_ActiveTab = TabName
+	if TargetData.Open then
+		TargetData.Open()
+	end
+	if TargetData.Frame then
+		GuiHelper.PopOpen(TargetData.Frame)
 	end
 end
 

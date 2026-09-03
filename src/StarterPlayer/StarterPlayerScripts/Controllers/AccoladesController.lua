@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 -- =========================================================
