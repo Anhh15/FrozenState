@@ -359,10 +359,13 @@ function SessionService.CheckWinCondition()
 			else
 				WinTeam = (math.random() < 0.5) and "Team1" or "Team2"
 			end
+			_isMatchActive = false
 			MatchEndSignal:Fire({ WinTeam = WinTeam })
 		elseif Team1Wiped then
+			_isMatchActive = false
 			MatchEndSignal:Fire({ WinTeam = "Team2" })
 		elseif Team2Wiped then
+			_isMatchActive = false
 			MatchEndSignal:Fire({ WinTeam = "Team1" })
 		end
 
@@ -370,11 +373,13 @@ function SessionService.CheckWinCondition()
 		local NormalPlayers = SessionService.GetAllNormalPlayers()
 		if #NormalPlayers == 1 then
 			-- Chỉ còn 1 người Normal → đó là người thắng
+			_isMatchActive = false
 			MatchEndSignal:Fire({ WinPlayer = NormalPlayers[1] })
 		elseif #NormalPlayers == 0 then
 			-- Cả 2 người cuối cùng bị loại đồng thời → chọn người có Freeze cao nhất (hoặc random nếu bằng)
 			local WinPlayer = SessionService.GetTopScorerFFA()
 			if WinPlayer then
+				_isMatchActive = false
 				MatchEndSignal:Fire({ WinPlayer = WinPlayer })
 			end
 		end

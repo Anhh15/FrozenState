@@ -24,7 +24,7 @@ local THUMBNAIL_SIZE = Enum.ThumbnailSize.Size100x100
 -- =========================================================
 
 local LocalPlayer   = Players.LocalPlayer
-local PlayerGui     = LocalPlayer:WaitForChild("PlayerGui")
+local PlayerGui     = nil
 
 local _InGameGui    = nil
 local _StatusFrame  = nil
@@ -174,14 +174,22 @@ end
 local PlayerStatusController = {}
 
 function PlayerStatusController:Init()
-	-- Lấy GUI references (InGameGui đã có sẵn trong Studio)
-	_InGameGui      = PlayerGui:WaitForChild("InGameGui")
-	_StatusFrame    = _InGameGui:WaitForChild("PlayerStatus")
-	_AllyTeamFrame  = _StatusFrame:WaitForChild("AllyTeam")
-	_EnemyTeamFrame = _StatusFrame:WaitForChild("EnemyTeam")
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
 
-	local TemplateFolder = _StatusFrame:WaitForChild("Template")
-	_Template = TemplateFolder:WaitForChild("AvatarThumbnail")
+	-- Lấy GUI references (InGameGui đã có sẵn trong Studio)
+	PlayerGui       = LocalPlayer:WaitForChild("PlayerGui", Timeout)
+	_InGameGui      = PlayerGui and PlayerGui:WaitForChild("InGameGui", Timeout)
+	_StatusFrame    = _InGameGui and _InGameGui:WaitForChild("PlayerStatus", Timeout)
+	_AllyTeamFrame  = _StatusFrame and _StatusFrame:WaitForChild("AllyTeam", Timeout)
+	_EnemyTeamFrame = _StatusFrame and _StatusFrame:WaitForChild("EnemyTeam", Timeout)
+
+	local TemplateFolder = _StatusFrame and _StatusFrame:WaitForChild("Template", Timeout)
+	_Template = TemplateFolder and TemplateFolder:WaitForChild("AvatarThumbnail", Timeout)
+
+	if not (_InGameGui and _StatusFrame and _AllyTeamFrame and _EnemyTeamFrame and _Template) then
+		warn("[PlayerStatusController] Thiếu thành phần UI PlayerStatus trong InGameGui.")
+		return
+	end
 
 	-- Ngăn reset khi player respawn
 	_InGameGui.ResetOnSpawn = false

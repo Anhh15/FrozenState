@@ -256,4 +256,16 @@ function GameStateController:Init()
 	print("[GameStateController] Đã khởi tạo.")
 end
 
+function GameStateController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then _menuController = require(MenuModule) end
+
+	local NavModule = Controllers:FindFirstChild("NavigationController")
+	if NavModule then _navigationController = require(NavModule) end
+
+	local HotbarModule = Controllers:FindFirstChild("HotbarController")
+	if HotbarModule then _hotbarController = require(HotbarModule) end
+end
+
 return GameStateController

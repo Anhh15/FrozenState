@@ -18,7 +18,7 @@ local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 -- =========================================================
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local PlayerGui   = nil
 
 local _InGameGui        = nil
 local _ScoreBoard       = nil
@@ -229,26 +229,33 @@ end
 local ScoreBoardController = {}
 
 function ScoreBoardController:Init()
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
+
 	-- Lấy GUI references
-	_InGameGui  = PlayerGui:WaitForChild("InGameGui")
-	_ScoreBoard = _InGameGui:WaitForChild("ScoreBoard")
+	PlayerGui   = LocalPlayer:WaitForChild("PlayerGui", Timeout)
+	_InGameGui  = PlayerGui and PlayerGui:WaitForChild("InGameGui", Timeout)
+	_ScoreBoard = _InGameGui and _InGameGui:WaitForChild("ScoreBoard", Timeout)
+	if not _ScoreBoard then
+		warn("[ScoreBoardController] Không tìm thấy ScoreBoard trong InGameGui.")
+		return
+	end
 
 	-- ScoreBoardButton nằm trong InGameGui/Buttons (frame mới)
 	local InGameBtnCfg  = GuiConfig.InGameButtons
 	local ButtonsFrame  = _InGameGui:FindFirstChild(InGameBtnCfg.Buttons)
 	_ScoreBoardButton   = ButtonsFrame and ButtonsFrame:FindFirstChild(InGameBtnCfg.ScoreBoardButton)
 
-	local AllyInfo  = _ScoreBoard:WaitForChild("AllyInfo")
-	local EnemyInfo = _ScoreBoard:WaitForChild("EnemyInfo")
-	_AllyStatsFrame  = AllyInfo:WaitForChild("StatsFrame")
-	_EnemyStatsFrame = EnemyInfo:WaitForChild("StatsFrame")
+	local AllyInfo  = _ScoreBoard:WaitForChild("AllyInfo", Timeout)
+	local EnemyInfo = _ScoreBoard:WaitForChild("EnemyInfo", Timeout)
+	_AllyStatsFrame  = AllyInfo and AllyInfo:WaitForChild("StatsFrame", Timeout)
+	_EnemyStatsFrame = EnemyInfo and EnemyInfo:WaitForChild("StatsFrame", Timeout)
 
 	-- Đảm bảo Layout trong cả 2 StatsFrame sắp xếp theo LayoutOrder
-	EnsureLayoutOrderSort(_AllyStatsFrame)
-	EnsureLayoutOrderSort(_EnemyStatsFrame)
+	if _AllyStatsFrame then EnsureLayoutOrderSort(_AllyStatsFrame) end
+	if _EnemyStatsFrame then EnsureLayoutOrderSort(_EnemyStatsFrame) end
 
-	local TemplateFolder = _ScoreBoard:WaitForChild("Template")
-	_Template = TemplateFolder:WaitForChild("PlayerStats")
+	local TemplateFolder = _ScoreBoard:WaitForChild("Template", Timeout)
+	_Template = TemplateFolder and TemplateFolder:WaitForChild("PlayerStats", Timeout)
 
 	-- ScoreBoard ẩn mặc định
 	_ScoreBoard.Visible = false

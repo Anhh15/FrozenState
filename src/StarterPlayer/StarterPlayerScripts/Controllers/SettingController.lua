@@ -353,4 +353,13 @@ function SettingController:Init()
 	print("[SettingController] Đã khởi tạo đầy đủ Gameplay & Sound Sections.")
 end
 
+function SettingController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then _MenuController = require(MenuModule) end
+
+	local PlayerDataModule = Controllers:FindFirstChild("PlayerDataController")
+	if PlayerDataModule then _PlayerDataController = require(PlayerDataModule) end
+end
+
 return SettingController

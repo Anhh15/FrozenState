@@ -282,4 +282,11 @@ function ProfileController.SetVisible(Visible)
 	-- Khi Visible = true, không tự mở — để người chơi tự bấm mở
 end
 
+function ProfileController:Start()
+	local Module = script.Parent:FindFirstChild("MenuController")
+	if Module then
+		_menuController = require(Module)
+	end
+end
+
 return ProfileController

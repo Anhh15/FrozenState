@@ -11,10 +11,11 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 local QuestConfig       = require(ReplicatedStorage.Shared.Config.QuestConfig)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
+local GuiAnimConfig     = require(ReplicatedStorage.Shared.Config.GuiAnimConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local PlayerGui   = nil
 
 -- =========================================================
 -- PRIVATE STATE
@@ -58,8 +59,8 @@ local function StopStaggerAnimation()
 end
 
 -- Tab active color và inactive color (dùng BackgroundColor3)
-local COLOR_ACTIVE   = Color3.fromRGB(255, 255, 255)
-local COLOR_INACTIVE = Color3.fromRGB(47, 47, 47)
+local COLOR_ACTIVE   = (GuiAnimConfig.Quest and GuiAnimConfig.Quest.ActiveTabColor) or Color3.fromRGB(255, 255, 255)
+local COLOR_INACTIVE = (GuiAnimConfig.Quest and GuiAnimConfig.Quest.InactiveTabColor) or Color3.fromRGB(47, 47, 47)
 
 -- Tween thông số cho RewardAnnouncement
 local TWEEN_INFO_IN  = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -501,9 +502,11 @@ end
 -- =========================================================
 
 function QuestController:Init()
-	local Menu = PlayerGui:WaitForChild("Menu", GuiConfig.Timeouts.ShortWait)
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
+	PlayerGui = LocalPlayer:WaitForChild("PlayerGui", Timeout)
+	local Menu = PlayerGui and PlayerGui:WaitForChild("Menu", Timeout)
 	_menuFrame  = Menu
-	_questGui   = Menu and (Menu:FindFirstChild("Quest", true) or Menu:WaitForChild("Quest", GuiConfig.Timeouts.ShortWait))
+	_questGui   = Menu and (Menu:FindFirstChild("Quest", true) or Menu:WaitForChild("Quest", Timeout))
 
 	if not _questGui then
 		warn("[QuestController] Không tìm thấy Quest frame trong Menu GUI.")
@@ -644,6 +647,13 @@ function QuestController.SetVisible(Visible)
 		OpenQuest()
 	else
 		CloseQuest()
+	end
+end
+
+function QuestController:Start()
+	local MenuModule = script.Parent:FindFirstChild("MenuController")
+	if MenuModule then
+		_menuController = require(MenuModule)
 	end
 end
 

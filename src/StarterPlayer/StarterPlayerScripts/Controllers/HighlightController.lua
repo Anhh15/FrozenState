@@ -12,6 +12,7 @@ local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinit
 local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
 local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+local GuiAnimConfig     = require(ReplicatedStorage.Shared.Config.GuiAnimConfig)
 
 -- =========================================================
 -- CONFIG
@@ -19,10 +20,10 @@ local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelp
 
 local HIGHLIGHT_NAME        = "TeamHighlight"
 local HIGHLIGHT_HELPER_NAME = "HighlightHelper"
-local ENEMY_COLOR           = Color3.fromRGB(220, 50,  50)   -- đỏ
-local ALLY_COLOR            = Color3.fromRGB(50,  120, 220)  -- xanh dương
-local FILL_TRANSPARENCY     = 1
-local OUTLINE_TRANSPARENCY  = 0.0
+local ENEMY_COLOR           = (GuiAnimConfig.Highlight and GuiAnimConfig.Highlight.EnemyColor) or Color3.fromRGB(220, 50,  50)
+local ALLY_COLOR            = (GuiAnimConfig.Highlight and GuiAnimConfig.Highlight.AllyColor) or Color3.fromRGB(50,  120, 220)
+local FILL_TRANSPARENCY     = (GuiAnimConfig.Highlight and GuiAnimConfig.Highlight.FillTransparency) or 1
+local OUTLINE_TRANSPARENCY  = (GuiAnimConfig.Highlight and GuiAnimConfig.Highlight.OutlineTransparency) or 0.0
 
 -- =========================================================
 -- STATE
@@ -174,7 +175,7 @@ end
 local function WatchPlayer(Player)
 	if Player == LocalPlayer then
 		Player.CharacterAdded:Connect(function(Character)
-			Character:WaitForChild("HumanoidRootPart")
+			Character:WaitForChild("HumanoidRootPart", 5)
 			RemoveHighlight(Character)
 		end)
 		return
@@ -182,7 +183,7 @@ local function WatchPlayer(Player)
 
 	Player.CharacterAdded:Connect(function(Character)
 		-- Đợi nhân vật fully loaded
-		Character:WaitForChild("HumanoidRootPart")
+		Character:WaitForChild("HumanoidRootPart", 5)
 		task.wait(0.1)
 
 		local PlayerUserIdStr = tostring(Player.UserId)

@@ -11,7 +11,7 @@ local QuestConfig = {
 	-- =========================================================
 	Daily = {
 		PoolCount    = 5,     -- Số quest được random mỗi chu kỳ
-		ResetSeconds = 60,--86400, -- Thời gian reset: 24 giờ (giây)
+		ResetSeconds = 86400, -- Thời gian reset: 24 giờ (giây)
 
 		Pool = {
 			-- [Nhóm 1: InMatchCounter — Yêu cầu đạt được trong DUY NHẤT 1 trận đấu]

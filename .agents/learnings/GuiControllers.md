@@ -1,6 +1,6 @@
 # GuiControllers
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống điều phối giao diện sảnh, menu và chuyển cảnh (MenuController, NavigationController, GameStateController, GameLoadingScreen, RoundLoadingScreen, ModeAnnouncement, GameOverAnnouncement và các Menu con).
-> Cập nhật lần cuối: 03-09-2026
+> Cập nhật lần cuối: 04-09-2026
 
 ---
 
@@ -176,9 +176,16 @@
   1. Khởi tạo toàn bộ biến GUI thành `nil` ở module scope.
   2. Dời toàn bộ logic tìm kiếm cây UI vào hàm `:Init()` với timeout an toàn từ `GuiConfig.Timeouts.DefaultWaitForGui` (10s).
   3. Bổ sung nil-guards trước mọi thao tác cập nhật Text hay gắn sự kiện nút bấm.
-- **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+- **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [PlayerStatusController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerStatusController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua), [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
 ### 13. Lỗi Kẹt Giao Diện & Mất Thanh Điều Hướng Do Ẩn Container Trước Khi Xác Thực Tab (Premature UI Mutation & Defensive Tab Guard)
 - **Vấn đề:** Khi mở một tab menu (`MenuController.OpenTab`), hệ thống vội vàng ẩn thanh điều hướng (`NavCtrl.SetButtonsContainerVisible(false)`) trước khi tra cứu tab trong `_RegisteredTabs`. Nếu tab chưa được đăng ký (do controller nạp lỗi hoặc chưa hoàn tất khởi tạo), hàm in cảnh báo rồi kết thúc mà không mở menu, đồng thời thanh NavigationButtons bị ẩn vĩnh viễn khiến người chơi kẹt giao diện hoàn toàn.
 - **Giải pháp:** Áp dụng Defensive Guard Clause: Tra cứu `local TargetData = _RegisteredTabs[TabName]` ngay tại dòng đầu tiên của `OpenTab`. Nếu `not TargetData`, lập tức hủy luồng thực thi và tuyệt đối không thực hiện bất kỳ thay đổi trạng thái nào trên các container giao diện cha (`ButtonsContainer`, `SpectateGui`).
 - **File liên quan:** [MenuController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua)
+
+### 14. Chuẩn Hóa Kiến Trúc Vòng Đời 2 Pha (Init -> Start) Cho Client Controllers & Triệt Tiêu Lazy-Require
+- **Vấn đề:** Để tránh vòng lặp phụ thuộc khi mở các tab menu hoặc điều khiển HUD, các Controller con dùng boilerplate `local function GetMenuController()` để `require` động giữa chừng. Cách làm này phân tán phụ thuộc, khó kiểm soát thứ tự thực thi và phá vỡ tính nhất quán với `ServiceLoader` 2 pha của Server.
+- **Giải pháp:** Đồng bộ chuẩn 2 pha cho Client Bootloader:
+  1. *Pha 1 (`:Init()`)*: Tìm kiếm các phần tử GUI trong DOM với timeout an toàn, gán nil-guards, bind RemoteDefinitions, đăng ký tab với `MenuController`.
+  2. *Pha 2 (`:Start()`)*: Nạp sẵn các Controller phụ thuộc (`_MenuController = require(Controllers.MenuController)`) và lưu biến module scope, sẵn sàng phục vụ các tương tác của người chơi mà không cần tra cứu dynamic require.
+- **File liên quan:** [Main.client.lua](../../src/StarterPlayer/StarterPlayerScripts/Main.client.lua), [MenuController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)

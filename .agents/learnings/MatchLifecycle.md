@@ -1,6 +1,6 @@
 # MatchLifecycle
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về vòng đời trận đấu (State Machine, Player State, WinCondition, Special Round, Death/Disconnect Lifecycle và Map Management).
-> Cập nhật lần cuối: 03-09-2026
+> Cập nhật lần cuối: 04-09-2026
 
 ---
 
@@ -184,3 +184,8 @@
   1. *Pha 1 (`Init`)*: Các Service chỉ thiết lập state nội bộ, bind RemoteDefinitions, gán biến tham chiếu service bằng `nil` ở module scope.
   2. *Pha 2 (`Start`)*: Sau khi toàn bộ Service đã `Init` xong, `ServiceLoader` gọi `Start()`. Tại đây các Service an toàn thực hiện `require(script.Parent.XxxService)` và gán vào biến module scope. Toàn bộ logic nghiệp vụ gọi trực tiếp biến này mà không dùng `FindFirstChild`.
 - **File liên quan:** [ServiceLoader.lua](../../src/ServerScriptService/Services/ServiceLoader.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+
+### 18. Cơ Chế Ngắt Sớm Trạng Thái Hoạt Động Trận Đấu (Immediate Match Active Teardown Guard)
+- **Vấn đề:** Khi `SessionService.CheckWinCondition()` phát hiện điều kiện thắng và phát `MatchEndSignal`, biến `_isMatchActive` vẫn giữ giá trị `true`. Cờ này chỉ được chuyển thành `false` khi vòng lặp 1 giây của `RunInGame` bước sang giây tiếp theo để chuyển phase `RunGameOver`. Trong khoảng trễ này (~1s), người chơi vẫn có thể vung kiếm chém trúng hoặc kích hoạt đóng băng đối thủ ngoài ý muốn.
+- **Giải pháp:** Thiết lập `_isMatchActive = false` ngay tại thời điểm điều kiện thắng được xác nhận trong `CheckWinCondition()`, trước khi gọi `MatchEndSignal:Fire(...)`. Đảm bảo toàn bộ logic kiểm tra `HandleToolHit` lập tức từ chối mọi đòn đánh phát sinh sau khi trận đấu đã ngã ngũ.
+- **File liên quan:** [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)

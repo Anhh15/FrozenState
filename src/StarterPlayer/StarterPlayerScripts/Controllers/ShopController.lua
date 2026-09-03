@@ -713,4 +713,13 @@ function ShopController:Init()
 	print("[ShopController] Đã khởi tạo.")
 end
 
+function ShopController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then _MenuController = require(MenuModule) end
+
+	local ItemRewardModule = Controllers:FindFirstChild("ItemRewardController")
+	if ItemRewardModule then _ItemRewardController = require(ItemRewardModule) end
+end
+
 return ShopController

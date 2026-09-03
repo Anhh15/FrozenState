@@ -222,4 +222,16 @@ function NavigationController:Init()
 	print("[NavigationController] Đã khởi tạo.")
 end
 
+function NavigationController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then _MenuController = require(MenuModule) end
+
+	local SpectateModule = Controllers:FindFirstChild("SpectateController")
+	if SpectateModule then _SpectateController = require(SpectateModule) end
+
+	local PlayerDataModule = Controllers:FindFirstChild("PlayerDataController")
+	if PlayerDataModule then _PlayerDataController = require(PlayerDataModule) end
+end
+
 return NavigationController

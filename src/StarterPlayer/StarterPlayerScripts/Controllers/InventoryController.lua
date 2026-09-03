@@ -449,5 +449,12 @@ function InventoryController.SetVisible(Visible)
 	-- Khi visible = true, không tự mở — để người chơi tự bấm mở
 end
 
+function InventoryController:Start()
+	local Module = script.Parent:FindFirstChild("MenuController")
+	if Module then
+		_MenuController = require(Module)
+	end
+end
+
 return InventoryController
 

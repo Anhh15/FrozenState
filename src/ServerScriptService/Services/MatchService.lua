@@ -24,6 +24,7 @@ local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local MapHelper         = require(ReplicatedStorage.Shared.Tools.MapHelper)
+local MapConfig         = require(ReplicatedStorage.Shared.Config.MapConfig)
 local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 
 local ShopService  = nil
@@ -651,7 +652,7 @@ local function RunGameOver(Result)
 		if not Character then continue end
 		local HRP = Character:FindFirstChild("HumanoidRootPart")
 		if HRP and LobbySpawn then
-			HRP.CFrame = LobbySpawn.CFrame + Vector3.new(0, 4, 0)
+			HRP.CFrame = LobbySpawn.CFrame + Vector3.new(0, MapConfig.Spawn.DefaultYOffset or 4, 0)
 		end
 		if HRP then
 			Player.ReplicationFocus = HRP
@@ -794,21 +795,25 @@ function MatchService:Init()
 		PlayerStateHelper.SetAfk(NewPlayer, false)
 		BindPlayer(NewPlayer)
 
-		task.wait(2)
-		if _currentPhase == "InGame" and SessionService.IsMatchActive() then
-			local NormalPlayers = SessionService.GetAllNormalPlayers()
-			UpdateSpectateListEvent:FireClient(NewPlayer, NormalPlayers)
-			TeamService.BroadcastTeamAssignmentTo(NewPlayer)
+		task.spawn(function()
+			task.wait(2)
+			if not NewPlayer:IsDescendantOf(Players) then return end
+			if _currentPhase == "InGame" and SessionService.IsMatchActive() then
+				local NormalPlayers = SessionService.GetAllNormalPlayers()
+				UpdateSpectateListEvent:FireClient(NewPlayer, NormalPlayers)
+				TeamService.BroadcastTeamAssignmentTo(NewPlayer)
 
-			-- Gửi lại GameMode cho người mới join
-			local ModeKey = SessionService.GetCurrentModeKey()
-			SetGameModeEvent:FireClient(NewPlayer, {
-				ModeKey          = ModeKey,
-				HighlightMode    = GameModeHelper.GetHighlightMode(ModeKey),
-				ScoreboardType   = GameModeHelper.GetScoreboardType(ModeKey),
-				PlayerStatusType = GameModeHelper.GetPlayerStatusType(ModeKey),
-			})
-		end
+				-- Gửi lại GameMode cho người mới join (kèm HasTeams nhất quán)
+				local ModeKey = SessionService.GetCurrentModeKey()
+				SetGameModeEvent:FireClient(NewPlayer, {
+					ModeKey          = ModeKey,
+					HasTeams         = GameModeHelper.IsTeamBased(ModeKey),
+					HighlightMode    = GameModeHelper.GetHighlightMode(ModeKey),
+					ScoreboardType   = GameModeHelper.GetScoreboardType(ModeKey),
+					PlayerStatusType = GameModeHelper.GetPlayerStatusType(ModeKey),
+				})
+			end
+		end)
 	end)
 
 	-- Spectator yêu cầu focus vào target hoặc reset về chính mình
@@ -818,15 +823,11 @@ function MatchService:Init()
 			return
 		end
 
-		-- Nếu TargetPlayer là nil: reset ReplicationFocus về chính spectator (cho phép ở mọi phase)
+		-- Nếu TargetPlayer là nil: reset ReplicationFocus về chính spectator (hoặc nil nếu không có HRP)
 		if TargetPlayer == nil then
 			local SpectatorCharacter = SpectatorPlayer.Character
-			if SpectatorCharacter then
-				local SpectatorHRP = SpectatorCharacter:FindFirstChild("HumanoidRootPart")
-				if SpectatorHRP then
-					SpectatorPlayer.ReplicationFocus = SpectatorHRP
-				end
-			end
+			local SpectatorHRP = SpectatorCharacter and SpectatorCharacter:FindFirstChild("HumanoidRootPart")
+			SpectatorPlayer.ReplicationFocus = SpectatorHRP or nil
 			return
 		end
 

@@ -27,33 +27,35 @@ local _BuyLocks = {}
 -- =========================================================
 
 --- Xử lý 1 lần mở rương: random item, trao hoặc hoàn tiền nếu trùng
+--- Mô phỏng rút 1 lần quay rương trong bộ nhớ (không can thiệp Profile)
 --- @param Player Player
---- @param Chest table      -- entry từ ChestConfig
---- @param ChestPrice number -- giá rương đã trả (Price1 hoặc Price3/3 ~ không dùng, dùng Price1 cho refund)
---- @return string, number  -- (ItemId nhận được, RefundAmount)
-local function ProcessOneDraw(Player, Chest, RefundBasePrice)
+--- @param Chest table
+--- @param RefundBasePrice number
+--- @param TemporaryOwned table -- Lưu tạm các item mới trúng trong cùng phiên mở nhiều rương
+--- @return table -- { ItemId = string, WasDuplicate = boolean, Refund = number }
+local function SimulateOneDraw(Player, Chest, RefundBasePrice, TemporaryOwned)
 	local ItemId = RewardHelper.WeightedRandom(Chest.Items)
-
-	-- Kiểm tra đã sở hữu chưa
-	local AlreadyOwned = DataService.HasItem(Player, Chest.Type, ItemId)
+	local AlreadyOwned = DataService.HasItem(Player, Chest.Type, ItemId) or (TemporaryOwned[ItemId] == true)
 
 	if AlreadyOwned then
-		-- Tính hoàn tiền dựa trên Rarity của item
 		local ItemEntry = ItemRegistry.GetItem(ItemId, Chest.Type)
-		local RarityEntry = RarityConfig[ItemEntry.Rarity]
+		local RarityEntry = ItemEntry and RarityConfig[ItemEntry.Rarity]
 		local RefundAmount = 0
 		if RarityEntry then
 			RefundAmount = math.round(RefundBasePrice * RarityEntry.RefundPercent)
 		end
-		return ItemId, RefundAmount, true   -- (ItemId, Refund, WasDuplicate)
+		return {
+			ItemId       = ItemId,
+			WasDuplicate = true,
+			Refund       = RefundAmount,
+		}
 	else
-		-- Trao item cho player
-		if Chest.Type == "Icicle" then
-			DataService.AddIcicle(Player, ItemId)
-		else
-			DataService.AddBlock(Player, ItemId)
-		end
-		return ItemId, 0, false             -- (ItemId, Refund=0, WasDuplicate=false)
+		TemporaryOwned[ItemId] = true
+		return {
+			ItemId       = ItemId,
+			WasDuplicate = false,
+			Refund       = 0,
+		}
 	end
 end
 
@@ -89,9 +91,6 @@ function ShopService:Start()
 		end
 		_BuyLocks[Player.UserId] = true
 
-		local MoneyDeducted  = false
-		local DeductedAmount = 0
-
 		local Success, Result = pcall(function()
 			-- ─── VALIDATE ────────────────────────────────────────────
 			local Chest = ChestConfig.GetChest(ChestId)
@@ -123,33 +122,37 @@ function ShopService:Start()
 				return { Success = false, Reason = "NOT_ENOUGH_MONEY" }
 			end
 
-			-- ─── TRỪ TIỀN TRƯỚC (để tránh double-spend) ──────────────
-			DataService.AddMoney(Player, -TotalPrice)
-			MoneyDeducted  = true
-			DeductedAmount = TotalPrice
-
-			-- ─── MỞ RƯƠNG ────────────────────────────────────────────
-			-- RefundBasePrice = Price1 (hoàn tiền dựa trên giá 1 lần mở, không phải giá gói)
+			-- ─── PHA 1: MÔ PHỎNG QUAY RƯƠNG TRONG RAM (DRAW FIRST) ───
 			local RefundBasePrice = Chest.Price1
 			local TotalRefund     = 0
 			local ReceivedItems   = {}
+			local TemporaryOwned  = {}
 
 			for _ = 1, Quantity do
-				local ItemId, RefundAmount, WasDuplicate = ProcessOneDraw(Player, Chest, RefundBasePrice)
-				table.insert(ReceivedItems, {
-					ItemId       = ItemId,
-					WasDuplicate = WasDuplicate,
-					Refund       = RefundAmount,
-				})
-				TotalRefund = TotalRefund + RefundAmount
+				local DrawResult = SimulateOneDraw(Player, Chest, RefundBasePrice, TemporaryOwned)
+				table.insert(ReceivedItems, DrawResult)
+				TotalRefund = TotalRefund + DrawResult.Refund
 			end
 
-			-- ─── HOÀN TIỀN (nếu có) ──────────────────────────────────
+			-- ─── PHA 2: COMMIT NGUYÊN TỬ (ATOMIC COMMIT) ─────────────
+			-- Trừ tiền và cộng tiền hoàn lại (nếu có)
+			DataService.AddMoney(Player, -TotalPrice)
 			if TotalRefund > 0 then
 				DataService.AddMoney(Player, TotalRefund)
 			end
 
-			-- ─── CẬP NHẬT TIỀN VỀ CLIENT ─────────────────────────────
+			-- Trao toàn bộ vật phẩm mới
+			for _, ItemInfo in ipairs(ReceivedItems) do
+				if not ItemInfo.WasDuplicate then
+					if Chest.Type == "Icicle" then
+						DataService.AddIcicle(Player, ItemInfo.ItemId)
+					else
+						DataService.AddBlock(Player, ItemInfo.ItemId)
+					end
+				end
+			end
+
+			-- Đồng bộ tiền mới nhất về Client
 			local NewMoney = DataService.GetData(Player).Money
 			UpdateMoneyEv:FireClient(Player, NewMoney)
 
@@ -177,16 +180,6 @@ function ShopService:Start()
 		_BuyLocks[Player.UserId] = nil
 
 		if not Success then
-			if MoneyDeducted and DeductedAmount > 0 then
-				DataService.AddMoney(Player, DeductedAmount)
-				local CurrentData = DataService.GetData(Player)
-				local FallbackMoney = CurrentData and CurrentData.Money or 0
-				local UpdateMoneyEv = RemoteDefinitions.GetEvent("UpdateMoney")
-				if UpdateMoneyEv then
-					UpdateMoneyEv:FireClient(Player, FallbackMoney)
-				end
-				warn(("[ShopService] Đã rollback hoàn trả %d tiền cho %s do lỗi mở rương."):format(DeductedAmount, Player.Name))
-			end
 			warn(("[ShopService] Lỗi khi xử lý BuyChest cho %s: %s"):format(Player.Name, tostring(Result)))
 			return { Success = false, Reason = "INTERNAL_ERROR" }
 		end

@@ -25,13 +25,14 @@ local AudioHelper     = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local ViewportManager = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper       = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local ItemCard        = require(ReplicatedStorage.Shared.Tools.ItemCard)
+local GuiConfig       = require(ReplicatedStorage.Shared.Config.GuiConfig)
 
 -- =========================================================
 -- GUI REFERENCES (set trong Init)
 -- =========================================================
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local PlayerGui   = nil
 
 local SpecialGui    = nil
 local ItemReward    = nil
@@ -408,16 +409,29 @@ function ItemRewardController.Reset()
 end
 
 function ItemRewardController:Init()
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
+
 	-- Lấy GUI references
-	SpecialGui    = PlayerGui:WaitForChild("Special")
-	local IR      = SpecialGui:WaitForChild("ItemReward")
+	PlayerGui     = LocalPlayer:WaitForChild("PlayerGui", Timeout)
+	SpecialGui    = PlayerGui and PlayerGui:WaitForChild("Special", Timeout)
+	local IR      = SpecialGui and SpecialGui:WaitForChild("ItemReward", Timeout)
 	ItemReward    = IR
-	Background    = IR:FindFirstChild("Background") or IR:WaitForChild("Background", 5)
-	Effect        = IR:WaitForChild("Effect")
-	ChestViewport = Effect:WaitForChild("ChestViewport")
-	EffectImage   = Effect:WaitForChild("EffectImage")
-	ItemFrame     = IR:WaitForChild("ItemFrame")
-	ClickButton   = IR:WaitForChild("ClickButton")
+	if not ItemReward then
+		warn("[ItemRewardController] Không tìm thấy ItemReward trong SpecialGui.")
+		return
+	end
+
+	Background    = IR:FindFirstChild("Background") or IR:WaitForChild("Background", Timeout)
+	Effect        = IR:WaitForChild("Effect", Timeout)
+	ChestViewport = Effect and Effect:WaitForChild("ChestViewport", Timeout)
+	EffectImage   = Effect and Effect:WaitForChild("EffectImage", Timeout)
+	ItemFrame     = IR:WaitForChild("ItemFrame", Timeout)
+	ClickButton   = IR:WaitForChild("ClickButton", Timeout)
+
+	if not (Effect and ChestViewport and EffectImage and ItemFrame and ClickButton) then
+		warn("[ItemRewardController] Thiếu thành phần UI quan trọng trong ItemReward.")
+		return
+	end
 
 	-- Ngăn GUI reset khi character chết/respawn
 	SpecialGui.ResetOnSpawn = false

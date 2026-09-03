@@ -79,6 +79,7 @@ local _rawTargetList       = {}      -- Danh sách Player objects Normal thô t�
 local _currentIndex        = 1       -- Vị trí hiện tại trong vòng lặp
 local _savedCameraSubject  = nil     -- Lưu CameraSubject gốc để restore
 local _currentPhase        = "Intermission"  -- Cache phase hiện tại
+local _SpectateRequestId   = 0     -- Sequence ID chống race condition camera khi đổi target nhanh
 
 -- Remote
 local RequestSpectateTargetEvent
@@ -108,8 +109,7 @@ local function LockSpectatorMovement()
 	Humanoid.JumpHeight = 0
 end
 
---- Khôi phục di chuyển của spectator sau khi tắt spectate
---- Chỉ gọi khi là Lobby Spectator — Frozen Spectator do server quản lý lock
+--- Mở khóa di chuyển của spectator khi thoát xem
 local function UnlockSpectatorMovement()
 	local Character = LocalPlayer.Character
 	if not Character then return end
@@ -130,6 +130,9 @@ end
 local function FocusOnTarget(TargetPlayer)
 	if not TargetPlayer then return end
 
+	_SpectateRequestId += 1
+	local RequestId = _SpectateRequestId
+
 	task.spawn(function()
 		-- Bước 1: Yêu cầu server set ReplicationFocus vào target
 		-- Engine sẽ tự stream world xung quanh target về cho client này
@@ -140,11 +143,12 @@ local function FocusOnTarget(TargetPlayer)
 		-- Bước 2: Poll chờ Character stream in (tối đa STREAM_WAIT_TIMEOUT giây)
 		local Elapsed = 0
 		while Elapsed < STREAM_WAIT_TIMEOUT do
-			if not _isSpectating then return end
+			if not _isSpectating or _SpectateRequestId ~= RequestId then return end
 			local Character = TargetPlayer.Character
 			if Character and Character.Parent then
 				local Humanoid = Character:FindFirstChildOfClass("Humanoid")
 				if Humanoid and Humanoid.Health > 0 then
+					if _SpectateRequestId ~= RequestId then return end
 					local Cam = workspace.CurrentCamera
 					if Cam then
 						Cam.CameraType = Enum.CameraType.Custom
@@ -157,8 +161,10 @@ local function FocusOnTarget(TargetPlayer)
 			Elapsed = Elapsed + STREAM_POLL_INTERVAL
 		end
 
-		warn("[SpectateController] Timeout chờ Character của "
-			.. TargetPlayer.Name .. " sau " .. STREAM_WAIT_TIMEOUT .. "s")
+		if _SpectateRequestId == RequestId then
+			warn("[SpectateController] Timeout chờ Character của "
+				.. TargetPlayer.Name .. " sau " .. STREAM_WAIT_TIMEOUT .. "s")
+		end
 	end)
 end
 
@@ -472,9 +478,11 @@ end
 -- =========================================================
 
 function SpectateController:Init()
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
+
 	-- Resolve ObserverGui và Frame Spectate bên trong
 	ObserverGui  = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.ObserverGui)
-	SpectateGui  = ObserverGui and ObserverGui:WaitForChild(GuiConfig.ObserverFrames.Spectate)
+	SpectateGui  = ObserverGui and ObserverGui:WaitForChild(GuiConfig.ObserverFrames.Spectate, Timeout)
 
 	if ObserverGui then
 		ObserverGui.ResetOnSpawn = false  -- Bắt buộc theo learning: tránh mất listener khi respawn
@@ -482,11 +490,11 @@ function SpectateController:Init()
 	end
 
 	if SpectateGui then
-		CloseButton  = SpectateGui:WaitForChild("CloseButton")
-		NextButton   = SpectateGui:WaitForChild("NextButton")
-		BackButton   = SpectateGui:WaitForChild("BackButton")
-		local PlayerNameFrame = SpectateGui:WaitForChild("PlayerName")
-		PlayerNameText = PlayerNameFrame:WaitForChild("PlayerNameText")
+		CloseButton  = SpectateGui:WaitForChild("CloseButton", Timeout)
+		NextButton   = SpectateGui:WaitForChild("NextButton", Timeout)
+		BackButton   = SpectateGui:WaitForChild("BackButton", Timeout)
+		local PlayerNameFrame = SpectateGui:WaitForChild("PlayerName", Timeout)
+		PlayerNameText = PlayerNameFrame and PlayerNameFrame:WaitForChild("PlayerNameText", Timeout)
 		SpectateGui.Visible = false
 	end
 
@@ -617,6 +625,19 @@ function SpectateController:Init()
 	end)
 
 	print("[SpectateController] Đã khởi tạo.")
+end
+
+function SpectateController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then
+		_menuController = require(MenuModule)
+	end
+
+	local NavModule = Controllers:FindFirstChild("NavigationController")
+	if NavModule then
+		_navigationController = require(NavModule)
+	end
 end
 
 return SpectateController

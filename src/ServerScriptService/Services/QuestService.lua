@@ -244,7 +244,8 @@ local QuestService = {}
 --- @param EventName string -- "OnFreeze" | "OnThaw" | "OnMatchEnd" | "OnChestOpened" | "OnPlayTime"
 --- @param EventData table
 function QuestService.DispatchEvent(Player, EventName, EventData)
-	if not Player or not Player:IsDescendantOf(Players) then return end
+	if not Player then return end
+	if not Player:IsDescendantOf(Players) and not DataService.GetProfile(Player) then return end
 
 	local RawData = DataService.GetQuestRawData(Player)
 	if not RawData then return end
@@ -301,10 +302,12 @@ function QuestService.DispatchEvent(Player, EventName, EventData)
 		end
 
 		if JustCompleted and NotifyAccoladeEvent then
-			NotifyAccoladeEvent:FireClient(Player, {
-				Type       = "QuestComplete",
-				QuestTitle = ConfigEntry.Description,
-			})
+			if Player:IsDescendantOf(Players) then
+				NotifyAccoladeEvent:FireClient(Player, {
+					Type       = "QuestComplete",
+					QuestTitle = ConfigEntry.Description,
+				})
+			end
 			print(("[QuestService] 🎉 %s hoàn thành nhiệm vụ: '%s'!"):format(Player.Name, ConfigEntry.Description))
 		end
 	end

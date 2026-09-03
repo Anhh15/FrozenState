@@ -26,6 +26,24 @@ local GuiAnimConfig = {
 	},
 
 	-- =========================================================
+	-- 2.1 CẤU HÌNH HIGHLIGHT (ĐỒ HỌA VIỀN NHÂN VẬT & KHỐI BĂNG)
+	-- =========================================================
+	Highlight = {
+		EnemyColor          = Color3.fromRGB(220, 50,  50),  -- Đỏ kẻ địch
+		AllyColor           = Color3.fromRGB(50,  120, 220), -- Xanh đồng minh
+		FillTransparency    = 1.0,
+		OutlineTransparency = 0.0,
+	},
+
+	-- =========================================================
+	-- 2.2 CẤU HÌNH QUEST (MÀU SẮC TAB & TIẾN TRÌNH)
+	-- =========================================================
+	Quest = {
+		ActiveTabColor   = Color3.fromRGB(255, 255, 255),
+		InactiveTabColor = Color3.fromRGB(47, 47, 47),
+	},
+
+	-- =========================================================
 	-- 3. CẤU HÌNH ANIMATION GUI (TWEEN / SCALE / TIMING)
 	-- Hệ thống 2 tầng: Default (mặc định) + Overrides (theo Key cụ thể)
 	-- =========================================================

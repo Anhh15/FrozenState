@@ -1,6 +1,6 @@
 # SpectateSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống quan sát trận đấu (ObserverGui, Phân biệt Lobby Spectator vs Frozen Spectator, Streaming ReplicationFocus và Camera Management).
-> Cập nhật lần cuối: 03-09-2026
+> Cập nhật lần cuối: 04-09-2026
 
 ---
 
@@ -79,3 +79,12 @@
   1. Server tính toán Single Source of Truth `HasTeams = GameModeHelper.IsTeamBased(ModeKey)` và gửi trực tiếp trong payload RemoteEvent `SetGameMode`.
   2. Phía Client, `SpectateController` ưu tiên đọc trực tiếp cờ `Data.HasTeams`, kết hợp fallback an toàn qua `GameModeHelper.IsTeamBased(Data.ModeKey)`, triệt tiêu hoàn toàn việc so sánh chuỗi heuristic.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [GameModeHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GameModeHelper.lua)
+
+### 7. Race Condition Giật Camera Khi Chuyển Mục Tiêu Nhanh & Lỗi Kẹt ReplicationFocus
+- **Vấn đề:** 
+  1. Khi người chơi nhấn Next/Back liên tục để chuyển đổi người quan sát, nhiều luồng async poll streaming chạy song song. Nếu luồng của mục tiêu cũ stream in muộn hơn mục tiêu mới, nó sẽ ghi đè `CameraSubject`, làm camera giật lùi về mục tiêu cũ.
+  2. Khi gửi `RequestSpectateTarget(nil)` để thoát spectate, nếu Spectator Character bị mất hoặc chưa spawn (chết/chưa respawn), Server không gán `nil` khiến `ReplicationFocus` bị kẹt ở vị trí người thi đấu trước đó.
+- **Giải pháp:** 
+  1. Client khai báo sequence counter `_SpectateRequestId += 1` mỗi khi đổi mục tiêu. Luồng poll chỉ gán `CameraSubject` nếu ID của luồng khớp chính xác với `_SpectateRequestId` hiện tại.
+  2. Server gán trực tiếp `SpectatorPlayer.ReplicationFocus = SpectatorHRP or nil`, đảm bảo luôn trả focus về mặc định engine khi Spectator không còn HRP.
+- **File liên quan:** [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
