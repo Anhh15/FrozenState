@@ -72,3 +72,10 @@
 - **Vấn đề:** Listener `RequestSpectateTargetEvent.OnServerEvent` không kiểm tra kiểu dữ liệu của đối số `TargetPlayer` mà trực tiếp gọi phương thức `:IsDescendantOf(Players)`. Kẻ tấn công có thể cố ý gửi payload sai kiểu (string, number, table, boolean) khiến server phát sinh ngoại lệ không được bắt (unhandled runtime exception), gây crash luồng xử lý hoặc nghẽn Event Loop.
 - **Giải pháp:** Bổ sung type guard ngay tại đầu listener kiểm tra nghiêm ngặt: `if TargetPlayer ~= nil and (typeof(TargetPlayer) ~= "Instance" or not TargetPlayer:IsA("Player")) then return end`.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua)
+
+### 6. Client Tự Suy Đoán Logic Phân Đội Bằng Chuỗi Thay Vì Nhận Dữ Liệu Server-Authoritative
+- **Vấn đề:** Trong `SpectateController`, client tự kiểm tra điều kiện phân đội bằng cách parse chuỗi: `_hasTeams = (PlayerStatusType ~= "Disabled") and (HighlightMode ~= "FFA")`. Cách làm này ghép nối lỏng lẻo các cấu hình hiển thị UI để suy diễn luật gameplay, rất dễ bị vỡ hoặc hoạt động sai lệch khi thêm các GameMode mới trong tương lai.
+- **Giải pháp:** 
+  1. Server tính toán Single Source of Truth `HasTeams = GameModeHelper.IsTeamBased(ModeKey)` và gửi trực tiếp trong payload RemoteEvent `SetGameMode`.
+  2. Phía Client, `SpectateController` ưu tiên đọc trực tiếp cờ `Data.HasTeams`, kết hợp fallback an toàn qua `GameModeHelper.IsTeamBased(Data.ModeKey)`, triệt tiêu hoàn toàn việc so sánh chuỗi heuristic.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [GameModeHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GameModeHelper.lua)

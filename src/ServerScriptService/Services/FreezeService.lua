@@ -20,9 +20,13 @@ local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
 local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+
+local ShopService  = nil
+local QuestService = nil
 
 -- =========================================================
 -- HẰNG SỐ (từ GameConfig để không hardcode)
@@ -161,9 +165,14 @@ end
 -- PRIVATE: Helpers
 -- =========================================================
 
---- Thưởng tiền và đồng bộ về client
+--- Thưởng tiền và đồng bộ về client (hỗ trợ GamePass DoubleMatchMoney)
 local function RewardAndSync(Player, Amount)
-	local _, FinalAmount = RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent)
+	local Multiplier = 1
+	if ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "DoubleMatchMoney") then
+		local PassConfig = ProductConfig.GetGamePassByKey("DoubleMatchMoney")
+		Multiplier = (PassConfig and PassConfig.Multiplier) or 2
+	end
+	local _, FinalAmount = RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent, Multiplier)
 	SessionService.IncrementStat(Player, "MoneyEarned", FinalAmount or Amount)
 end
 
@@ -275,18 +284,14 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	end
 
 	-- Dispatch Event cho QuestService (Objective Engine 2.0)
-	local QuestModule = script.Parent:FindFirstChild("QuestService")
-	if QuestModule then
-		local QuestService = require(QuestModule)
-		if QuestService and QuestService.DispatchEvent then
-			QuestService.DispatchEvent(Attacker, "OnFreeze", {
-				Victim        = Victim,
-				IsSpree       = IsSpree,
-				IsFirstBlood  = IsFirstBlood,
-				ModeKey       = SessionService.GetCurrentModeKey(),
-				IsFrozenState = SessionService.GetFrozenState(),
-			})
-		end
+	if QuestService and QuestService.DispatchEvent then
+		QuestService.DispatchEvent(Attacker, "OnFreeze", {
+			Victim        = Victim,
+			IsSpree       = IsSpree,
+			IsFirstBlood  = IsFirstBlood,
+			ModeKey       = SessionService.GetCurrentModeKey(),
+			IsFrozenState = SessionService.GetFrozenState(),
+		})
 	end
 
 	print(("[FreezeService] %s đã đóng băng %s"):format(Attacker.Name, Victim.Name))
@@ -378,17 +383,13 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	end
 
 	-- Dispatch Event cho QuestService (Objective Engine 2.0)
-	local QuestModule = script.Parent:FindFirstChild("QuestService")
-	if QuestModule then
-		local QuestService = require(QuestModule)
-		if QuestService and QuestService.DispatchEvent then
-			QuestService.DispatchEvent(Rescuer, "OnThaw", {
-				Victim        = Victim,
-				IsSpree       = IsSpree,
-				ModeKey       = ModeKey,
-				IsFrozenState = SessionService.GetFrozenState(),
-			})
-		end
+	if QuestService and QuestService.DispatchEvent then
+		QuestService.DispatchEvent(Rescuer, "OnThaw", {
+			Victim        = Victim,
+			IsSpree       = IsSpree,
+			ModeKey       = ModeKey,
+			IsFrozenState = SessionService.GetFrozenState(),
+		})
 	end
 
 	print(("[FreezeService] %s đã giải cứu %s"):format(Rescuer.Name, Victim.Name))
@@ -575,6 +576,8 @@ function FreezeService:Init()
 end
 
 function FreezeService:Start()
+	ShopService  = require(script.Parent.ShopService)
+	QuestService = require(script.Parent.QuestService)
 	print("[FreezeService] Đang chạy.")
 end
 

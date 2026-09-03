@@ -18,6 +18,7 @@ local GuiConfig         = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
 
 -- =========================================================
 -- GUI REFERENCES (resolve lười trong Init để tránh lỗi timing)
@@ -558,10 +559,14 @@ function SpectateController:Init()
 	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
 	SetGameModeEvent.OnClientEvent:Connect(function(Data)
 		if not Data then return end
-		-- HasTeams khi HighlightMode là "TeamBased" (nhất quán với GameModeConfig)
-		-- Server gửi ModeKey, dùng HighlightMode làm proxy vì không gửi HasTeams trực tiếp
-		-- Mode không team: HighlightMode = "FFA" hoặc PlayerStatusType = "Disabled"
-		_hasTeams = (Data.PlayerStatusType ~= "Disabled") and (Data.HighlightMode ~= "FFA")
+		-- HasTeams: ưu tiên đọc trực tiếp từ payload Server, fallback qua GameModeHelper
+		if Data.HasTeams ~= nil then
+			_hasTeams = Data.HasTeams
+		elseif Data.ModeKey then
+			_hasTeams = GameModeHelper.IsTeamBased(Data.ModeKey)
+		else
+			_hasTeams = (Data.PlayerStatusType ~= "Disabled") and (Data.HighlightMode ~= "FFA")
+		end
 
 		-- Khi mode mới bắt đầu, reset trạng thái Frozen phía client
 		ResetFrozenClientState()

@@ -43,8 +43,8 @@
   5. Kích hoạt kiểm tra điều kiện thắng trận `SessionService.CheckWinCondition()`.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
 
-### 6. Cơ chế Ngắt Sớm Trận Đấu (Early Termination)
-- **Chi tiết:** `MatchService` kết nối `SessionService.MatchEndSignal` ngay từ khi khởi tạo `Init()`. Khi nhận được tín hiệu thắng/thua sớm (do đối thủ bị loại hết trong `Setup` hoặc `Ready`), hệ thống lưu lại `_earlyResult`. Vòng lặp `RunReady` sẽ ngắt sớm (`break`) và `RunInGame` kiểm tra `_earlyResult` để return ngay lập tức (không cấp vũ khí, không đếm ngược vô ích), chuyển thẳng sang phase `GameOver`.
+### 6. Cơ chế Ngắt Sớm Trận Đấu (Early Termination & Idempotent MatchEndSignal)
+- **Chi tiết:** `MatchService` kết nối `SessionService.MatchEndSignal` ngay từ khi khởi tạo `Init()`. Khi nhận được tín hiệu thắng/thua sớm (do đối thủ bị loại hết trong `Setup` hoặc `Ready`), hệ thống lưu lại `_earlyResult`. Listener áp dụng cơ chế Idempotent Guard: `if _earlyResult ~= nil then return end` để bảo vệ kết quả, triệt tiêu nguy cơ các sự kiện disconnect/chết muộn phát sinh sau đó ghi đè làm đảo ngược đội thắng cuộc. Vòng lặp `RunReady` sẽ ngắt sớm (`break`) và `RunInGame` kiểm tra `_earlyResult` để return ngay lập tức (không cấp vũ khí, không đếm ngược vô ích), chuyển thẳng sang phase `GameOver`.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
 
 ### 7. Phân tách Map & Phân bổ Spawn Point Độc nhất (Unique Spawn Assignment)
@@ -165,3 +165,22 @@
 - **Vấn đề:** Sự kiện SetAfkState.OnServerEvent trước đây không có debounce kiểm tra thời gian giữa các lần gọi. Client gian lận có thể kích hoạt vòng lặp gửi hàng nghìn request/giây, ép Server liên tục ghi đè Attribute IsAfk và in log console, làm tụt tick-rate của Server và lag toàn bộ người chơi khác.
 - **Giải pháp:** Bổ sung kiểm tra rate-limit per-player (os.clock() - LastToggle) < Cooldown với GameConfig.Player.AfkCooldown (1.5s), đồng thời kiểm tra tính hợp lệ của Player instance trước khi cập nhật PlayerStateHelper.SetAfk.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
+
+### 16. Xung Đột Tín Hiệu MatchEndSignal Do Disconnect/Death Muộn Làm Ghi Đè Đội Thắng (Idempotent Early Result Guard)
+- **Vấn đề:** Khi một đội vừa bị wipe hoặc đạt điều kiện thắng, `SessionService.CheckWinCondition()` phát tín hiệu `MatchEndSignal`. Nếu ngay sau đó một người chơi khác tiếp tục disconnect (`PlayerRemoving`) hoặc rơi void (`Humanoid.Died`) trong lúc phase `GameOver` đang chuẩn bị kích hoạt, `CheckWinCondition()` bị gọi lại và phát thêm một `MatchEndSignal` mới, ghi đè biến `_earlyResult` làm thay đổi kết quả ván đấu hoặc gây crash luồng xử lý.
+- **Giải pháp:** Bổ sung Idempotent Guard ngay tại listener của `MatchService`:
+  ```lua
+  SessionService.MatchEndSignal.Event:Connect(function(Result)
+      if _earlyResult ~= nil then return end
+      _earlyResult = Result
+  end)
+  ```
+  Chỉ ghi nhận kết quả đầu tiên được phát ra và bỏ qua mọi tín hiệu thừa kế tiếp cho đến khi `RunSetup` reset `_earlyResult = nil` ở ván mới.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
+
+### 17. Chuẩn Hóa Vòng Đời 2 Pha (Init -> Start) và Triệt Tiêu Hoàn Toàn Lazy-Require Giữa Các Service
+- **Vấn đề:** Để tránh vòng lặp phụ thuộc (Circular Dependency) khi các service cần gọi nhau (`FreezeService`, `MatchService`, `ShopService`, `QuestService`), lập trình viên thường dùng giải pháp chắp vá `script.Parent:FindFirstChild(...)` và `require` động lặp đi lặp lại giữa thân hàm. Cách làm này che giấu lỗi runtime, làm chậm hiệu năng do phải tra cứu hierarchy liên tục và vi phạm tính toàn vẹn kiến trúc.
+- **Giải pháp:** Thực thi triệt để mô hình Vòng đời 2 Pha chuẩn hóa:
+  1. *Pha 1 (`Init`)*: Các Service chỉ thiết lập state nội bộ, bind RemoteDefinitions, gán biến tham chiếu service bằng `nil` ở module scope.
+  2. *Pha 2 (`Start`)*: Sau khi toàn bộ Service đã `Init` xong, `ServiceLoader` gọi `Start()`. Tại đây các Service an toàn thực hiện `require(script.Parent.XxxService)` và gán vào biến module scope. Toàn bộ logic nghiệp vụ gọi trực tiếp biến này mà không dùng `FindFirstChild`.
+- **File liên quan:** [ServiceLoader.lua](../../src/ServerScriptService/Services/ServiceLoader.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)

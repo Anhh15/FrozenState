@@ -180,23 +180,48 @@ function DataService.WaitForProfile(Player, Timeout)
 	end
 
 	Timeout = Timeout or DataConfig.ProfileLoadTimeout
-	local StartTime = os.clock()
+	local CurrentThread = coroutine.running()
 	local ProfileResult = nil
+	local Connection = nil
+	local TimeoutTask = nil
+	local RemovingConnection = nil
 
-	local Connection
+	local function CleanupAndResume(Result)
+		if TimeoutTask then
+			task.cancel(TimeoutTask)
+			TimeoutTask = nil
+		end
+		if Connection then
+			Connection:Disconnect()
+			Connection = nil
+		end
+		if RemovingConnection then
+			RemovingConnection:Disconnect()
+			RemovingConnection = nil
+		end
+		ProfileResult = Result
+		if coroutine.status(CurrentThread) == "suspended" then
+			task.spawn(CurrentThread)
+		end
+	end
+
 	Connection = _ProfileLoadedBindable.Event:Connect(function(LoadedPlayer, Profile)
 		if LoadedPlayer == Player then
-			ProfileResult = Profile
+			CleanupAndResume(Profile)
 		end
 	end)
 
-	while not ProfileResult and (os.clock() - StartTime < Timeout) and Player:IsDescendantOf(Players) do
-		task.wait(0.05)
-	end
+	RemovingConnection = Players.PlayerRemoving:Connect(function(LeavingPlayer)
+		if LeavingPlayer == Player then
+			CleanupAndResume(nil)
+		end
+	end)
 
-	if Connection then
-		Connection:Disconnect()
-	end
+	TimeoutTask = task.delay(Timeout, function()
+		CleanupAndResume(nil)
+	end)
+
+	coroutine.yield()
 
 	return ProfileResult or ActiveProfiles[Player]
 end

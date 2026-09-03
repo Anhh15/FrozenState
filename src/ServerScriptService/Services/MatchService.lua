@@ -24,6 +24,10 @@ local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local MapHelper         = require(ReplicatedStorage.Shared.Tools.MapHelper)
+local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
+
+local ShopService  = nil
+local QuestService = nil
 
 -- =========================================================
 -- STATE
@@ -221,6 +225,15 @@ local function GetTopPlayers(Result, MaxCount)
 	return TopList
 end
 
+--- Lấy hệ số nhân thưởng trận đấu (hỗ trợ GamePass DoubleMatchMoney)
+local function GetMatchMultiplier(Player)
+	if ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "DoubleMatchMoney") then
+		local PassConfig = ProductConfig.GetGamePassByKey("DoubleMatchMoney")
+		return (PassConfig and PassConfig.Multiplier) or 2
+	end
+	return 1
+end
+
 --- Phát phần thưởng Win/Lose + LastStanding theo mode
 local function DistributeRewards(Result)
 	local ModeKey = SessionService.GetCurrentModeKey()
@@ -244,7 +257,7 @@ local function DistributeRewards(Result)
 				SessionService.SetStat(LastAlive, "LastStanding", true)
 				DataService.IncrementStat(LastAlive, "TotalLastStanding")
 				local LastReward = RewardHelper.GetLastStandingReward()
-				local _, FinalLastReward = RewardHelper.RewardAndSync(LastAlive, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+				local _, FinalLastReward = RewardHelper.RewardAndSync(LastAlive, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(LastAlive))
 				SessionService.IncrementStat(LastAlive, "MoneyEarned", FinalLastReward or LastReward)
 			end
 		end
@@ -257,7 +270,7 @@ local function DistributeRewards(Result)
 			local IsWinner = (Team == WinTeam)
 			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(Player))
 			SessionService.IncrementStat(Player, "MoneyEarned", FinalReward or Reward)
 
 			if IsWinner then
@@ -275,7 +288,7 @@ local function DistributeRewards(Result)
 				SessionService.SetStat(WinPlayer, "LastStanding", true)
 				DataService.IncrementStat(WinPlayer, "TotalLastStanding")
 				local LastReward = RewardHelper.GetLastStandingReward()
-				local _, FinalLastReward = RewardHelper.RewardAndSync(WinPlayer, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+				local _, FinalLastReward = RewardHelper.RewardAndSync(WinPlayer, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(WinPlayer))
 				SessionService.IncrementStat(WinPlayer, "MoneyEarned", FinalLastReward or LastReward)
 			end
 		end
@@ -285,7 +298,7 @@ local function DistributeRewards(Result)
 			local IsWinner = (Player == WinPlayer)
 			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"))
+			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(Player))
 			SessionService.IncrementStat(Player, "MoneyEarned", FinalReward or Reward)
 
 			if IsWinner then
@@ -386,12 +399,8 @@ local function RunSetup()
 	FreezeService.ResetRound()
 
 	-- Reset match progress cho QuestService (Objective Engine 2.0)
-	local QuestModule = script.Parent:FindFirstChild("QuestService")
-	if QuestModule then
-		local QuestService = require(QuestModule)
-		if QuestService and QuestService.ResetMatchProgress then
-			QuestService.ResetMatchProgress()
-		end
+	if QuestService and QuestService.ResetMatchProgress then
+		QuestService.ResetMatchProgress()
 	end
 
 	-- Danh sách player còn sống thực sự tham gia trận này
@@ -431,6 +440,7 @@ local function RunSetup()
 	-- Broadcast GameMode TRƯỚC (client cần biết mode trước khi nhận team data)
 	SetGameModeEvent:FireAllClients({
 		ModeKey          = ModeKey,
+		HasTeams         = GameModeHelper.IsTeamBased(ModeKey),
 		HighlightMode    = GameModeHelper.GetHighlightMode(ModeKey),
 		ScoreboardType   = GameModeHelper.GetScoreboardType(ModeKey),
 		PlayerStatusType = GameModeHelper.GetPlayerStatusType(ModeKey),
@@ -595,25 +605,21 @@ local function RunGameOver(Result)
 	local Payloads = PrepareGameOverPayloads(Result)
 
 	-- Dispatch Event OnMatchEnd cho QuestService (Objective Engine 2.0)
-	local QuestModule = script.Parent:FindFirstChild("QuestService")
-	if QuestModule then
-		local QuestService = require(QuestModule)
-		if QuestService and QuestService.DispatchEvent then
-			local ModeKey = SessionService.GetCurrentModeKey()
-			local WinCondition = GameModeHelper.GetWinCondition(ModeKey)
-			for Player, Payload in pairs(Payloads) do
-				QuestService.DispatchEvent(Player, "OnMatchEnd", {
-					Won          = Payload.Won,
-					WinTeam      = Payload.WinTeam,
-					WinPlayer    = Payload.WinPlayer,
-					ModeKey      = ModeKey,
-					WinCondition = WinCondition,
-					Freezes      = Payload.PersonalStats and Payload.PersonalStats.Freezes or 0,
-					Thaws        = Payload.PersonalStats and Payload.PersonalStats.Thaws or 0,
-					LastStanding = Payload.PersonalStats and Payload.PersonalStats.LastStanding or false,
-					FirstBlood   = Payload.PersonalStats and Payload.PersonalStats.FirstBlood or false,
-				})
-			end
+	if QuestService and QuestService.DispatchEvent then
+		local ModeKey = SessionService.GetCurrentModeKey()
+		local WinCondition = GameModeHelper.GetWinCondition(ModeKey)
+		for Player, Payload in pairs(Payloads) do
+			QuestService.DispatchEvent(Player, "OnMatchEnd", {
+				Won          = Payload.Won,
+				WinTeam      = Payload.WinTeam,
+				WinPlayer    = Payload.WinPlayer,
+				ModeKey      = ModeKey,
+				WinCondition = WinCondition,
+				Freezes      = Payload.PersonalStats and Payload.PersonalStats.Freezes or 0,
+				Thaws        = Payload.PersonalStats and Payload.PersonalStats.Thaws or 0,
+				LastStanding = Payload.PersonalStats and Payload.PersonalStats.LastStanding or false,
+				FirstBlood   = Payload.PersonalStats and Payload.PersonalStats.FirstBlood or false,
+			})
 		end
 	end
 
@@ -715,6 +721,7 @@ function MatchService:Init()
 
 	-- Đăng ký lắng nghe MatchEndSignal xuyên suốt vòng đời Service
 	SessionService.MatchEndSignal.Event:Connect(function(Result)
+		if _earlyResult ~= nil then return end
 		_earlyResult = Result
 	end)
 
@@ -867,6 +874,8 @@ function MatchService:Init()
 end
 
 function MatchService:Start()
+	ShopService  = require(script.Parent.ShopService)
+	QuestService = require(script.Parent.QuestService)
 	task.spawn(GameLoop)
 	print("[MatchService] Game loop đã bắt đầu.")
 end

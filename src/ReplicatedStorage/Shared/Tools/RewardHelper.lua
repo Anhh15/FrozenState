@@ -1,7 +1,5 @@
-local RunService        = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local EconomyConfig     = require(ReplicatedStorage.Shared.Config.EconomyConfig)
-local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 
 local RewardHelper = {}
 
@@ -80,33 +78,40 @@ function RewardHelper.GetLastStandingReward()
 end
 
 -- =========================================================
+-- RANDOM WEIGHTED DROPS
+-- =========================================================
+
+--- Chọn ngẫu nhiên 1 ItemId từ danh sách Items theo DropRate (tổng DropRate = 100)
+--- @param Items table -- array { ItemId, DropRate }
+--- @return string? -- ItemId được chọn
+function RewardHelper.WeightedRandom(Items)
+	if not Items or #Items == 0 then return nil end
+	local Roll = math.random(1, 100)
+	local Cumulative = 0
+	for _, Entry in ipairs(Items) do
+		Cumulative = Cumulative + Entry.DropRate
+		if Roll <= Cumulative then
+			return Entry.ItemId
+		end
+	end
+	return Items[#Items].ItemId
+end
+
+-- =========================================================
 -- SERVER REWARD & SYNC HELPER
 -- =========================================================
 
---- Trao tiền và đồng bộ về client an toàn từ Server (Tự động nhân đôi nếu sở hữu GamePass DoubleMatchMoney)
+--- Trao tiền và đồng bộ về client an toàn từ Server
 --- @param Player Player
 --- @param Amount number
 --- @param DataService table -- DataService instance
 --- @param UpdateMoneyEvent RemoteEvent?
---- @param Multiplier number? -- Hệ số nhân tùy chọn (nếu nil, tự động kiểm tra GamePass)
+--- @param Multiplier number? -- Hệ số nhân tùy chọn (mặc định là 1)
 --- @return number?, number -- (NewMoney, FinalAmount)
 function RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent, Multiplier)
 	if not Player or not Amount or Amount <= 0 or not DataService then return nil, 0 end
 
 	local ActualMultiplier = Multiplier or 1
-	if not Multiplier and RunService:IsServer() then
-		local ServerScriptService = game:GetService("ServerScriptService")
-		local Services = ServerScriptService:FindFirstChild("Services")
-		local ShopServiceMod = Services and Services:FindFirstChild("ShopService")
-		if ShopServiceMod then
-			local ShopService = require(ShopServiceMod)
-			if ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "DoubleMatchMoney") then
-				local PassConfig = ProductConfig.GetGamePassByKey("DoubleMatchMoney")
-				ActualMultiplier = (PassConfig and PassConfig.Multiplier) or 2
-			end
-		end
-	end
-
 	local FinalAmount = math.round(Amount * ActualMultiplier)
 	local NewMoney = DataService.AddMoney(Player, FinalAmount)
 	if UpdateMoneyEvent and NewMoney then

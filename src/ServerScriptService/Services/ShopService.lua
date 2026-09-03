@@ -12,32 +12,15 @@ local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
+
+local QuestService = nil
 
 -- Bộ nhớ đệm RAM lưu trạng thái sở hữu GamePass: { [Player] = { [PassKey: string] = boolean } }
 local _GamePassCache = {}
 
 -- Mutex lock per player chống double-spend khi mua rương: { [UserId: number] = boolean }
 local _BuyLocks = {}
-
--- =========================================================
--- PRIVATE: WEIGHTED RANDOM
--- =========================================================
-
---- Chọn ngẫu nhiên 1 ItemId từ danh sách Items của rương theo DropRate
---- @param Items table  -- array { ItemId, DropRate }, tổng DropRate = 100
---- @return string      -- ItemId được chọn
-local function WeightedRandom(Items)
-	local Roll = math.random(1, 100)
-	local Cumulative = 0
-	for _, Entry in ipairs(Items) do
-		Cumulative = Cumulative + Entry.DropRate
-		if Roll <= Cumulative then
-			return Entry.ItemId
-		end
-	end
-	-- Fallback an toàn: trả item cuối nếu tổng DropRate < 100 do làm tròn
-	return Items[#Items].ItemId
-end
 
 -- =========================================================
 -- PRIVATE: XỬ LÝ MỘT LẦN MỞ RƯƠNG
@@ -49,7 +32,7 @@ end
 --- @param ChestPrice number -- giá rương đã trả (Price1 hoặc Price3/3 ~ không dùng, dùng Price1 cho refund)
 --- @return string, number  -- (ItemId nhận được, RefundAmount)
 local function ProcessOneDraw(Player, Chest, RefundBasePrice)
-	local ItemId = WeightedRandom(Chest.Items)
+	local ItemId = RewardHelper.WeightedRandom(Chest.Items)
 
 	-- Kiểm tra đã sở hữu chưa
 	local AlreadyOwned = DataService.HasItem(Player, Chest.Type, ItemId)
@@ -85,6 +68,8 @@ function ShopService:Init()
 end
 
 function ShopService:Start()
+	QuestService = require(script.Parent.QuestService)
+
 	local BuyChestFn    = RemoteDefinitions.GetFunction("BuyChest")
 	local UpdateMoneyEv = RemoteDefinitions.GetEvent("UpdateMoney")
 
@@ -168,16 +153,12 @@ function ShopService:Start()
 			))
 
 			-- Dispatch Event cho QuestService (Objective Engine 2.0)
-			local QuestModule = script.Parent:FindFirstChild("QuestService")
-			if QuestModule then
-				local QuestService = require(QuestModule)
-				if QuestService and QuestService.DispatchEvent then
-					QuestService.DispatchEvent(Player, "OnChestOpened", {
-						ChestId  = ChestId,
-						Quantity = Quantity,
-						Amount   = Quantity,
-					})
-				end
+			if QuestService and QuestService.DispatchEvent then
+				QuestService.DispatchEvent(Player, "OnChestOpened", {
+					ChestId  = ChestId,
+					Quantity = Quantity,
+					Amount   = Quantity,
+				})
 			end
 
 			return {

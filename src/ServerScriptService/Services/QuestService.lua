@@ -38,18 +38,7 @@ local UpdateMoneyEvent    = nil
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Lazy-require ShopService để kiểm tra quyền sở hữu GamePass
-local _ShopService = nil
-local function GetShopService()
-	if not _ShopService then
-		local Services = script.Parent
-		local Mod = Services:FindFirstChild("ShopService")
-		if Mod then
-			_ShopService = require(Mod)
-		end
-	end
-	return _ShopService
-end
+local ShopService = nil
 
 --- Lấy giá trị stat hiện tại của player
 --- @param Player Player
@@ -86,8 +75,7 @@ local function PickRandomDailyQuests(Player)
 	local TargetCount = QuestConfig.Daily.PoolCount
 
 	if Player then
-		local ShopSvc = GetShopService()
-		if ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+		if ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
 			local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
 			TargetCount = TargetCount + ((PassConfig and PassConfig.ExtraSlots) or 2)
 		end
@@ -147,21 +135,6 @@ end
 -- REWARD PROCESSORS (CHEST & ITEM)
 -- =========================================================
 
---- Rút thăm ngẫu nhiên item từ rương theo trọng số DropRate
---- @param Items table
---- @return string
-local function WeightedRandomItem(Items)
-	local Roll = math.random(1, 100)
-	local Cumulative = 0
-	for _, Entry in ipairs(Items) do
-		Cumulative = Cumulative + Entry.DropRate
-		if Roll <= Cumulative then
-			return Entry.ItemId
-		end
-	end
-	return Items[#Items].ItemId
-end
-
 --- Xử lý trao thưởng mở rương (hỗ trợ mở 1 lần nhận X vật phẩm)
 --- @param Player Player
 --- @param ChestId string
@@ -180,7 +153,7 @@ local function ProcessChestReward(Player, ChestId, Quantity)
 	local ReceivedItems   = {}
 
 	for _ = 1, Quantity do
-		local ItemId = WeightedRandomItem(Chest.Items)
+		local ItemId = RewardHelper.WeightedRandom(Chest.Items)
 		local AlreadyOwned = DataService.HasItem(Player, Chest.Type, ItemId)
 
 		if AlreadyOwned then
@@ -386,8 +359,7 @@ local function BuildQuestData(Player)
 	local DailyStored = (QuestData.Daily and QuestData.Daily.Quests) or {}
 	local MilestoneStored = (QuestData.Milestone and QuestData.Milestone.Quests) or {}
 
-	local ShopSvc = GetShopService()
-	local OwnsQuestPass = (ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests")) == true
+	local OwnsQuestPass = (ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "UpgradeDailyQuests")) == true
 	local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
 
 	-- ── Daily ──
@@ -486,8 +458,7 @@ local function ResetDailyQuests(Player)
 	_ResetLocks[Player.UserId] = true
 
 	local Success, Result = pcall(function()
-		local ShopSvc = GetShopService()
-		if not ShopSvc or not ShopSvc.PlayerOwnsGamePass or not ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+		if not ShopService or not ShopService.PlayerOwnsGamePass or not ShopService.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
 			warn(("[QuestService] ResetDailyQuests: %s không sở hữu GamePass UpgradeDailyQuests."):format(Player.Name))
 			return { Success = false, Reason = "NOT_OWNED" }
 		end
@@ -625,8 +596,7 @@ local function ClaimQuest(Player, QuestType, QuestId)
 
 		if Reward.Type == "Money" then
 			if QuestType == "Daily" then
-				local ShopSvc = GetShopService()
-				if ShopSvc and ShopSvc.PlayerOwnsGamePass and ShopSvc.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
+				if ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "UpgradeDailyQuests") then
 					local PassConfig = ProductConfig.GetGamePassByKey("UpgradeDailyQuests")
 					local Bonus = (PassConfig and PassConfig.RewardBonus) or 0.5
 					ActualRewardAmount = math.round(ActualRewardAmount * (1 + Bonus))
@@ -730,6 +700,8 @@ function QuestService:Init()
 end
 
 function QuestService:Start()
+	ShopService = require(script.Parent.ShopService)
+
 	-- Handler: Client lấy dữ liệu quest (gọi 1 lần duy nhất khi mở GUI)
 	local GetQuestDataFn = RemoteDefinitions.GetFunction("GetQuestData")
 	GetQuestDataFn.OnServerInvoke = function(Player)

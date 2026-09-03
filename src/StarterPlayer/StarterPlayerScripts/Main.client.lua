@@ -65,13 +65,26 @@ local CONTROLLERS_ORDER = {
 	{ Name = "SettingController", Controller = SettingController },
 }
 
+-- Pha 1: Init tất cả controller có bảo vệ pcall (Fault Isolation - thiết lập GUI, cấu hình nội bộ)
 for _, Entry in ipairs(CONTROLLERS_ORDER) do
 	if Entry.Controller and type(Entry.Controller.Init) == "function" then
 		local Success, ErrorMessage = pcall(function()
 			Entry.Controller:Init()
 		end)
 		if not Success then
-			warn(string.format("[Client] Khởi tạo %s thất bại: %s", Entry.Name, tostring(ErrorMessage)))
+			warn(string.format("[Client] Init %s thất bại: %s", Entry.Name, tostring(ErrorMessage)))
+		end
+	end
+end
+
+-- Pha 2: Start tất cả controller có bảo vệ pcall (kết nối lắng nghe, tương tác liên Controller)
+for _, Entry in ipairs(CONTROLLERS_ORDER) do
+	if Entry.Controller and type(Entry.Controller.Start) == "function" then
+		local Success, ErrorMessage = pcall(function()
+			Entry.Controller:Start()
+		end)
+		if not Success then
+			warn(string.format("[Client] Start %s thất bại: %s", Entry.Name, tostring(ErrorMessage)))
 		end
 	end
 end

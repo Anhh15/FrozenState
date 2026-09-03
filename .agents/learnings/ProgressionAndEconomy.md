@@ -8,8 +8,8 @@
 
 ### 1. Tập trung hóa Kinh tế & Phần thưởng qua EconomyConfig & RewardHelper
 - **Chi tiết:** Tách toàn bộ giá trị thưởng (Freeze, Thaw, Freezing/Thawing Spree, First Blood, Last Standing, Win, Lose) và mốc Spree Threshold khỏi `GameConfig` sang `EconomyConfig` độc lập.
-- **RewardHelper Engine:** Đóng gói các công thức tính thưởng (tính BaseReward + SpreeBonus theo chuỗi streak), kiểm tra First Blood, thưởng kết thúc trận và hàm đồng bộ tiền `RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent)`. Giúp `FreezeService`, `MatchService`, `GameStatisticController` đọc và trao thưởng thống nhất mà không duplicate logic.
-- **File liên quan:** [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+- **RewardHelper Engine:** Đóng vai trò Pure Shared Helper (tuyệt đối không require ngược vào `ServerScriptService`), đóng gói công thức tính thưởng, hàm đồng bộ tiền `RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent, Multiplier)` nhận `Multiplier` trực tiếp từ caller trên Server, và cung cấp Single Source of Truth cho thuật toán bốc thăm ngẫu nhiên theo tỷ lệ rơi `RewardHelper.WeightedRandom(Items)`. Giúp `FreezeService`, `MatchService`, `ShopService`, `QuestService` đọc và xử lý thống nhất.
+- **File liên quan:** [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
 
 ### 2. Cơ chế Spree Streak Độc Lập Khuyến Khích Tinh Thần Đồng Đội
 - **Chi tiết:** Chuỗi Freezing Spree và Thawing Spree được quản lý hoàn toàn độc lập. Hành động đóng băng kẻ địch không làm reset chuỗi giải cứu của người chơi đó, và ngược lại.
@@ -46,9 +46,9 @@
 
 ### 7. Cơ chế Yielding Sẵn Sàng Dữ Liệu & Reactive Signal Đồng Bộ Hai Đầu (Data Readiness Engine & OnDataLoaded Signal)
 - **Chi tiết:**
-  - *Server-Side Yielding (`WaitForProfile` / `WaitForData`)*: Thay vì trả về `nil` khi `ProfileStore:LoadProfileAsync` đang nạp, `DataService` sử dụng `_ProfileLoadedBindable` yield an toàn theo `DataConfig.ProfileLoadTimeout` và tự hủy chờ nếu player rời server (`PlayerRemoving`). `GetPlayerDataFn.OnServerInvoke` luôn đảm bảo 100% dữ liệu sẵn sàng trước khi phản hồi.
+  - *Server-Side Yielding (`WaitForProfile` / `WaitForData`)*: Thay vì polling `task.wait(0.05)` làm lãng phí CPU, `DataService.WaitForProfile` sử dụng mô hình Coroutine Event-Driven: `coroutine.yield()` lắng nghe `_ProfileLoadedBindable.Event`. Nếu `PlayerRemoving` xảy ra trước khi profile nạp xong, luồng hủy yield tức thì qua `Players.PlayerRemoving`; nếu quá hạn `DataConfig.ProfileLoadTimeout`, `task.delay` sẽ tự động dọn dẹp và resume `nil` an toàn. 100% 0ms độ trễ mạng thừa và 0% CPU rác.
   - *Client-Side Reactive Signal (`OnDataLoaded` / `WaitForData`)*: `PlayerDataController` cung cấp Signal `OnDataLoaded(Callback)` (gọi callback tức thì nếu đã có dữ liệu trong cache, hoặc lắng nghe khi dữ liệu về) và cơ chế tự động thử lại `FetchDataFromServer` tối đa `DataConfig.MaxLoadRetries` lần.
-  - *Triệt tiêu Polling*: Các controller phụ thuộc (`SettingController`) loại bỏ hoàn toàn polling `task.wait()` và chuyển sang đăng ký sự kiện hướng dữ liệu (Event-Driven).
+  - *Triệt tiêu Polling*: Toàn bộ hệ thống hai đầu Server-Client loại bỏ hoàn toàn polling `task.wait()` và chuyển 100% sang đăng ký sự kiện hướng dữ liệu (Event-Driven).
 - **File liên quan:** [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [PlayerDataController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/PlayerDataController.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua)
 
 ### 8. Kiến trúc Xử lý Giao dịch Robux, Chống Lặp Idempotency & Đồng Bộ Giá Khu Vực (Managed Pricing Engine)
@@ -244,3 +244,21 @@
 - **Vấn đề:** Trong callback `MarketplaceService.ProcessReceipt`, nếu các hàm trao thưởng (`DataService.AddMoney`) hoặc ghi lịch sử phát sinh ngoại lệ không mong muốn, toàn bộ hàm bị sập unhandled error. Roblox có thể hiểu nhầm trạng thái giao dịch hoặc không xử lý lại đúng cách, dẫn đến việc người chơi bị trừ Robux nhưng không nhận được tiền trong game.
 - **Giải pháp:** Bọc toàn bộ các thao tác cộng tiền, ghi biên lai và đồng bộ client bên trong khối `pcall`. Nếu `pcall` trả về `false`, ghi log cảnh báo và trả về `Enum.ProductPurchaseDecision.NotProcessedYet` để Roblox tự động thử lại (Retry Mechanism). Chỉ trả về `PurchaseGranted` khi toàn bộ nghiệp vụ thực thi thành công mỹ mãn.
 - **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
+### 19. Khử Trùng Lặp Thuật Toán Weighted Random & Triệt Tiêu Phụ Thuộc Ngược Giữa ReplicatedStorage và ServerScriptService
+- **Vấn đề:** 
+  1. Thuật toán gacha `WeightedRandom` theo tỷ lệ rơi bị copy-paste trùng lặp giữa `ShopService` và `QuestService`.
+  2. `RewardHelper` nằm ở `ReplicatedStorage` (module dùng chung) nhưng lại require ngược vào `ServerScriptService.Services.ShopService` để kiểm tra GamePass `DoubleMatchMoney`, phá vỡ ranh giới phân tầng Client-Server.
+- **Giải pháp:**
+  1. Đưa `RewardHelper.WeightedRandom(Items)` vào làm Single Source of Truth cho thuật toán bốc thăm theo DropRate. Cả `ShopService` và `QuestService` đều tái sử dụng helper này.
+  2. Xóa bỏ hoàn toàn require sang `ServerScriptService` trong `RewardHelper.RewardAndSync`. Caller trên Server (`FreezeService`, `MatchService`) chịu trách nhiệm truyền hệ số nhân `Multiplier` (được đọc an toàn từ `ShopService.PlayerOwnsGamePass`).
+- **File liên quan:** [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+
+### 20. Triệt Tiêu Hoàn Toàn Polling 0.05s Trong WaitForProfile Bằng Coroutine Event-Driven Yielding
+- **Vấn đề:** `DataService.WaitForProfile` trước đây sử dụng vòng lặp `while not ProfileResult and ... do task.wait(0.05) end`. Khi server có nhiều player join cùng lúc hoặc mạng lag, hàng loạt luồng polling liên tục đốt chu kỳ CPU Server một cách vô ích và tạo ra độ trễ nhân tạo ít nhất 50ms.
+- **Giải pháp:** Viết lại toàn bộ hàm bằng mô hình Coroutine Event-Driven:
+  1. Sử dụng `coroutine.yield()` để tạm dừng thread hiện tại.
+  2. Lắng nghe `_ProfileLoadedBindable.Event`: khi profile của đúng player nạp xong, tự động resume thread kèm dữ liệu `Profile`.
+  3. Lắng nghe `Players.PlayerRemoving`: nếu người chơi thoát game khi đang chờ, lập tức hủy yield và resume `nil` không chờ timeout.
+  4. Lên lịch `task.delay(Timeout)` để resume `nil` an toàn nếu quá hạn nạp. Tự động ngắt kết nối mọi listener ngay khi resume.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua)
