@@ -8,6 +8,7 @@
 -- Tự động tắt khi: phase rời InGame, danh sách target rỗng, được thaw, chết, respawn
 
 local Players           = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
@@ -502,7 +503,10 @@ function SpectateController:Init()
 
 	-- Gắn sự kiện click và âm thanh SFX cho các nút điều khiển (không kèm animation scale theo quy định)
 	if CloseButton then
-		GuiHelper.BindButtonSound(CloseButton, AudioConfig.GetGuiAudio("CloseButtonClick", "Spectate"))
+		-- Nếu nút chưa được gán Tag GuiButtonClose thì mới bind âm thanh thủ công để tránh lặp âm thanh
+		if not CollectionService:HasTag(CloseButton, GuiConfig.Tags.GuiButtonClose) then
+			GuiHelper.BindButtonSound(CloseButton, AudioConfig.GetGuiAudio("CloseButtonClick", "Spectate"))
+		end
 		CloseButton.MouseButton1Click:Connect(function()
 			SpectateController.SetVisible(false)
 		end)

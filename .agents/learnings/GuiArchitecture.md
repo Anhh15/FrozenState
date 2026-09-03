@@ -1,6 +1,6 @@
 # GuiArchitecture
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về nền tảng GUI (UIScale Animation Engine, Phân tầng Cấu hình Default/Overrides, Stagger Pop, Dynamic GUI Resolver, Phân tách GuiConfig/GuiAnimConfig và Quản lý Vòng đời ScreenGui).
-> Cập nhật lần cuối: 02-09-2026
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -56,11 +56,12 @@
 
 ### 8. Kiến trúc Tương tác Nút Bấm Hướng Thẻ Tag (Tag-Based Component Engine via CollectionService)
 - **Chi tiết:** Thay thế hoàn toàn cơ chế quét đệ quy `AutoBindButtons` bằng mô hình **Tag Whitelist** thông qua `CollectionService`:
-  - **Tập trung hóa TagName:** Toàn bộ Tag điều khiển tương tác được khai báo trong `GuiConfig.Tags` (`GuiButtonPrimary`, `GuiButtonSecondary`, `GuiButtonTab`, `GuiButtonCard`).
+  - **Tập trung hóa TagName:** Toàn bộ Tag điều khiển tương tác được khai báo trong `GuiConfig.Tags` (`GuiButtonPrimary`, `GuiButtonSecondary`, `GuiButtonTab`, `GuiButtonCard`, `GuiButtonClose`).
   - **Tự động gắn Preset:** `GuiHelper.InitTagInteractions()` lắng nghe `GetInstanceAddedSignal` và `GetInstanceRemovedSignal` cho từng Tag, tự động gán Preset hoạt ảnh scale (`BindButtonScaleByPreset`) và SFX âm thanh (`BindButtonSoundByPreset`) tương ứng mà Controller không cần viết thêm bất kỳ dòng code nào.
+  - **Preset `GuiButtonClose` Riêng Biệt:** Tự động điều phối hiệu ứng đóng mở nảy dứt khoát với `ButtonScale` preset `CloseButton` (`HoverScale = 1.15`, `PressScale = 0.9`), click tự động phát `AudioConfig.GetGuiAudio("CloseButtonClick")` và hover phát `MouseEnter` (throttling $0.045\text{s}$).
   - **Hỗ trợ đa hình (`GuiObject` Polymorphism):** Hỗ trợ gắn tương tác trên cả `GuiButton`, `ImageButton`, `TextButton` lẫn `Frame` template (như `ItemCard`) thông qua cơ chế fallback `InputBegan`/`InputEnded` và kiểm tra `FindFirstChildWhichIsA("GuiButton")`.
   - **Tự động dọn dẹp vòng đời:** Quản lý bảng kết nối `_TagConnections[Instance]`, tự động disconnect sự kiện khi instance bị gỡ tag hoặc destroy.
-- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua)
+- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua)
 
 ### 9. Công Cụ Định Dạng Số Chuẩn Hóa & Làm Tròn UI Tự Động (FormatNumber Engine)
 - **Chi tiết:** Cung cấp hàm định dạng số tập trung `GuiHelper.FormatNumber(Value, Decimals)` phục vụ hiển thị tiền tệ và chỉ số thống kê trên toàn bộ hệ thống GUI:

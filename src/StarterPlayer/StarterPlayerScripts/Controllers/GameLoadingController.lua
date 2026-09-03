@@ -18,6 +18,8 @@ local AudioConfig       = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
+local AudioHelper       = require(ReplicatedStorage.Shared.Tools.AudioHelper)
+local AnimationHelper   = require(ReplicatedStorage.Shared.Tools.AnimationHelper)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
@@ -28,6 +30,7 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local _IsLoadingCompleted = false  -- Cờ hoàn thành toàn bộ loading
 local _IsPhase1Triggered  = false  -- Cờ tránh trigger pha 1 lặp lại
+local _TempAnimationInstances = {} -- Cache tạm các Animation instance phục vụ PreloadAsync
 local _AssetProgress      = 0.0    -- Tiến độ nạp asset thực tế từ PreloadAsync (0.0 -> 1.0)
 local _ActualProgress     = 0.0    -- Tiến độ tổng hợp kết hợp cổng thời gian MinLoadingDuration (0.0 -> 1.0)
 local _VisualProgress     = 0.0    -- Tiến độ hiển thị mượt mà trên UI (0.0 -> 1.0)
@@ -148,16 +151,18 @@ local function CollectAllAssets()
 		end
 	end
 
-	-- 1. Âm thanh cốt lõi & BGM từ AudioConfig
+	-- 1. Âm thanh cốt lõi & BGM từ AudioConfig (Khởi tạo Sound instance trong Sound Pool và Silent Warmup)
 	local AudioIds = AudioConfig.GetAllAudioIds()
-	for _, Id in ipairs(AudioIds) do
-		AddAsset(Id)
+	local PreloadedSounds = AudioHelper.PreloadAudios(AudioIds)
+	for _, Sound in ipairs(PreloadedSounds) do
+		AddAsset(Sound)
 	end
 
-	-- 2. Hoạt ảnh từ AnimationConfig
+	-- 2. Hoạt ảnh từ AnimationConfig (Khởi tạo Animation instance thực tế để PreloadAsync nhận diện)
 	local AnimIds = AnimationConfig.GetAllAnimationIds()
-	for _, Id in ipairs(AnimIds) do
-		AddAsset(Id)
+	_TempAnimationInstances = AnimationHelper.CreateAnimationInstances(AnimIds)
+	for _, Anim in ipairs(_TempAnimationInstances) do
+		AddAsset(Anim)
 	end
 
 	-- 3. Visual Assets & 3D Models trong ReplicatedStorage/Assets
@@ -388,6 +393,16 @@ end
 -- SKIP & PRELOAD CONTROLLER
 -- =========================================================
 
+--- Dọn dẹp các Animation instance tạm sau khi hoàn tất preload
+local function CleanupTempAnimations()
+	for _, Anim in ipairs(_TempAnimationInstances) do
+		pcall(function()
+			Anim:Destroy()
+		end)
+	end
+	table.clear(_TempAnimationInstances)
+end
+
 --- Bỏ qua tiến trình nạp tài nguyên và tiến thẳng đến 100%
 --- @param Elements table
 local function SkipLoading(Elements)
@@ -406,6 +421,9 @@ local function SkipLoading(Elements)
 	if ClickSFX then
 		GuiHelper.PlayGuiSound(ClickSFX)
 	end
+
+	-- Dọn dẹp animation tạm
+	CleanupTempAnimations()
 
 	-- Ép tiến độ lên 100%
 	_AssetProgress  = 1.0
@@ -524,6 +542,7 @@ function GameLoadingController:Init()
 			task.cancel(TimeoutTask)
 		end
 		_AssetProgress = 1.0
+		CleanupTempAnimations()
 	end)
 
 	print("[GameLoadingController] Đã khởi tạo màn hình tải game ban đầu.")

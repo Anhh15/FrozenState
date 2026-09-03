@@ -1,6 +1,6 @@
 # AudioAndAnimation
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống âm thanh và hoạt ảnh (AudioConfig, AnimationConfig, Sound Pooling, Client-Side Spatial Audio, Preload và Memory Cleanup).
-> Cập nhật lần cuối: 02-09-2026
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -55,6 +55,13 @@
   - **Client Lân cận:** `SoundController` trên các Client khác lọc `Payload.Player ~= LocalPlayer` (loại trừ người vung để chống echo/lặp âm thanh) và phát 3D Spatial Sound (`AudioHelper.PlaySpatialSound`) gắn vào Character của người vung với `RollOffMaxDistance = 60` studs trên kênh `SFXGroup`.
 - **File liên quan:** [RemoteDefinitions.lua](../../src/ReplicatedStorage/Shared/Remotes/RemoteDefinitions.lua), [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua)
 
+### 9. Cơ Chế Nạp Trước Audio Bằng Instance Thực Tế & Silent Warmup Engine (True-Instance Preload & Silent Streaming Engine)
+- **Chi tiết:** Roblox Engine không tải dữ liệu âm thanh vào bộ nhớ khi `ContentProvider:PreloadAsync()` nhận mảng chuỗi URL (`"rbxassetid://..."`), mà mặc định coi chúng là hình ảnh. Để nạp audio và animation thực sự vào RAM:
+  - **True-Instance Batching:** Chuyển đổi toàn bộ Asset ID thành `Sound` instance (gắn vào `SoundService`) và `Animation` instance thực tế trước khi đưa vào `PreloadAsync`.
+  - **Silent Warmup:** Trước khi preload, kích hoạt pipeline giải mã âm thanh bằng cách gán `Sound.Volume = 0`, gọi `Sound:Play()` rồi ngay lập tức `Sound:Stop()` trong `pcall`. Thao tác này ép engine kết nối CDN và buffer luồng audio vào RAM mà không phát ra bất kỳ tiếng rác nào.
+  - **Bảo toàn Sound Pool:** Tuyệt đối không gọi `Sound:Destroy()` sau preload. Toàn bộ `Sound` instance được lưu giữ vĩnh viễn trong `_guiSoundPool` để phục vụ phát tức thì $0\text{ms}$ khi tương tác. Các `Animation` instance tạm được dọn dẹp an toàn (`CleanupTempAnimations`) sau khi hoàn tất màn hình tải.
+- **File liên quan:** [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [AnimationHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua), [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -101,12 +108,12 @@
 - **Giải pháp:** Thiết lập `GuiHelper.AutoBindButtons(Container, Options)` để tự động hóa toàn bộ việc gắn Scale và SFX cho các nút bấm (kể cả các nút sinh ra động), đồng thời đưa âm lượng `MouseEnter` về `0.35` trong `AudioConfig.Gui.Default`.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
 
-### 8. Lệch Kênh Điều Khiển Âm Lượng Do Thiếu Định Tuyến Tường Minh SoundGroup Trong 2D Sound
-- **Vấn đề:** Các âm thanh hiệu ứng giao diện (như tiếng đập rương 3 lần và tiếng nổ flash nhận quà trong `ItemReward`) không chịu sự chi phối của thanh trượt `UI Volume`, mà lại bị tăng/giảm theo thanh `SFX Volume`.
-- **Nguyên nhân:** Hàm `AudioHelper.Play2DSound` nhận tham số `SoundGroupName` tùy chọn và mặc định fallback về `"SFX"` nếu `nil`. Khi controller UI gọi phát âm thanh mà không chỉ định rõ kênh, âm thanh tự động bị gắn vào `SFXGroup`.
+### 8. Lệch Kênh Điều Khiển Âm Lượng & Phân Mảnh Khởi Tạo Sound Trong ItemReward
+- **Vấn đề:** Âm thanh hiệu ứng giao diện (tiếng đập rương `ChestClick` và `Phase2Transition` trong `ItemReward`) bị lệch kênh sang `SFXGroup` và mỗi lần bấm lại tạo mới `Sound` instance rồi tiêu hủy, gây giật lag.
+- **Nguyên nhân:** Gọi `AudioHelper.Play2DSound` tạo mới instance thay vì sử dụng Sound Pool và thiếu định tuyến tự động.
 - **Giải pháp:**
-  1. Với các âm thanh UI phát động, bắt buộc truyền tường minh tham số `"UI"` khi gọi `AudioHelper.Play2DSound(AudioEntry, Volume, SoundService, "UI")`.
-  2. Ưu tiên sử dụng `GuiHelper.PlayGuiSound(AudioEntry, Volume)` hoặc `AudioHelper.PlayGuiSound` để vừa tự động gắn `UIGroup`, vừa tận dụng Sound Pool triệt tiêu độ trễ.
+  1. Chuyển `ItemRewardController` sang gọi `GuiHelper.PlayGuiSound(AudioEntry, Volume)` để tự động định tuyến kênh `UIGroup` và tận dụng Sound Pool đã warm-up.
+  2. Bổ sung phòng thủ tầng Helper: Trong `AudioHelper.Play2DSound`, nếu `SoundGroupName == "UI"` và parent mặc định (`SoundService`), tự động ủy quyền sang `PlayGuiSound`.
 - **File liên quan:** [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua), [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
 ### 9. Âm Thanh Vung Vũ Khí Bị Cô Lập Cục Bộ (Local-Only Swing SFX Isolation)
@@ -114,4 +121,13 @@
 - **Nguyên nhân:** Sound instance tạo bởi Client trong FilteringEnabled không replicate qua mạng sang Client khác, đồng thời thiếu kênh Server broadcast đồng bộ sự kiện vung vũ khí.
 - **Giải pháp:** Thiết lập cặp Remote `OnToolSwing` (Client $\rightarrow$ Server) và `PlaySwingSFX` (Server $\rightarrow$ All Clients). Server kiểm tra rate-limit theo cooldown vũ khí, các Client khác nhận broadcast và phát 3D Spatial Sound trên `TargetChar`, đồng thời lọc bỏ `LocalPlayer` để tránh phát trùng lặp âm thanh.
 - **File liên quan:** [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua)
+
+### 10. Độ Trễ Lớn Ở Lần Đầu Tương Tác Do Preload Bằng Chuỗi String và Hủy Instance Tạm (Audio Preload Pitfall & First-Interaction Delay)
+- **Vấn đề:** Gần như toàn bộ âm thanh UI (`ChestClick`, `MouseEnter`, `SettingToggle`, `ButtonClick`...) khi tương tác lần đầu đều bị trễ từ 0.5s - 2.0s và giật nhẹ khung hình.
+- **Nguyên nhân:**
+  1. `GameLoadingController` gom ID âm thanh thành chuỗi URI `"rbxassetid://..."` đẩy vào `PreloadAsync`, bị Roblox engine mặc định nhận diện là Image/Decal và bỏ qua tải audio.
+  2. `AudioHelper.PreloadAudios` tạo `Sound` unparented, không kích hoạt streaming pipeline (`Play()`/`Stop()`) và gọi `Sound:Destroy()` ngay sau đó, làm rỗng bộ nhớ RAM.
+  3. Khi người chơi click/hover lần đầu, hệ thống mới bắt đầu tạo `Instance.new("Sound")`, dẫn đến việc tải và decode audio ngay tại khung hình tương tác.
+- **Giải pháp:** Khởi tạo Sound instance gắn vào `SoundService`, kích hoạt Silent Warmup (`Volume = 0; Play(); Stop()`), lưu vĩnh viễn trong `_guiSoundPool`, và truyền các instance này vào `PreloadAsync` trong màn hình tải game ban đầu.
+- **File liên quan:** [AudioHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AudioHelper.lua), [GameLoadingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameLoadingController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 

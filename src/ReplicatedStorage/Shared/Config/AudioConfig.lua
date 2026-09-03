@@ -57,7 +57,7 @@ local AudioConfig = {
 	-- 5. ÂM THANH DANH HIỆU (ACCOLADES)
 	-- =========================================================
 	Accolades = {
-		Announcement      = { Id = 103587786530239, Volume = 1.0 },
+		Announcement      = { Id = 103587786530239, Volume = 1.5 },
 	},
 
 	-- =========================================================

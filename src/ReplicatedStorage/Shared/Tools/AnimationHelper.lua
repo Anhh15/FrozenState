@@ -107,17 +107,28 @@ end
 -- PRELOAD UTILITIES
 -- =========================================================
 
+--- Tạo danh sách Animation Instance để phục vụ PreloadAsync
+--- @param AnimIds table -- { number, ... }
+--- @return table -- { Animation, ... }
+function AnimationHelper.CreateAnimationInstances(AnimIds)
+	if not AnimIds or #AnimIds == 0 then return {} end
+
+	local Instances = {}
+	for _, AnimId in ipairs(AnimIds) do
+		local Anim = Instance.new("Animation")
+		Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
+		table.insert(Instances, Anim)
+	end
+
+	return Instances
+end
+
 --- Nạp trước danh sách Animation ID vào bộ nhớ Client
 --- @param AnimIds table -- { number, ... }
 function AnimationHelper.PreloadAnimations(AnimIds)
 	if not AnimIds or #AnimIds == 0 then return end
 
-	local InstancesToPreload = {}
-	for _, AnimId in ipairs(AnimIds) do
-		local Anim = Instance.new("Animation")
-		Anim.AnimationId = "rbxassetid://" .. tostring(AnimId)
-		table.insert(InstancesToPreload, Anim)
-	end
+	local InstancesToPreload = AnimationHelper.CreateAnimationInstances(AnimIds)
 
 	pcall(function()
 		ContentProvider:PreloadAsync(InstancesToPreload)

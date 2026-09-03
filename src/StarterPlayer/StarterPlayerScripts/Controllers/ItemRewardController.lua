@@ -74,11 +74,11 @@ local _RotConn     = nil     -- RunService.Heartbeat connection xoay EffectImage
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Phát hiệu ứng âm thanh UI 2D qua AudioHelper
+--- Phát hiệu ứng âm thanh UI 2D qua GuiHelper (tận dụng Sound Pool)
 --- @param AudioEntryOrId table | number | string  -- Entry hoặc ID âm thanh
 --- @param Volume number?                          -- Âm lượng (mặc định theo entry nếu nil)
 local function PlaySound(AudioEntryOrId, Volume)
-	AudioHelper.Play2DSound(AudioEntryOrId, Volume, SoundService, "UI")
+	GuiHelper.PlayGuiSound(AudioEntryOrId, Volume)
 end
 
 --- Hủy Tween đang chạy (nếu có), không ảnh hưởng state

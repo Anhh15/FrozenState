@@ -131,6 +131,11 @@ function AudioHelper.Play2DSound(AudioEntryOrId, VolumeOverride, Parent, SoundGr
 
 	EnsureSoundGroups()
 
+	-- Nếu là âm thanh thuộc kênh UI và phát toàn cục, ưu tiên dùng PlayGuiSound để tận dụng Sound Pool
+	if SoundGroupName == "UI" and (Parent == nil or Parent == SoundService) then
+		return AudioHelper.PlayGuiSound(AudioEntryOrId, VolumeOverride)
+	end
+
 	local Sound = Instance.new("Sound")
 	Sound.Name = "SFX_2D_" .. tostring(SoundId)
 	Sound.SoundId = "rbxassetid://" .. tostring(SoundId)
@@ -318,15 +323,34 @@ end
 -- PRELOAD UTILITIES
 -- =========================================================
 
---- Nạp trước danh sách Audio ID vào bộ nhớ Client
+--- Nạp trước danh sách Audio ID vào bộ nhớ Client và lưu trong Sound Pool
+--- Kích hoạt Silent Warmup (Volume = 0; Play(); Stop()) để ép Roblox tải và giải mã audio vào RAM
 --- @param AudioIds table -- { number, ... }
+--- @return table -- Danh sách các Sound Instance thực tế phục vụ PreloadAsync
 function AudioHelper.PreloadAudios(AudioIds)
-	if not AudioIds or #AudioIds == 0 then return end
+	if not AudioIds or #AudioIds == 0 then return {} end
+
+	EnsureSoundGroups()
 
 	local InstancesToPreload = {}
 	for _, AudioId in ipairs(AudioIds) do
-		local Sound = Instance.new("Sound")
-		Sound.SoundId = "rbxassetid://" .. tostring(AudioId)
+		local Sound = _guiSoundPool[AudioId]
+		if not Sound or not Sound.Parent then
+			Sound = Instance.new("Sound")
+			Sound.Name = "SFX_GuiPool_" .. tostring(AudioId)
+			Sound.SoundId = "rbxassetid://" .. tostring(AudioId)
+			Sound.SoundGroup = _soundGroups.UI
+			Sound.Parent = SoundService
+			_guiSoundPool[AudioId] = Sound
+		end
+
+		-- Silent Warmup: Bật âm thanh với volume = 0 rồi dừng ngay để khởi động luồng stream audio của engine
+		Sound.Volume = 0
+		pcall(function()
+			Sound:Play()
+			Sound:Stop()
+		end)
+
 		table.insert(InstancesToPreload, Sound)
 	end
 
@@ -334,17 +358,15 @@ function AudioHelper.PreloadAudios(AudioIds)
 		ContentProvider:PreloadAsync(InstancesToPreload)
 	end)
 
-	for _, Sound in ipairs(InstancesToPreload) do
-		Sound:Destroy()
-	end
+	return InstancesToPreload
 end
 
 --- Nạp trước toàn bộ Audio trong game vào bộ nhớ Client để đảm bảo 0ms độ trễ
 function AudioHelper.PreloadAllGameAudios()
 	task.spawn(function()
 		local AllAudioIds = AudioConfig.GetAllAudioIds()
-		AudioHelper.PreloadAudios(AllAudioIds)
-		print(string.format("[AudioHelper] Đã preload thành công %d asset âm thanh.", #AllAudioIds))
+		local PreloadedSounds = AudioHelper.PreloadAudios(AllAudioIds)
+		print(string.format("[AudioHelper] Đã preload thành công %d asset âm thanh.", #PreloadedSounds))
 	end)
 end
 

@@ -232,6 +232,7 @@ local GuiConfig = {
 		GuiButtonSecondary = "GuiButtonSecondary", -- Scale 1.03, Easing Quad.Out, SFX nhẹ
 		GuiButtonTab       = "GuiButtonTab",       -- Không scale (tránh lệch thanh bar), SFX chuyển tab riêng
 		GuiButtonCard      = "GuiButtonCard",      -- Scale 1.04, SFX hover có áp dụng Audio Throttling
+		GuiButtonClose     = "GuiButtonClose",     -- Scale 1.15 / 0.9, SFX CloseButtonClick & MouseEnter
 	},
 
 	-- =========================================================

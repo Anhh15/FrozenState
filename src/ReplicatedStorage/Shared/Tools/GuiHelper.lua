@@ -273,6 +273,15 @@ function GuiHelper.BindButtonByPreset(Button, PresetName)
 		local SoundConns = GuiHelper.BindButtonSound(Button, nil, nil, true)
 		for _, Conn in ipairs(ScaleConns) do table.insert(Connections, Conn) end
 		for _, Conn in ipairs(SoundConns) do table.insert(Connections, Conn) end
+
+	elseif PresetName == GuiConfig.Tags.GuiButtonClose then
+		local CloseScaleConfig = GuiAnimConfig.GetButtonScaleConfig("CloseButton")
+		local ScaleConns = GuiHelper.BindButtonScale(Button, nil, CloseScaleConfig)
+		local ClickAudio = AudioConfig.GetGuiAudio("CloseButtonClick")
+		local HoverAudio = AudioConfig.GetGuiAudio("MouseEnter")
+		local SoundConns = GuiHelper.BindButtonSound(Button, ClickAudio, HoverAudio, true)
+		for _, Conn in ipairs(ScaleConns) do table.insert(Connections, Conn) end
+		for _, Conn in ipairs(SoundConns) do table.insert(Connections, Conn) end
 	end
 
 	return Connections
