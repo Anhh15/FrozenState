@@ -106,10 +106,11 @@ local function ResolveGuiReferences()
 
 	if TemplatesFolder then
 		_TemplateSlot = TemplatesFolder:FindFirstChild(Elements.ItemSlot)
-			or TemplatesFolder:FindFirstChildWhichIsA("Frame")
+			or TemplatesFolder:FindFirstChildWhichIsA("GuiObject")
 	else
 		-- Fallback: tìm trực tiếp trong Hotbar nếu không có folder Templates
 		_TemplateSlot = _HotbarFrame:FindFirstChild(Elements.ItemSlot)
+			or _HotbarFrame:FindFirstChildWhichIsA("GuiObject")
 	end
 
 	if _TemplateSlot then
@@ -191,6 +192,9 @@ local function UpdateSlotActiveVisual(SlotData, IsEquipped)
 	local Elements = GuiConfig.HotbarElements
 	local BackgroundName = Elements and Elements.Background or "Background"
 	local BgFrame = SlotFrame:FindFirstChild(BackgroundName, true)
+	if not BgFrame and SlotFrame:IsA("GuiObject") and SlotFrame.BackgroundTransparency < 1 then
+		BgFrame = SlotFrame
+	end
 	if BgFrame and BgFrame:IsA("GuiObject") then
 		local BgTween = TweenService:Create(BgFrame, TweenInfo.new(Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			BackgroundTransparency = TargetTrans,
@@ -331,11 +335,13 @@ local function CreateSlotForTool(Tool, SlotIndex)
 
 	if IndexLabel and IndexLabel:IsA("TextLabel") then
 		IndexLabel.Text = tostring(SlotIndex)
+		IndexLabel.Active = false
 	end
 
-	-- Khởi tạo ẩn ban đầu cho rèm Cooldown và Text đếm ngược
+	-- Khởi tạo ẩn ban đầu cho rèm Cooldown và Text đếm ngược (đảm bảo Active = false để không nuốt click)
 	if CooldownCurtain then
 		CooldownCurtain.Visible = false
+		CooldownCurtain.Active = false
 		CooldownCurtain.AnchorPoint = Vector2.new(0, 1)
 		CooldownCurtain.Position = UDim2.new(0, 0, 1, 0)
 		CooldownCurtain.Size = UDim2.new(1, 0, 0, 0)
@@ -343,11 +349,13 @@ local function CreateSlotForTool(Tool, SlotIndex)
 
 	if CooldownText then
 		CooldownText.Visible = false
+		CooldownText.Active = false
 		CooldownText.Text = ""
 	end
 
 	-- Nạp 2D Image
 	if ItemImage and ItemImage:IsA("ImageLabel") then
+		ItemImage.Active = false
 		local SkinId = PlayerStateHelper.GetEquippedIcicleSkinId(LocalPlayer)
 		if Tool:GetAttribute("SkinId") then
 			SkinId = Tool:GetAttribute("SkinId")
@@ -362,12 +370,23 @@ local function CreateSlotForTool(Tool, SlotIndex)
 		LastIsEquipped = nil,
 	}
 
-	-- 1. Bắt sự kiện Click / Touch trên SlotFrame
+	-- 1. Bắt sự kiện Click / Touch trên SlotFrame (Ưu tiên Activated chuẩn đa nền tảng)
 	local ClickTarget = SlotFrame:IsA("GuiButton") and SlotFrame or SlotFrame:FindFirstChildWhichIsA("GuiButton")
 	if ClickTarget then
-		local ClickConn = ClickTarget.MouseButton1Click:Connect(function()
-			ToggleEquipTool(Tool)
-		end)
+		if ClickTarget:IsA("GuiButton") then
+			ClickTarget.AutoButtonColor = false
+		end
+
+		local ClickConn
+		if ClickTarget.Activated then
+			ClickConn = ClickTarget.Activated:Connect(function()
+				ToggleEquipTool(Tool)
+			end)
+		else
+			ClickConn = ClickTarget.MouseButton1Click:Connect(function()
+				ToggleEquipTool(Tool)
+			end)
+		end
 		table.insert(SlotData.Connections, ClickConn)
 	else
 		local TouchConn = SlotFrame.InputBegan:Connect(function(Input)

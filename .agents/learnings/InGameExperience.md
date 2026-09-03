@@ -1,6 +1,6 @@
 # InGameExperience
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về trải nghiệm giao diện thi đấu trong trận (PlayerStatus, ScoreBoard, Accolades, FrozenStateAnnouncement, Custom Hotbar và Phân phối HUD theo GameMode).
-> Cập nhật lần cuối: 29-08-2026
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -62,6 +62,13 @@
   - Phát SFX qua `AudioHelper.PlayGuiSound(AudioConfig.Special.FrozenStateAnnouncement)` nạp từ Sound Pool.
   - **State Transition Guard:** Client lắng nghe `UpdateGameStateEvent` nhưng chỉ kích hoạt visual/SFX khi có bước chuyển trạng thái thực sự (`CurrentIsFrozenState == true and not _LastIsFrozenState`), tránh hoàn toàn việc bị kích hoạt lại theo chu kỳ đếm giây (1s/lần) của server.
 - **File liên quan:** [FrozenStateAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/FrozenStateAnnouncementController.lua), [AudioConfig.lua](../../src/ReplicatedStorage/Shared/Config/AudioConfig.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 11. Kiến trúc Bọc Nút Đa Nền Tảng Tàng Hình (Transparent Button Wrapper Pattern) Cho Hotbar Slot
+- **Chi tiết:** Chuyển đổi `ItemSlot` từ `Frame` sang `ImageButton` hoàn toàn tàng hình (`BackgroundTransparency = 1`, `ImageTransparency = 1`), đóng vai trò như một wrapper bắt tương tác độc quyền cho ô phím tắt:
+  - Cho phép lắng nghe trực tiếp sự kiện `Activated`, tối ưu hóa nhận diện thao tác tap trên màn hình cảm ứng Mobile (không bị trượt ngón tay/camera drag) và hỗ trợ điều hướng tay cầm Gamepad (`Selectable = true`).
+  - Bảo toàn 100% cấu trúc phân tầng thẩm mỹ Studio bên trong: Frame con `Background` vẫn đảm nhận tween độ mờ khi rút vũ khí (`BackgroundTransparency = 0.8 -> 0.4`), tách biệt hoàn toàn giữa layer nhận sự kiện (Wrapper) và layer hiển thị (Visual).
+  - Áp dụng cơ chế truy xuất đa hình `GuiObject` (`FindFirstChildWhichIsA("GuiObject")`) trong `ResolveGuiReferences` để tương thích linh hoạt dù template là `Frame` hay `ImageButton`.
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
 ---
 
@@ -139,4 +146,19 @@
 - **Nguyên nhân:** `MatchService` chạy vòng lặp đếm ngược mỗi giây (`for t = Duration, 0, -1 do BroadcastGameState("InGame", t, FrozenStateOn) task.wait(1) end`). Trong suốt thời gian Frozen State diễn ra, mỗi giây Server đều broadcast gói tin có `IsFrozenState = true`. Client nếu chỉ kiểm tra `if Data.IsFrozenState then` sẽ bị trigger liên tục theo từng nhịp tick.
 - **Giải pháp:** Thiết lập State Transition Guard với bộ đệm `_LastIsFrozenState = false`. Chỉ kích hoạt visual/SFX khi phát hiện bước chuyển trạng thái `CurrentIsFrozenState == true and not _LastIsFrozenState` trong phase `InGame`. Tự động khôi phục `_LastIsFrozenState = false` khi trạng thái tắt hoặc khi ván đấu kết thúc / chuyển phase.
 - **File liên quan:** [FrozenStateAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/FrozenStateAnnouncementController.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+
+### 10. Bẫy Nuốt Input của Phần Tử Con (Child Input Sinking) và Xung Đột Tag Hoạt Ảnh Trên Custom Hotbar
+- **Vấn đề:** 
+  1. Khi `ItemSlot` chuyển sang `GuiButton`, người chơi click vào slot nhưng không thể rút vũ khí, đặc biệt là khi đang trong thời gian Cooldown hoặc nhấp trúng icon/chữ số.
+  2. Nếu gán Tag interaction của `CollectionService` (`GuiConfig.Tags`), slot bị tụt scale về $1.0\text{x}$ sau khi rê chuột ra ngoài dù vũ khí vẫn đang trang bị ($1.3\text{x}$).
+  3. Khi click nút, Roblox tự động áp một lớp filter màu xám tối làm biến dạng màu sắc thiết kế của slot.
+- **Nguyên nhân:**
+  1. Các phần tử con đè lên trên (`ItemImage`, `CooldownCurtain`, `IndexLabel`) có thuộc tính `Active = true` mặc định, khiến chúng nuốt chửng sự kiện chuột/chạm trước khi tới `ImageButton` cha.
+  2. `GuiHelper.InitTagInteractions` can thiệp tween `UIScale` khi `MouseEnter`/`MouseLeave`, xung đột trực tiếp với Active Zoom ($1.3\text{x}$) do `HotbarController` kiểm soát.
+  3. `ImageButton` mặc định bật `AutoButtonColor = true`.
+- **Giải pháp:**
+  1. Trong `CreateSlotForTool()`, tự động ép `Active = false` cho toàn bộ các phần tử con (`IndexLabel`, `CooldownCurtain`, `CooldownText`, `ItemImage`).
+  2. Cách ly hoàn toàn `ItemSlot` khỏi hệ thống Tag chung của `GuiHelper`, giữ quyền quản lý `UIScale` độc quyền cho `HotbarController`.
+  3. Tự động thiết lập `ClickTarget.AutoButtonColor = false` ngay khi khởi tạo slot.
+- **File liên quan:** [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
 
