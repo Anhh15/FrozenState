@@ -26,7 +26,7 @@ local ACCOLADE_TEXT = {
 -- =========================================================
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local PlayerGui   = nil
 
 local _InGameGui    = nil
 local _Announcement = nil  -- AccoladesAnnouncement TextLabel
@@ -103,9 +103,16 @@ end
 local AccoladesController = {}
 
 function AccoladesController:Init()
-	-- Lấy GUI references
-	_InGameGui    = PlayerGui:WaitForChild("InGameGui")
-	_Announcement = _InGameGui:WaitForChild("AccoladesAnnouncement")
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
+
+	PlayerGui = LocalPlayer:WaitForChild("PlayerGui", Timeout)
+	if not PlayerGui then return end
+
+	_InGameGui    = PlayerGui:WaitForChild("InGameGui", Timeout)
+	if not _InGameGui then return end
+
+	_Announcement = _InGameGui:WaitForChild("AccoladesAnnouncement", Timeout)
+	if not _Announcement then return end
 
 	-- Khởi tạo UIScale và ẩn mặc định
 	local UiScale = GuiHelper.GetOrCreateScale(_Announcement)

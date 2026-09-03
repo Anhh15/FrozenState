@@ -15,28 +15,25 @@ local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelp
 -- =========================================================
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local PlayerGui   = nil
 
 -- GameState HUD (luôn hiện)
-local GameStateGui    = GuiHelper.GetScreenGui("GameState")
-local Frame           = GameStateGui:WaitForChild("Frame")
-local TimeText        = Frame:WaitForChild("TimeText")
-local StateText       = Frame:WaitForChild("StateText")
-local TimeShadowText  = Frame:WaitForChild("TimeShadowText")
-local StateShadowText = Frame:WaitForChild("StateShadowText")
+local GameStateGui    = nil
+local Frame           = nil
+local TimeText        = nil
+local StateText       = nil
+local TimeShadowText  = nil
+local StateShadowText = nil
 
 -- InGameGui (chỉ bật khi Ready, InGame, GameOver)
-local InGameGui    = GuiHelper.GetScreenGui("InGameGui")
-local PlayerStatus = InGameGui and InGameGui:WaitForChild("PlayerStatus", 10)
-local ScoreBoard   = InGameGui and InGameGui:WaitForChild("ScoreBoard", 10)
-
--- ScoreBoardButton nằm trong InGameGui/Buttons (frame mới)
-local InGameBtnCfg     = GuiConfig.InGameButtons
-local ButtonsFrame     = InGameGui and InGameGui:FindFirstChild(InGameBtnCfg.Buttons)
-local ScoreBoardButton = ButtonsFrame and ButtonsFrame:FindFirstChild(InGameBtnCfg.ScoreBoardButton)
+local InGameGui        = nil
+local PlayerStatus     = nil
+local ScoreBoard       = nil
+local ButtonsFrame     = nil
+local ScoreBoardButton = nil
 
 -- ObserverGui (ẩn khi Intermission/Setup, hiện khi InGame phases — giống InGameGui)
-local ObserverGui = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.ObserverGui)
+local ObserverGui      = nil
 
 -- Lazy-require MenuController để điều phối đóng/mở menu khi chuyển phase
 local _menuController = nil
@@ -143,10 +140,10 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 
 	local TimeStr = FormatTime(TimeRemaining)
 
-	StateText.Text       = DisplayPhase
-	StateShadowText.Text = DisplayPhase
-	TimeText.Text        = TimeStr
-	TimeShadowText.Text  = TimeStr
+	if StateText then StateText.Text = DisplayPhase end
+	if StateShadowText then StateShadowText.Text = DisplayPhase end
+	if TimeText then TimeText.Text = TimeStr end
+	if TimeShadowText then TimeShadowText.Text = TimeStr end
 
 	-- Kiểm tra xem LocalPlayer có đang trong trận không (hỗ trợ cả mode có team và FFA)
 	local IsInMatch = PlayerStateHelper.IsInMatch(LocalPlayer)
@@ -198,8 +195,30 @@ end
 local GameStateController = {}
 
 function GameStateController:Init()
-	-- Ngăn GUI reset khi player chết (respawn)
-	GameStateGui.ResetOnSpawn = false
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
+
+	GameStateGui = GuiHelper.GetScreenGui("GameState")
+	if GameStateGui then
+		GameStateGui.ResetOnSpawn = false
+		Frame = GameStateGui:WaitForChild("Frame", Timeout)
+		if Frame then
+			TimeText        = Frame:WaitForChild("TimeText", Timeout)
+			StateText       = Frame:WaitForChild("StateText", Timeout)
+			TimeShadowText  = Frame:WaitForChild("TimeShadowText", Timeout)
+			StateShadowText = Frame:WaitForChild("StateShadowText", Timeout)
+		end
+	end
+
+	InGameGui = GuiHelper.GetScreenGui("InGameGui")
+	if InGameGui then
+		PlayerStatus = InGameGui:WaitForChild("PlayerStatus", Timeout)
+		ScoreBoard   = InGameGui:WaitForChild("ScoreBoard", Timeout)
+		local InGameBtnCfg = GuiConfig.InGameButtons
+		ButtonsFrame     = InGameGui:FindFirstChild(InGameBtnCfg.Buttons)
+		ScoreBoardButton = ButtonsFrame and ButtonsFrame:FindFirstChild(InGameBtnCfg.ScoreBoardButton)
+	end
+
+	ObserverGui = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.ObserverGui)
 
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	local SetGameModeEvent     = RemoteDefinitions.GetEvent("SetGameMode")

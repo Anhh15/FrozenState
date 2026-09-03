@@ -87,6 +87,11 @@
   - *Tự động ẩn an toàn*: Khi chuyển tab (sang `Milestone`) hoặc khi dữ liệu xác nhận chưa sở hữu GamePass, nút lập tức ẩn hoàn toàn để tránh gây nhầm lẫn về UX.
 - **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua)
 
+### 12. Kiến trúc Khởi Tạo GUI Trì Hoãn Trong Vòng Đời Controller (Deferred GUI Initialization Pattern)
+- **Chi tiết:** Mọi thao tác truy xuất và gán biến DOM/GUI elements (`PlayerGui`, `ScreenGui`, `Frame`, `TextLabel`, `Button`) **tuyệt đối không được thực thi tại Module Scope** (bên ngoài các hàm của ModuleScript).
+- **Vòng đời chuẩn hóa:** Module scope chỉ khai báo các biến cục bộ bằng `nil`. Toàn bộ việc truy xuất `WaitForChild` chỉ được thực hiện bên trong phương thức `:Init()`, sử dụng tham số thời gian chờ `GuiConfig.Timeouts.DefaultWaitForGui` (10s) kết hợp nil-guards an toàn. Mô hình này bảo đảm luồng `require()` của bootloader không bao giờ bị nghẽn (Zero Boot Deadlock) kể cả khi assets màn hình tải chậm.
+- **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -160,3 +165,11 @@
   1. *Early Tab Registration*: Đưa lệnh `MenuController.RegisterTab` lên ngay đầu hàm `Init()`.
   2. *Bounded Yield*: Sử dụng tìm kiếm đệ quy `FindFirstChild("Name", true)` kết hợp `WaitForChild("Name", GuiConfig.Timeouts.ShortWait)` có giới hạn thời gian an toàn.
 - **File liên quan:** [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [MenuController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/MenuController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)
+
+### 12. Treo Cứng Client Lúc Khởi Động (Boot Deadlock) Do Gọi `WaitForChild` Không Timeout Tại Module Scope
+- **Vấn đề:** Khi `Main.client.lua` thực thi lệnh `require()` lần lượt các Controller trong `StarterPlayerScripts`, các controller như `GameStateController`, `GameStatisticController`, `AccoladesController` gọi trực tiếp `LocalPlayer:WaitForChild("PlayerGui"):WaitForChild(...)` không có timeout ngay tại module level. Khi mạng chậm hoặc client tải giao diện chậm, luồng thực thi của `require()` bị dừng vĩnh viễn (infinite yield), khiến các Controller phía sau không bao giờ được nạp và toàn bộ game bị treo cứng lúc vào game.
+- **Giải pháp:** 
+  1. Khởi tạo toàn bộ biến GUI thành `nil` ở module scope.
+  2. Dời toàn bộ logic tìm kiếm cây UI vào hàm `:Init()` với timeout an toàn từ `GuiConfig.Timeouts.DefaultWaitForGui` (10s).
+  3. Bổ sung nil-guards trước mọi thao tác cập nhật Text hay gắn sự kiện nút bấm.
+- **File liên quan:** [GameStateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStateController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [AccoladesController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/AccoladesController.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua)

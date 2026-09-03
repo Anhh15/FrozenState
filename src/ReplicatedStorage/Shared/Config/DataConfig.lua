@@ -16,6 +16,7 @@ local DataConfig = {
 	ClientLoadTimeout  = 10,   -- Thời gian tối đa Client yield chờ dữ liệu từ Server
 	MaxLoadRetries     = 3,    -- Số lần tối đa Client thử lại nếu InvokeServer bị lỗi mạng
 	RetryDelay         = 1,    -- Khoảng thời gian nghỉ giữa các lần thử lại
+	MaxPurchaseHistorySize = 100, -- Số lượng giao dịch Robux tối đa lưu trữ trong DataStore (FIFO)
 
 	-- =========================================================
 	-- THIẾT LẬP MẶC ĐỊNH CHO NGƯỜI CHƠI MỚI (SETTINGS)

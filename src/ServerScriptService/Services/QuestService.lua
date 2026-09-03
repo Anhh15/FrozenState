@@ -694,7 +694,7 @@ function QuestService:Init()
 		_lastPlayTimeSync[Player] = os.time()
 	end)
 
-	Players.PlayerRemoving:Connect(function(Player)
+	local function FlushSession(Player)
 		local JoinTime = _sessionStart[Player]
 		if JoinTime then
 			local SessionSeconds = os.time() - JoinTime
@@ -712,7 +712,14 @@ function QuestService:Init()
 		_matchProgress[Player] = nil
 		_ResetLocks[Player.UserId] = nil
 		_ClaimLocks[Player.UserId] = nil
-	end)
+	end
+
+	-- Đảm bảo flush toàn bộ PlayTime và Quest Progress vào DataStore TRƯỚC KHI Profile bị đóng
+	if DataService.BeforeProfileRelease then
+		DataService.BeforeProfileRelease:Connect(FlushSession)
+	end
+
+	Players.PlayerRemoving:Connect(FlushSession)
 
 	for _, Player in ipairs(Players:GetPlayers()) do
 		_sessionStart[Player]     = os.time()

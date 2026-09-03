@@ -236,16 +236,23 @@ function ShopService:Start()
 			return Enum.ProductPurchaseDecision.PurchaseGranted
 		end
 
-		-- Trao thưởng tiền tệ vào DataStore
-		local NewMoney = DataService.AddMoney(Player, Package.CurrencyAmount)
-		DataService.RecordPurchase(Player, PurchaseId)
+		-- Trao thưởng tiền tệ vào DataStore và ghi lịch sử giao dịch được bảo vệ bằng pcall
+		local Success, Error = pcall(function()
+			local NewMoney = DataService.AddMoney(Player, Package.CurrencyAmount)
+			DataService.RecordPurchase(Player, PurchaseId)
 
-		-- Đồng bộ số tiền mới về Client
-		UpdateMoneyEv:FireClient(Player, NewMoney)
+			-- Đồng bộ số tiền mới về Client
+			UpdateMoneyEv:FireClient(Player, NewMoney)
 
-		print(("[ShopService] ProcessReceipt thành công: %s mua gói %s (+%d Money, PurchaseId: %s)"):format(
-			Player.Name, Package.DisplayName, Package.CurrencyAmount, PurchaseId
-		))
+			print(("[ShopService] ProcessReceipt thành công: %s mua gói %s (+%d Money, PurchaseId: %s)"):format(
+				Player.Name, Package.DisplayName, Package.CurrencyAmount, PurchaseId
+			))
+		end)
+
+		if not Success then
+			warn(("[ShopService] Lỗi khi xử lý ProcessReceipt cho %s: %s"):format(Player.Name, tostring(Error)))
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
 
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end

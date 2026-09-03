@@ -46,6 +46,11 @@
   4. *Raycast Line-of-Sight (LOS):* Bắn tia Raycast loại trừ 2 nhân vật (`Enum.RaycastFilterType.Exclude`). Nếu va chạm vật thể solid (`CanCollide == true`), lập tức từ chối đòn đánh nhằm triệt tiêu hoàn toàn wallhack.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
+### 8. Bảo Mật Server Authority & Cô Lập Mã Nguồn Quản Trị / Backend
+- **Chi tiết:** Mọi tệp chứa cấu hình quản trị viên, ID người dùng Admin (`AdminConfig.lua`) và thư viện DataStore can thiệp dữ liệu sâu (`ProfileService.lua`) tuyệt đối không được đặt trong `ReplicatedStorage`.
+- **Nguyên lý Cô lập:** Di dời toàn bộ vào `ServerScriptService/Config/AdminConfig.lua` và `ServerScriptService/Lib/ProfileService.lua`. Cấu hình Rojo map trực tiếp vào Server, Client hoàn toàn bị cô lập khỏi mã nguồn nhạy cảm, loại bỏ nguy cơ hacker dịch ngược Client để khai thác danh sách Admin.
+- **File liên quan:** [AdminConfig.lua](../../src/ServerScriptService/Config/AdminConfig.lua), [ProfileService.lua](../../src/ServerScriptService/Lib/ProfileService.lua), [AdminService.lua](../../src/ServerScriptService/Services/AdminService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -76,3 +81,17 @@
 - **Vấn đề:** Khi người chơi bị đóng băng (`Frozen`) thoát khỏi server, sự kiện `PlayerRemoving` chỉ gán `nil` trong bảng cache `_iceBlocks[UserId]`, bỏ quên việc gọi `:Destroy()` trên Model trong Workspace. Part và WeldConstraint tàn dư tồn tại vĩnh viễn gây rò rỉ RAM máy chủ và quá tải engine vật lý.
 - **Giải pháp:** Trong `Players.PlayerRemoving` của `FreezeService`, gọi hàm `RemoveIceBlock(Player)` để tháo gỡ tag `TagConfig.Tags.IceBlock` và gọi `:Destroy()` trên Model trước khi giải phóng tham chiếu khỏi bảng cache.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [TagHelper.lua](../../src/ReplicatedStorage/Shared/Tools/TagHelper.lua)
+
+### 6. Rò Rỉ Kết Nối Sự Kiện & Luồng Quét Hitbox Chạy Ngầm Trong `IcicleScript`
+- **Vấn đề:** 
+  1. Mỗi lần click kích hoạt Tool (`Activated`), code kết nối `Track.Stopped:Connect` mà không disconnect, gây tích lũy hàng chục listener trong bộ nhớ sau nhiều lần vung kiếm.
+  2. Khi người chơi gỡ trang bị vũ khí (`Unequipped`), vòng lặp `Heartbeat` quét hitbox không bị ngắt nếu đang trong cửa sổ `HitStartTime` $\rightarrow$ `HitEndTime`, dẫn đến việc quét hitbox ngầm khi không cầm vũ khí.
+- **Giải pháp:**
+  1. Đổi `Track.Stopped:Connect` sang `Track.Stopped:Once` để tự động dọn dẹp listener ngay khi animation dừng.
+  2. Gọi `StopHitboxPoll()` ngay bên trong listener `Tool.Unequipped` để lập tức ngắt kết nối `_HitboxConnection` khi cất vũ khí.
+- **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+
+### 7. Tụt FPS Do Quét Toàn Bộ Workspace $O(N \times M)$ Khi Cập Nhật Highlight Khối Băng
+- **Vấn đề:** Trong `HighlightController`, sự kiện `Workspace.ChildAdded` và `ChildRemoved` lắng nghe trên toàn bộ Workspace. Mỗi khi bất kỳ instance nào sinh ra hoặc mất đi (kể cả hiệu ứng hạt particle, mảnh vụn), hàm `RefreshAll()` được gọi duyệt qua toàn bộ danh sách người chơi, gây drop FPS nghiêm trọng trong giao tranh đông người.
+- **Giải pháp:** Gỡ bỏ hoàn toàn `Workspace.ChildAdded/Removed`. Sử dụng `TagHelper.ObserveTagAdded` và `ObserveTagRemoved` trên tag `TagConfig.Tags.IceBlock`. Khi có khối băng thay đổi, chỉ tra cứu `VictimUserId` và cập nhật Adornee $O(1)$ cho duy nhất người chơi tương ứng qua hàm `UpdateSinglePlayerHighlight`.
+- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [TagHelper.lua](../../src/ReplicatedStorage/Shared/Tools/TagHelper.lua)

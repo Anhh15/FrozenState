@@ -18,51 +18,38 @@ local GuiHelper         = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 -- =========================================================
 
 local LocalPlayer  = Players.LocalPlayer
-local PlayerGui    = LocalPlayer:WaitForChild("PlayerGui")
-local StatGui      = PlayerGui:WaitForChild("GameStatistic")
+local PlayerGui    = nil
+local StatGui      = nil
 
 -- ── TopPlayersStats (Bảng Đội Thắng / Winner) ────────────────────────────────────
-local TopPlayersStats = StatGui:WaitForChild("TopPlayersStats")
-local WinLabel        = TopPlayersStats:WaitForChild("WinLabel")
-local AnnounceText    = WinLabel:WaitForChild("AnnounceText")
-local NextButton      = TopPlayersStats:WaitForChild("NextButton")
-local CloseButton1    = TopPlayersStats:WaitForChild("CloseButton")
-
-local PlayerSlots = {
-	TopPlayersStats:WaitForChild("PlayerTop1"),
-	TopPlayersStats:WaitForChild("PlayerTop2"),
-	TopPlayersStats:WaitForChild("PlayerTop3"),
-}
+local TopPlayersStats = nil
+local WinLabel        = nil
+local AnnounceText    = nil
+local NextButton      = nil
+local CloseButton1    = nil
+local PlayerSlots     = {}
 
 -- ── PlayerStats (Bảng Thống Kê Cá Nhân) ───────────────────
-local PlayerStats         = StatGui:WaitForChild("PlayerStats")
-local GameResultText      = PlayerStats:WaitForChild("GameResult"):WaitForChild("GameResultText")
-local CloseButton2        = PlayerStats:WaitForChild("CloseButton")
-local MainAvatarThumbnail = PlayerStats:WaitForChild("AvatarThumbnail")
+local PlayerStats         = nil
+local GameResultText      = nil
+local CloseButton2        = nil
+local MainAvatarThumbnail = nil
 
-local StatsPanel    = PlayerStats:WaitForChild("Stats")
-local TotalStats    = StatsPanel:WaitForChild("TotalStats")
-local TotalMoney    = StatsPanel:WaitForChild("TotalMoney")
+local StatsPanel    = nil
+local TotalStats    = nil
+local TotalMoney    = nil
 
 -- Tham chiếu tới các dòng thống kê con trong TotalStats
-local FreezeVal       = TotalStats:WaitForChild("Freeze"):WaitForChild("ValueText")
-local ThawVal         = TotalStats:WaitForChild("Thaw"):WaitForChild("ValueText")
-local FSpreeVal       = TotalStats:WaitForChild("FreezingSpree"):WaitForChild("ValueText")
-local TSpreeVal       = TotalStats:WaitForChild("ThawingSpree"):WaitForChild("ValueText")
-local FirstBloodVal   = TotalStats:WaitForChild("FirstBlood"):WaitForChild("ValueText")
-local LastStandingVal = TotalStats:WaitForChild("LastStanding"):WaitForChild("ValueText")
-local TotalMoneyVal   = TotalMoney:WaitForChild("ValueText")
+local FreezeVal       = nil
+local ThawVal         = nil
+local FSpreeVal       = nil
+local TSpreeVal       = nil
+local FirstBloodVal   = nil
+local LastStandingVal = nil
+local TotalMoneyVal   = nil
 
 -- Danh sách tuần tự các phần tử chỉ số để thực hiện hiệu ứng StaggerPopOpen
-local StatsItemsSequence = {
-	TotalStats:WaitForChild("Freeze"),
-	TotalStats:WaitForChild("Thaw"),
-	TotalStats:WaitForChild("FreezingSpree"),
-	TotalStats:WaitForChild("ThawingSpree"),
-	TotalStats:WaitForChild("FirstBlood"),
-	TotalStats:WaitForChild("LastStanding"),
-	TotalMoney,
-}
+local StatsItemsSequence = {}
 
 -- Thread theo dõi Stagger animation đang chạy dở
 local _ActiveStaggerThread = nil
@@ -88,20 +75,30 @@ end
 local function HideAll()
 	StopActiveStagger()
 
-	GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(TopPlayersStats))
-	GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(PlayerStats))
+	if TopPlayersStats then
+		GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(TopPlayersStats))
+		TopPlayersStats.Visible = false
+	end
+	if PlayerStats then
+		GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(PlayerStats))
+		PlayerStats.Visible     = false
+	end
 
 	for _, Slot in ipairs(PlayerSlots) do
-		GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Slot))
+		if Slot then
+			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(Slot))
+		end
 	end
 
 	for _, StatItem in ipairs(StatsItemsSequence) do
-		GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(StatItem))
+		if StatItem then
+			GuiHelper.CancelTween(GuiHelper.GetOrCreateScale(StatItem))
+		end
 	end
 
-	TopPlayersStats.Visible = false
-	PlayerStats.Visible     = false
-	StatGui.Enabled         = false
+	if StatGui then
+		StatGui.Enabled = false
+	end
 end
 
 local function ShowTopPlayers(TopPlayersData)
@@ -206,39 +203,49 @@ local function FillPersonalStats(Won, Stats)
 	local RewardFirstBlood       = RewardHelper.GetRewardAmount("FirstBlood")
 	local RewardLastStanding     = RewardHelper.GetRewardAmount("LastStanding")
 
-	GameResultText.Text  = Won and "VICTORY" or "DEFEATED"
+	if GameResultText then GameResultText.Text = Won and "VICTORY" or "DEFEATED" end
 	
 	-- Render ảnh 2D từ eo trở lên (AvatarBust) cho cá nhân người chơi
-	SetPlayerThumbnail(MainAvatarThumbnail, LocalPlayer.UserId, Enum.ThumbnailType.AvatarBust)
+	if MainAvatarThumbnail then
+		SetPlayerThumbnail(MainAvatarThumbnail, LocalPlayer.UserId, Enum.ThumbnailType.AvatarBust)
+	end
 
 	-- Format hiển thị chi tiết: "Số lượng (x Giá trị) = Tổng nhận được"
-	FreezeVal.Text = ("%s (×%s) = %s"):format(
-		GuiHelper.FormatNumber(Stats.Freezes),
-		GuiHelper.FormatNumber(RewardPerFreeze),
-		GuiHelper.FormatNumber(Stats.Freezes * RewardPerFreeze)
-	)
+	if FreezeVal then
+		FreezeVal.Text = ("%s (×%s) = %s"):format(
+			GuiHelper.FormatNumber(Stats.Freezes),
+			GuiHelper.FormatNumber(RewardPerFreeze),
+			GuiHelper.FormatNumber(Stats.Freezes * RewardPerFreeze)
+		)
+	end
 
-	ThawVal.Text = ("%s (×%s) = %s"):format(
-		GuiHelper.FormatNumber(Stats.Thaws),
-		GuiHelper.FormatNumber(RewardPerThaw),
-		GuiHelper.FormatNumber(Stats.Thaws * RewardPerThaw)
-	)
+	if ThawVal then
+		ThawVal.Text = ("%s (×%s) = %s"):format(
+			GuiHelper.FormatNumber(Stats.Thaws),
+			GuiHelper.FormatNumber(RewardPerThaw),
+			GuiHelper.FormatNumber(Stats.Thaws * RewardPerThaw)
+		)
+	end
 
 	-- Đối với First Blood và Last Standing hiển thị số tiền trực tiếp
-	FSpreeVal.Text = ("%s (×%s) = %s"):format(
-		GuiHelper.FormatNumber(Stats.FreezingSprees),
-		GuiHelper.FormatNumber(RewardPerFreezingSpree),
-		GuiHelper.FormatNumber(Stats.FreezingSprees * RewardPerFreezingSpree)
-	)
-	TSpreeVal.Text = ("%s (×%s) = %s"):format(
-		GuiHelper.FormatNumber(Stats.ThawingSprees),
-		GuiHelper.FormatNumber(RewardPerThawingSpree),
-		GuiHelper.FormatNumber(Stats.ThawingSprees * RewardPerThawingSpree)
-	)
-	FirstBloodVal.Text   = Stats.FirstBlood and GuiHelper.FormatNumber(RewardFirstBlood) or "0"
-	LastStandingVal.Text = Stats.LastStanding and GuiHelper.FormatNumber(RewardLastStanding) or "0"
+	if FSpreeVal then
+		FSpreeVal.Text = ("%s (×%s) = %s"):format(
+			GuiHelper.FormatNumber(Stats.FreezingSprees),
+			GuiHelper.FormatNumber(RewardPerFreezingSpree),
+			GuiHelper.FormatNumber(Stats.FreezingSprees * RewardPerFreezingSpree)
+		)
+	end
+	if TSpreeVal then
+		TSpreeVal.Text = ("%s (×%s) = %s"):format(
+			GuiHelper.FormatNumber(Stats.ThawingSprees),
+			GuiHelper.FormatNumber(RewardPerThawingSpree),
+			GuiHelper.FormatNumber(Stats.ThawingSprees * RewardPerThawingSpree)
+		)
+	end
+	if FirstBloodVal then FirstBloodVal.Text   = Stats.FirstBlood and GuiHelper.FormatNumber(RewardFirstBlood) or "0" end
+	if LastStandingVal then LastStandingVal.Text = Stats.LastStanding and GuiHelper.FormatNumber(RewardLastStanding) or "0" end
 	
-	TotalMoneyVal.Text   = GuiHelper.FormatNumber(Stats.MoneyEarned)
+	if TotalMoneyVal then TotalMoneyVal.Text   = GuiHelper.FormatNumber(Stats.MoneyEarned) end
 end
 
 -- =========================================================
@@ -248,7 +255,82 @@ end
 local GameStatisticController = {}
 
 function GameStatisticController:Init()
+	local Timeout = (GuiConfig.Timeouts and GuiConfig.Timeouts.DefaultWaitForGui) or 10
+
+	PlayerGui = LocalPlayer:WaitForChild("PlayerGui", Timeout)
+	if not PlayerGui then
+		warn("[GameStatisticController] Không tìm thấy PlayerGui!")
+		return
+	end
+
+	StatGui = PlayerGui:WaitForChild("GameStatistic", Timeout)
+	if not StatGui then
+		warn("[GameStatisticController] Không tìm thấy GameStatistic ScreenGui!")
+		return
+	end
+
 	StatGui.ResetOnSpawn = false
+
+	-- ── TopPlayersStats ──
+	TopPlayersStats = StatGui:WaitForChild("TopPlayersStats", Timeout)
+	if TopPlayersStats then
+		WinLabel     = TopPlayersStats:WaitForChild("WinLabel", Timeout)
+		AnnounceText = WinLabel and WinLabel:WaitForChild("AnnounceText", Timeout)
+		NextButton   = TopPlayersStats:WaitForChild("NextButton", Timeout)
+		CloseButton1 = TopPlayersStats:WaitForChild("CloseButton", Timeout)
+
+		PlayerSlots = {
+			TopPlayersStats:WaitForChild("PlayerTop1", Timeout),
+			TopPlayersStats:WaitForChild("PlayerTop2", Timeout),
+			TopPlayersStats:WaitForChild("PlayerTop3", Timeout),
+		}
+	end
+
+	-- ── PlayerStats ──
+	PlayerStats = StatGui:WaitForChild("PlayerStats", Timeout)
+	if PlayerStats then
+		local GameResult = PlayerStats:WaitForChild("GameResult", Timeout)
+		GameResultText   = GameResult and GameResult:WaitForChild("GameResultText", Timeout)
+		CloseButton2     = PlayerStats:WaitForChild("CloseButton", Timeout)
+		MainAvatarThumbnail = PlayerStats:WaitForChild("AvatarThumbnail", Timeout)
+
+		StatsPanel = PlayerStats:WaitForChild("Stats", Timeout)
+		if StatsPanel then
+			TotalStats = StatsPanel:WaitForChild("TotalStats", Timeout)
+			TotalMoney = StatsPanel:WaitForChild("TotalMoney", Timeout)
+
+			if TotalStats then
+				local FreezePart       = TotalStats:WaitForChild("Freeze", Timeout)
+				local ThawPart         = TotalStats:WaitForChild("Thaw", Timeout)
+				local FSpreePart       = TotalStats:WaitForChild("FreezingSpree", Timeout)
+				local TSpreePart       = TotalStats:WaitForChild("ThawingSpree", Timeout)
+				local FirstBloodPart   = TotalStats:WaitForChild("FirstBlood", Timeout)
+				local LastStandingPart = TotalStats:WaitForChild("LastStanding", Timeout)
+
+				FreezeVal       = FreezePart and FreezePart:WaitForChild("ValueText", Timeout)
+				ThawVal         = ThawPart and ThawPart:WaitForChild("ValueText", Timeout)
+				FSpreeVal       = FSpreePart and FSpreePart:WaitForChild("ValueText", Timeout)
+				TSpreeVal       = TSpreePart and TSpreePart:WaitForChild("ValueText", Timeout)
+				FirstBloodVal   = FirstBloodPart and FirstBloodPart:WaitForChild("ValueText", Timeout)
+				LastStandingVal = LastStandingPart and LastStandingPart:WaitForChild("ValueText", Timeout)
+
+				StatsItemsSequence = {
+					FreezePart,
+					ThawPart,
+					FSpreePart,
+					TSpreePart,
+					FirstBloodPart,
+					LastStandingPart,
+					TotalMoney,
+				}
+			end
+
+			if TotalMoney then
+				TotalMoneyVal = TotalMoney:WaitForChild("ValueText", Timeout)
+			end
+		end
+	end
+
 	HideAll()
 
 	-- Lắng nghe dữ liệu cuối trận từ server
@@ -257,14 +339,16 @@ function GameStatisticController:Init()
 		if not Data then return end
 
 		-- Xác định text thông báo thắng theo mode
-		if Data.WinTeam then
-			-- TeamBased: hiển thị tên đội
-			AnnounceText.Text = (Data.WinTeam == "Team1") and "TEAM 1 WINS!" or "TEAM 2 WINS!"
-		elseif Data.WinPlayer then
-			-- FFA: hiển thị tên người thắng
-			AnnounceText.Text = Data.WinPlayer.Name .. " WINS!"
-		else
-			AnnounceText.Text = "MATCH ENDED"
+		if AnnounceText then
+			if Data.WinTeam then
+				-- TeamBased: hiển thị tên đội
+				AnnounceText.Text = (Data.WinTeam == "Team1") and "TEAM 1 WINS!" or "TEAM 2 WINS!"
+			elseif Data.WinPlayer then
+				-- FFA: hiển thị tên người thắng
+				AnnounceText.Text = Data.WinPlayer.Name .. " WINS!"
+			else
+				AnnounceText.Text = "MATCH ENDED"
+			end
 		end
 
 		FillTopPlayers(Data.TopPlayers or {})
@@ -282,21 +366,27 @@ function GameStatisticController:Init()
 	end)
 
 	-- Cài đặt sự kiện nút bấm chuyển tiếp và đóng
-	NextButton.MouseButton1Click:Connect(function()
-		ShowPlayerStats()
-	end)
-
-	CloseButton1.MouseButton1Click:Connect(function()
-		GuiHelper.PopClose(TopPlayersStats, nil, function()
-			HideAll()
+	if NextButton then
+		NextButton.MouseButton1Click:Connect(function()
+			ShowPlayerStats()
 		end)
-	end)
+	end
 
-	CloseButton2.MouseButton1Click:Connect(function()
-		GuiHelper.PopClose(PlayerStats, nil, function()
-			HideAll()
+	if CloseButton1 and TopPlayersStats then
+		CloseButton1.MouseButton1Click:Connect(function()
+			GuiHelper.PopClose(TopPlayersStats, nil, function()
+				HideAll()
+			end)
 		end)
-	end)
+	end
+
+	if CloseButton2 and PlayerStats then
+		CloseButton2.MouseButton1Click:Connect(function()
+			GuiHelper.PopClose(PlayerStats, nil, function()
+				HideAll()
+			end)
+		end)
+	end
 
 	print("[GameStatisticController] Khởi tạo thành công với Pop/Stagger Animation & SFX.")
 end

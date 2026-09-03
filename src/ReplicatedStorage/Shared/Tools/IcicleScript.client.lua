@@ -142,6 +142,7 @@ Tool.Unequipped:Connect(function()
 		AnimationHelper.StopTrack(_CurrentSwingTrack)
 		_CurrentSwingTrack = nil
 	end
+	StopHitboxPoll()
 end)
 
 -- =========================================================
@@ -234,7 +235,7 @@ Tool.Activated:Connect(function()
 			StopHitboxPoll()
 		end)
 
-		Track.Stopped:Connect(function()
+		Track.Stopped:Once(function()
 			StopHitboxPoll()
 		end)
 	end

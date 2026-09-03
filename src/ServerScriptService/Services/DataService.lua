@@ -4,9 +4,9 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
 
-local ProfileService    = require(ReplicatedStorage.Shared.Lib.ProfileService)
+local ProfileService    = require(ServerScriptService.Lib.ProfileService)
 local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local DataConfig        = require(ReplicatedStorage.Shared.Config.DataConfig)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
@@ -71,6 +71,7 @@ local PlayerStore = ProfileService.GetProfileStore(DataConfig.ProfileStoreName, 
 -- Lưu trữ profile đang active: { [player] = profile }
 local ActiveProfiles = {}
 local _ProfileLoadedBindable = Instance.new("BindableEvent")
+local _BeforeProfileReleaseBindable = Instance.new("BindableEvent")
 
 -- =========================================================
 -- PRIVATE FUNCTIONS
@@ -143,6 +144,9 @@ end
 
 --- Xử lý khi player rời server
 local function OnPlayerRemoving(Player)
+	-- Phát tín hiệu cho các Service khác flush dữ liệu trước khi giải phóng Profile
+	_BeforeProfileReleaseBindable:Fire(Player)
+
 	local Profile = ActiveProfiles[Player]
 	if Profile ~= nil then
 		Profile:Release()
@@ -156,6 +160,10 @@ end
 -- =========================================================
 
 local DataService = {}
+
+--- Sự kiện phát ra ngay trước khi Profile của người chơi được giải phóng khi thoát game
+--- Các Service khác nên lắng nghe sự kiện này để flush dữ liệu cuối cùng vào DataStore
+DataService.BeforeProfileRelease = _BeforeProfileReleaseBindable.Event
 
 --- Chờ cho đến khi Profile của player được nạp xong từ DataStore (hoặc hết timeout)
 --- @param Player Player
@@ -709,6 +717,10 @@ function DataService.RecordPurchase(Player, PurchaseId)
 	end
 	if not table.find(Profile.Data.PurchaseHistory, PurchaseId) then
 		table.insert(Profile.Data.PurchaseHistory, PurchaseId)
+		local MaxHistory = DataConfig.MaxPurchaseHistorySize or 100
+		while #Profile.Data.PurchaseHistory > MaxHistory do
+			table.remove(Profile.Data.PurchaseHistory, 1)
+		end
 	end
 end
 

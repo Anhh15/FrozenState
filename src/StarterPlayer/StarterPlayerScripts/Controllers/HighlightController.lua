@@ -110,9 +110,52 @@ local function RemoveHighlight(Character)
 	if H then H:Destroy() end
 end
 
+--- Cập nhật Highlight cho duy nhất một Player theo góc nhìn của LocalPlayer (O(1))
+--- @param Player Player
+local function UpdateSinglePlayerHighlight(Player)
+	if not Player or Player == LocalPlayer then return end
+
+	local Character = Player.Character
+	if not Character then return end
+
+	if _highlightMode == "Disabled" then
+		RemoveHighlight(Character)
+		return
+	end
+
+	local IsLocalInMatch  = PlayerStateHelper.IsInMatch(LocalPlayer) and (_playerStates[tostring(LocalPlayer.UserId)] ~= "Dead")
+	local PlayerUserIdStr = tostring(Player.UserId)
+	local IsTargetInMatch = PlayerStateHelper.IsInMatch(Player) and (_playerStates[PlayerUserIdStr] ~= "Dead")
+
+	if not IsTargetInMatch then
+		RemoveHighlight(Character)
+		return
+	end
+
+	local IsFrozen = (_frozenPlayers[PlayerUserIdStr] == true)
+
+	if _highlightMode == "FFA" then
+		if not IsLocalInMatch then
+			RemoveHighlight(Character)
+		else
+			ApplyHighlightForPlayer(Player, true, IsFrozen, true)
+		end
+	elseif _highlightMode == "TeamBased" then
+		local MyTeamKey = tostring(LocalPlayer.UserId)
+		local MyTeam    = IsLocalInMatch and KnownTeams[MyTeamKey] or nil
+		local PlayerTeam = KnownTeams[PlayerUserIdStr]
+
+		if not MyTeam or not PlayerTeam then
+			RemoveHighlight(Character)
+		else
+			local IsEnemy = (PlayerTeam ~= MyTeam)
+			ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen, false)
+		end
+	end
+end
+
 --- Refresh highlight cho tất cả player (gọi lại khi team thay đổi hoặc FrozenState đổi)
 local function RefreshAll()
-	-- Disabled: không tạo highlight
 	if _highlightMode == "Disabled" then
 		for _, Player in ipairs(Players:GetPlayers()) do
 			if Player.Character then
@@ -122,71 +165,8 @@ local function RefreshAll()
 		return
 	end
 
-	-- Kiểm tra xem LocalPlayer có đang trong trận hay không
-	local IsLocalInMatch = PlayerStateHelper.IsInMatch(LocalPlayer) and (_playerStates[tostring(LocalPlayer.UserId)] ~= "Dead")
-
-	if _highlightMode == "FFA" then
-		-- FFA: Nếu LocalPlayer không trong trận, xóa toàn bộ highlight
-		if not IsLocalInMatch then
-			for _, Player in ipairs(Players:GetPlayers()) do
-				if Player.Character then
-					RemoveHighlight(Player.Character)
-				end
-			end
-			return
-		end
-
-		-- FFA: tất cả người chơi trong trận là kẻ địch, luôn AlwaysOnTop
-		for _, Player in ipairs(Players:GetPlayers()) do
-			if Player == LocalPlayer then
-				if Player.Character then
-					RemoveHighlight(Player.Character)
-				end
-				continue
-			end
-
-			local Character = Player.Character
-			if not Character then continue end
-
-			local PlayerUserIdStr = tostring(Player.UserId)
-			local IsTargetInMatch = PlayerStateHelper.IsInMatch(Player) and (_playerStates[PlayerUserIdStr] ~= "Dead")
-
-			if not IsTargetInMatch then
-				RemoveHighlight(Character)
-			else
-				local IsFrozen = (_frozenPlayers[PlayerUserIdStr] == true)
-				ApplyHighlightForPlayer(Player, true, IsFrozen, true)  -- IsEnemy=true, ForceAlwaysOnTop=true
-			end
-		end
-		return
-	end
-
-	-- TeamBased:
-	local MyTeamKey = tostring(LocalPlayer.UserId)
-	local MyTeam    = IsLocalInMatch and KnownTeams[MyTeamKey] or nil
-
 	for _, Player in ipairs(Players:GetPlayers()) do
-		if Player == LocalPlayer then
-			if Player.Character then
-				RemoveHighlight(Player.Character)
-			end
-			continue
-		end
-
-		local Character = Player.Character
-		if not Character then continue end
-
-		local PlayerUserIdStr = tostring(Player.UserId)
-		local IsTargetInMatch = PlayerStateHelper.IsInMatch(Player) and (_playerStates[PlayerUserIdStr] ~= "Dead")
-		local PlayerTeam      = IsTargetInMatch and KnownTeams[PlayerUserIdStr] or nil
-
-		if not IsTargetInMatch or not PlayerTeam or not MyTeam then
-			RemoveHighlight(Character)
-		else
-			local IsEnemy  = (PlayerTeam ~= MyTeam)
-			local IsFrozen = (_frozenPlayers[PlayerUserIdStr] == true)
-			ApplyHighlightForPlayer(Player, IsEnemy, IsFrozen, false)
-		end
+		UpdateSinglePlayerHighlight(Player)
 	end
 end
 
@@ -312,18 +292,20 @@ function HighlightController:Init()
 	-- Watch player mới join
 	Players.PlayerAdded:Connect(WatchPlayer)
 
-	-- Lắng nghe khi IceBlock Model thêm/xóa trong Workspace để cập nhật Highlight.Adornee
-	Workspace.ChildAdded:Connect(function(Child)
-		if Child:IsA("Model") and PlayerStateHelper.GetVictimUserId(Child) ~= nil then
-			RefreshAll()
-		end
-	end)
+	-- Lắng nghe khi IceBlock Model thêm/xóa qua CollectionService để cập nhật Highlight.Adornee theo từng player (O(1))
+	local function HandleIceBlockChanged(BlockInstance)
+		if not BlockInstance or not BlockInstance:IsA("Model") then return end
+		local VictimUserId = PlayerStateHelper.GetVictimUserId(BlockInstance)
+		if not VictimUserId then return end
 
-	Workspace.ChildRemoved:Connect(function(Child)
-		if Child:IsA("Model") and PlayerStateHelper.GetVictimUserId(Child) ~= nil then
-			RefreshAll()
+		local TargetPlayer = Players:GetPlayerByUserId(VictimUserId)
+		if TargetPlayer and TargetPlayer ~= LocalPlayer then
+			UpdateSinglePlayerHighlight(TargetPlayer)
 		end
-	end)
+	end
+
+	TagHelper.ObserveTagAdded(TagConfig.Tags.IceBlock, HandleIceBlockChanged)
+	TagHelper.ObserveTagRemoved(TagConfig.Tags.IceBlock, HandleIceBlockChanged)
 
 	print("[HighlightController] Đã khởi tạo.")
 end

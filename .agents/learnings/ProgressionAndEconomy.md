@@ -108,6 +108,16 @@
   3. *Lifecycle Guard:* Giải phóng toàn bộ lock trong `Players.PlayerRemoving` để tránh kẹt trạng thái vĩnh viễn khi người chơi thoát game đột ngột.
 - **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
 
+### 16. Vòng Đời Thoát Game Tập Trung & Đồng Bộ Tránh Race Condition (`BeforeProfileRelease`)
+- **Chi tiết:** Roblox không bảo đảm thứ tự chạy giữa các kết nối `Players.PlayerRemoving` độc lập của các service khác nhau. Khi player thoát game, nếu `DataService` giải phóng Profile trước, `QuestService` sẽ ghi dữ liệu vào một profile đã giải phóng dẫn đến mất mát thời gian chơi (PlayTime) và tiến độ nhiệm vụ.
+- **Giải pháp Kiến trúc:** `DataService` cung cấp `DataService.BeforeProfileRelease` (sử dụng `BindableEvent`). Trong `OnPlayerRemoving`, `DataService` phát sự kiện này **trước** khi gọi `Profile:Release()`. Do `BindableEvent:Fire` thực thi đồng bộ ngay lập tức, `QuestService` flush toàn bộ tiến trình vào DataStore một cách an toàn và bảo đảm 100% không mất dữ liệu.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
+### 17. Quản Lý Kích Thước Bền Vững & Hàng Đợi FIFO Cho Lịch Sử Giao Dịch (PurchaseHistory FIFO Queue)
+- **Chi tiết:** Mỗi giao dịch Developer Product thành công được lưu `PurchaseId` vào mảng `PurchaseHistory` để đảm bảo tính Idempotent. Nếu không giới hạn kích thước mảng, một tài khoản nạp nhiều lần sẽ làm phình to DataStore vượt ngưỡng trần 4MB của Roblox.
+- **Giải pháp Kiến trúc:** Cấu hình trần `MaxPurchaseHistorySize = 100` trong `DataConfig.lua`. Khi `RecordPurchase` thêm một ID mới, nếu độ dài vượt quá giới hạn, hệ thống tự động loại bỏ phần tử cũ nhất ở đầu mảng (`table.remove(list, 1)`) theo nguyên lý FIFO.
+- **File liên quan:** [DataConfig.lua](../../src/ReplicatedStorage/Shared/Config/DataConfig.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -228,4 +238,9 @@
 - **Giải pháp:**
   1. Chuyển `"ForceLoad"` thành hàm release handler: trả về `"Repeat"` để chờ server cũ lưu và nhả lock an toàn nếu player còn trong game, trả về `"Cancel"` nếu player đã thoát.
   2. Ép kiểu nghiêm ngặt `typeof(Value) == "number"` và loại trừ `NaN`/`math.huge` ở cả tầng Remote lẫn `DataService.SetSetting`.
-- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ProfileService.lua](../../src/ReplicatedStorage/Shared/Lib/ProfileService.lua)
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ProfileService.lua](../../src/ServerScriptService/Lib/ProfileService.lua)
+
+### 18. Lỗi Runtime Không Xác Định Trong `ProcessReceipt` Nuốt Mất Robux Của Người Chơi
+- **Vấn đề:** Trong callback `MarketplaceService.ProcessReceipt`, nếu các hàm trao thưởng (`DataService.AddMoney`) hoặc ghi lịch sử phát sinh ngoại lệ không mong muốn, toàn bộ hàm bị sập unhandled error. Roblox có thể hiểu nhầm trạng thái giao dịch hoặc không xử lý lại đúng cách, dẫn đến việc người chơi bị trừ Robux nhưng không nhận được tiền trong game.
+- **Giải pháp:** Bọc toàn bộ các thao tác cộng tiền, ghi biên lai và đồng bộ client bên trong khối `pcall`. Nếu `pcall` trả về `false`, ghi log cảnh báo và trả về `Enum.ProductPurchaseDecision.NotProcessedYet` để Roblox tự động thử lại (Retry Mechanism). Chỉ trả về `PurchaseGranted` khi toàn bộ nghiệp vụ thực thi thành công mỹ mãn.
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)

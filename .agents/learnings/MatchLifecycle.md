@@ -1,6 +1,6 @@
 # MatchLifecycle
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về vòng đời trận đấu (State Machine, Player State, WinCondition, Special Round, Death/Disconnect Lifecycle và Map Management).
-> Cập nhật lần cuối: 30-08-2026
+> Cập nhật lần cuối: 03-09-2026
 
 ---
 
@@ -72,6 +72,11 @@
     $$\text{Eligible} = \text{Character} \land (\text{Health} > 0) \land \text{GameLoaded} \land (\neg \text{IsAfk})$$
   - Loại bỏ hoàn toàn người chơi AFK khỏi danh sách được phân đội, teleport và cấp vũ khí khi bắt đầu `Setup`.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua), [PlayerStateConfig.lua](../../src/ReplicatedStorage/Shared/Config/PlayerStateConfig.lua)
+
+### 12. Cơ Chế Kiểm Soát Tần Suất Chuyển Đổi Trạng Thái AFK (AFK Rate-Limit Guard)
+- **Chi tiết:** Mọi RemoteEvent cho phép Client thông báo thay đổi trạng thái người chơi lên Server (SetAfkState) phải được kiểm soát tần suất chặt chẽ nhằm triệt tiêu nguy cơ kẻ xấu spam request gây quá tải CPU Server (DDoS / Flood Remote).
+- **Cơ chế Triển khai:** Cấu hình GameConfig.Player.AfkCooldown = 1.5 (giây). Server duy trì bảng tra cứu _LastAfkToggleTimes[Player.UserId]. Nếu khoảng cách giữa 2 lần bấm chuyển AFK nhỏ hơn thời gian hồi, Server lập tức từ chối xử lý (early return). Dọn dẹp key khỏi bảng trong Players.PlayerRemoving để tránh rò rỉ RAM.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
 ---
 
@@ -156,5 +161,7 @@
 - **Giải pháp:** Chuyển toàn bộ điều kiện kiểm tra số lượng sang `#GetAlivePlayers() >= GameConfig.Match.MinPlayers`. Nếu số người sẵn sàng không AFK $< \text{MinPlayers}$, hệ thống tự động reset `TimeLeft = Duration` và duy trì trạng thái chờ ở `Intermission`.
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
 
-
-
+### 15. Kẻ Tấn Công Spam RemoteEvent SetAfkState Gây Quá Tải CPU Server
+- **Vấn đề:** Sự kiện SetAfkState.OnServerEvent trước đây không có debounce kiểm tra thời gian giữa các lần gọi. Client gian lận có thể kích hoạt vòng lặp gửi hàng nghìn request/giây, ép Server liên tục ghi đè Attribute IsAfk và in log console, làm tụt tick-rate của Server và lag toàn bộ người chơi khác.
+- **Giải pháp:** Bổ sung kiểm tra rate-limit per-player (os.clock() - LastToggle) < Cooldown với GameConfig.Player.AfkCooldown (1.5s), đồng thời kiểm tra tính hợp lệ của Player instance trước khi cập nhật PlayerStateHelper.SetAfk.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)

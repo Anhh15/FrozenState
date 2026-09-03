@@ -7,8 +7,10 @@ local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
 local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 
+local ServerScriptService = game:GetService("ServerScriptService")
+
 local DataService       = require(script.Parent.DataService)
-local AdminConfig       = require(ReplicatedStorage.Shared.Config.AdminConfig)
+local AdminConfig       = require(ServerScriptService.Config.AdminConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 

@@ -32,6 +32,7 @@ local MapHelper         = require(ReplicatedStorage.Shared.Tools.MapHelper)
 local _currentPhase  = "Intermission"
 local _earlyResult   = nil   -- { WinTeam = "..." } hoặc { WinPlayer = player } khi kết thúc sớm
 local _roundCounter  = 0     -- đếm số vòng đã chơi (dùng cho chu kỳ mode)
+local _LastAfkToggleTimes = {} -- Rate-limit chống flood RemoteEvent SetAfkState
 
 local UpdateGameStateEvent
 local ShowGameOverEvent
@@ -753,10 +754,19 @@ function MatchService:Init()
 		print(string.format("[MatchService] Player %s (%d) đã hoàn tất GameLoadingScreen.", Player.Name, Player.UserId))
 	end)
 
-	-- Lắng nghe khi Client chuyển đổi trạng thái AFK
+	-- Lắng nghe khi Client chuyển đổi trạng thái AFK (có Debounce chống Spam / DDoS CPU)
 	local SetAfkStateEvent = RemoteDefinitions.GetEvent("SetAfkState")
 	SetAfkStateEvent.OnServerEvent:Connect(function(Player, Payload)
-		if not Player then return end
+		if not Player or not Player:IsA("Player") then return end
+
+		local Now = os.clock()
+		local LastToggle = _LastAfkToggleTimes[Player.UserId] or 0
+		local Cooldown = (GameConfig.Player and GameConfig.Player.AfkCooldown) or 1.5
+		if (Now - LastToggle) < Cooldown then
+			return
+		end
+		_LastAfkToggleTimes[Player.UserId] = Now
+
 		local IsAfk = false
 		if type(Payload) == "table" then
 			IsAfk = (Payload.IsAfk == true)
@@ -765,6 +775,10 @@ function MatchService:Init()
 		end
 		PlayerStateHelper.SetAfk(Player, IsAfk)
 		print(string.format("[MatchService] Player %s (%d) đã cập nhật trạng thái AFK: %s", Player.Name, Player.UserId, tostring(IsAfk)))
+	end)
+
+	Players.PlayerRemoving:Connect(function(Player)
+		_LastAfkToggleTimes[Player.UserId] = nil
 	end)
 
 	-- Khi player mới join giữa trận
