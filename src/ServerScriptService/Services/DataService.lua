@@ -261,14 +261,23 @@ function DataService.GetData(Player)
 	return Profile and Profile.Data or nil
 end
 
+--- Kiểm tra xem Profile của player có đang hoạt động và có quyền ghi hay không
+--- @param Player Player
+--- @return boolean
+function DataService.IsProfileActive(Player)
+	local Profile = ActiveProfiles[Player]
+	return (Profile ~= nil) and (Profile:IsActive() == true)
+end
+
 --- Cộng tiền cho player
 --- @param Player Player
 --- @param Amount number
+--- @return number?
 function DataService.AddMoney(Player, Amount)
 	local Profile = ActiveProfiles[Player]
-	if not Profile then
-		warn(("[DataService] AddMoney: Không tìm thấy profile của %s"):format(Player.Name))
-		return
+	if not Profile or not Profile:IsActive() then
+		warn(("[DataService] AddMoney: Profile của %s không tồn tại hoặc không còn active"):format(Player and Player.Name or "Unknown"))
+		return nil
 	end
 	Profile.Data.Money = math.max(0, Profile.Data.Money + Amount)
 	return Profile.Data.Money
@@ -735,7 +744,7 @@ end
 --- @return boolean
 function DataService.HasProcessedPurchase(Player, PurchaseId)
 	local Profile = ActiveProfiles[Player]
-	if not Profile then return false end
+	if not Profile or not Profile:IsActive() then return false end
 	if not Profile.Data.PurchaseHistory then
 		Profile.Data.PurchaseHistory = {}
 		return false
@@ -746,9 +755,13 @@ end
 --- Ghi lại PurchaseId vào lịch sử giao dịch đã hoàn tất
 --- @param Player Player
 --- @param PurchaseId string
+--- @return boolean
 function DataService.RecordPurchase(Player, PurchaseId)
 	local Profile = ActiveProfiles[Player]
-	if not Profile then return end
+	if not Profile or not Profile:IsActive() then
+		warn(("[DataService] RecordPurchase: Profile của %s không tồn tại hoặc không còn active"):format(Player and Player.Name or "Unknown"))
+		return false
+	end
 	if not Profile.Data.PurchaseHistory then
 		Profile.Data.PurchaseHistory = {}
 	end
@@ -759,6 +772,7 @@ function DataService.RecordPurchase(Player, PurchaseId)
 			table.remove(Profile.Data.PurchaseHistory, 1)
 		end
 	end
+	return true
 end
 
 -- =========================================================

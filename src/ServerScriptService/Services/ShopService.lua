@@ -196,7 +196,7 @@ function ShopService:Start()
 	--- @return Enum.ProductPurchaseDecision
 	MarketplaceService.ProcessReceipt = function(ReceiptInfo)
 		local Player = Players:GetPlayerByUserId(ReceiptInfo.PlayerId)
-		if not Player then
+		if not Player or not Player:IsDescendantOf(Players) then
 			-- Người chơi không còn trong server, hoãn xử lý để Roblox retry khi họ quay lại
 			return Enum.ProductPurchaseDecision.NotProcessedYet
 		end
@@ -212,7 +212,7 @@ function ShopService:Start()
 
 		-- Chờ Profile của người chơi sẵn sàng
 		local Profile = DataService.WaitForProfile(Player)
-		if not Profile then
+		if not Profile or not Profile:IsActive() then
 			return Enum.ProductPurchaseDecision.NotProcessedYet
 		end
 
@@ -227,11 +227,25 @@ function ShopService:Start()
 
 		-- Trao thưởng tiền tệ vào DataStore và ghi lịch sử giao dịch được bảo vệ bằng pcall
 		local Success, Error = pcall(function()
-			local NewMoney = DataService.AddMoney(Player, Package.CurrencyAmount)
-			DataService.RecordPurchase(Player, PurchaseId)
+			-- Kiểm tra kép: đảm bảo Player vẫn còn trong game và Profile vẫn active ngay trước khi ghi
+			if not Player:IsDescendantOf(Players) or not DataService.IsProfileActive(Player) then
+				error("Player disconnected or profile is no longer active")
+			end
 
-			-- Đồng bộ số tiền mới về Client
-			UpdateMoneyEv:FireClient(Player, NewMoney)
+			local NewMoney = DataService.AddMoney(Player, Package.CurrencyAmount)
+			if NewMoney == nil then
+				error("DataService.AddMoney failed (returned nil)")
+			end
+
+			local Recorded = DataService.RecordPurchase(Player, PurchaseId)
+			if Recorded ~= true then
+				error("DataService.RecordPurchase failed (returned false)")
+			end
+
+			-- Đồng bộ số tiền mới về Client nếu Player còn trong game
+			if Player:IsDescendantOf(Players) then
+				UpdateMoneyEv:FireClient(Player, NewMoney)
+			end
 
 			print(("[ShopService] ProcessReceipt thành công: %s mua gói %s (+%d Money, PurchaseId: %s)"):format(
 				Player.Name, Package.DisplayName, Package.CurrencyAmount, PurchaseId

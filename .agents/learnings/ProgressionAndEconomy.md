@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Objective Engine 2.0, Hiệu ứng Mở rương, Phần thưởng Đa hình, Nhiệm vụ Lặp Vô hạn, Mutex In-Flight Lock và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 04-09-2026
+> Cập nhật lần cuối: 05-09-2026
 
 ---
 
@@ -55,7 +55,7 @@
 - **Chi tiết:** Triển khai hệ thống bán vật phẩm/tiền tệ bằng Robux (Developer Products) tuân thủ tiêu chuẩn an toàn và tối ưu hóa doanh thu toàn cầu của Roblox:
   - *Cấu hình tập trung:* Khai báo toàn bộ gói trong `ProductConfig.lua` (`ProductId`, `DisplayName`, `RobuxPrice`, `CurrencyAmount`), cung cấp helper `GetPackageByProductId` tra cứu tức thì.
   - *Idempotency chống cộng trùng tiền:* Lưu mảng `PurchaseHistory` trong Profile DataStore. Khi `MarketplaceService.ProcessReceipt` được gọi, kiểm tra `DataService.HasProcessedPurchase` trước khi cộng tiền để chống lỗi mạng gửi lặp biên lai.
-  - *Kiểm soát nạp dữ liệu:* Chờ Profile sẵn sàng qua `DataService.WaitForProfile(Player)`. Nếu người chơi rời server hoặc Profile chưa tải xong, trả về `NotProcessedYet` để Roblox tự động retry khi người chơi quay lại.
+  - *Kiểm soát nạp dữ liệu & Chốt chặn 2 lớp (Double Guard):* Chờ Profile sẵn sàng qua `DataService.WaitForProfile(Player)`. Kiểm tra nghiêm ngặt `Profile:IsActive() == true` và `DataService.IsProfileActive(Player)` cả trước và trong quá trình ghi dữ liệu. Nếu người chơi rời server hoặc Profile chưa tải/đã release, trả về `NotProcessedYet` để Roblox tự động retry khi người chơi quay lại.
   - *Dynamic Regional Pricing & Cache Engine:* Hỗ trợ tính năng Managed Pricing (giá theo khu vực). Client áp dụng cơ chế *Fallback-First* (hiển thị ngay giá config $0\text{ms}$) kết hợp *In-Memory Cache* (`_ProductInfoCache`) và chạy ngầm `MarketplaceService:GetProductInfo` để lấy `PriceInRobux` thực tế, cập nhật in-place mà không gây nghẽn mạng hay dính Rate-limit HTTP 429.
 - **File liên quan:** [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
 
@@ -240,10 +240,12 @@
   2. Ép kiểu nghiêm ngặt `typeof(Value) == "number"` và loại trừ `NaN`/`math.huge` ở cả tầng Remote lẫn `DataService.SetSetting`.
 - **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ProfileService.lua](../../src/ServerScriptService/Lib/ProfileService.lua)
 
-### 18. Lỗi Runtime Không Xác Định Trong `ProcessReceipt` Nuốt Mất Robux Của Người Chơi
-- **Vấn đề:** Trong callback `MarketplaceService.ProcessReceipt`, nếu các hàm trao thưởng (`DataService.AddMoney`) hoặc ghi lịch sử phát sinh ngoại lệ không mong muốn, toàn bộ hàm bị sập unhandled error. Roblox có thể hiểu nhầm trạng thái giao dịch hoặc không xử lý lại đúng cách, dẫn đến việc người chơi bị trừ Robux nhưng không nhận được tiền trong game.
-- **Giải pháp:** Bọc toàn bộ các thao tác cộng tiền, ghi biên lai và đồng bộ client bên trong khối `pcall`. Nếu `pcall` trả về `false`, ghi log cảnh báo và trả về `Enum.ProductPurchaseDecision.NotProcessedYet` để Roblox tự động thử lại (Retry Mechanism). Chỉ trả về `PurchaseGranted` khi toàn bộ nghiệp vụ thực thi thành công mỹ mãn.
-- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+### 18. Nuốt Tiền Robux do Race Condition giữa ProcessReceipt và PlayerRemoving Khi Profile Bị Release Âm Thầm
+- **Vấn đề:** Khi người chơi nạp Robux mua Coin rồi disconnect đột ngột, `OnPlayerRemoving` gọi `Profile:Release()` và xóa `ActiveProfiles[Player]`. Trước đây, `DataService.AddMoney` và `RecordPurchase` chỉ log `warn` rồi âm thầm return `nil` mà không throw error. Kết quả: `pcall` trong `ProcessReceipt` vẫn trả về `Success = true`, báo `PurchaseGranted` cho Roblox trong khi người chơi nhận 0 Coin. Ngoài ra, việc ghi vào `Profile.Data` khi `Profile:IsActive() == false` sẽ bị ProfileService âm thầm bỏ qua.
+- **Giải pháp:** Thiết lập mô hình Chốt chặn 2 lớp (Double Guard):
+  1. *Tầng DataService:* Cung cấp `DataService.IsProfileActive(Player)`. Kiểm tra `Profile and Profile:IsActive()` trong `AddMoney`, `RecordPurchase`, `HasProcessedPurchase`.
+  2. *Tầng ShopService:* Kiểm tra `Player:IsDescendantOf(Players)` và `Profile:IsActive()` trước khi nhận biên lai. Trong `pcall`, kiểm tra kép `IsProfileActive`, nếu `AddMoney` trả về `nil` hoặc `RecordPurchase ~= true`, lập tức throw `error()` để `pcall` bắt lỗi và trả về `NotProcessedYet` cho Roblox retry.
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ProfileService.lua](../../src/ServerScriptService/Lib/ProfileService.lua)
 
 ### 19. Khử Trùng Lặp Thuật Toán Weighted Random & Triệt Tiêu Phụ Thuộc Ngược Giữa ReplicatedStorage và ServerScriptService
 - **Vấn đề:** 
