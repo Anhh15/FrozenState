@@ -24,6 +24,7 @@ local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
 local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
+local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
 
 local ShopService  = nil
 local QuestService = nil
@@ -39,7 +40,6 @@ local QuestService = nil
 -- =========================================================
 
 local _firstBloodClaimed = false
-local _AttackSessions = {} -- { [AttackerUserId: number] = { SwingStart = number, HitTargets = { [TargetUserId: number] = boolean } } }
 
 -- Cache IceBlock theo UserId — để RemoveIceBlock chạy O(1) thay vì scan workspace
 -- { [UserId: number] = BlockModel: Model }
@@ -477,66 +477,104 @@ end
 -- =========================================================
 
 local function HandleToolHit(Attacker, Target)
-	-- Validate: Target phải là Player
+	-- 1. Validate người chơi
 	if not Target or not Target:IsA("Player") then return end
 	if Target == Attacker then return end
 
-	-- Match phải đang active
-	if not SessionService.IsMatchActive() then return end
+	-- 2. Validate Phase trận đấu (Chỉ cho phép đánh trong phase InGame và Match đang Active)
+	if SessionService.GetCurrentPhase() ~= "InGame" or not SessionService.IsMatchActive() then
+		return
+	end
 
-	-- Attacker phải ở trạng thái Normal
+	-- 3. Validate Trạng thái Attacker
 	if SessionService.GetState(Attacker) ~= "Normal" then return end
 
 	local AttackerChar = Attacker.Character
 	local TargetChar   = Target.Character
 	if not AttackerChar or not TargetChar then return end
 
-	-- 1. Xác thực Attacker đang cầm vũ khí trên tay (Tool Equipped check)
+	-- 4. Validate Sống/Chết (Humanoid.Health > 0 cho cả 2 bên)
+	local AttackerHumanoid = AttackerChar:FindFirstChildOfClass("Humanoid")
+	local TargetHumanoid   = TargetChar:FindFirstChildOfClass("Humanoid")
+	if not AttackerHumanoid or AttackerHumanoid.Health <= 0 then return end
+	if not TargetHumanoid or TargetHumanoid.Health <= 0 then return end
+
+	-- 5. Xác thực Attacker đang cầm vũ khí Icicle trên tay (Tool Equipped check)
 	local Tool = AttackerChar:FindFirstChild("Icicle") or AttackerChar:FindFirstChildOfClass("Tool")
 	if not Tool then return end
 
-	-- 2. Server Cooldown & AoE Swing Window Validation
-	local Now = os.clock()
-	local DebounceWindow = (GameConfig.Tool and GameConfig.Tool.HitDebounceWindow) or 0.8
-	local SwingWindow    = (GameConfig.Tool and GameConfig.Tool.HitSwingWindow) or 0.4
-	local Session        = _AttackSessions[Attacker.UserId]
-
-	if not Session or (Now - Session.SwingStart) >= DebounceWindow then
-		-- Khởi tạo phiên vung kiếm mới
-		_AttackSessions[Attacker.UserId] = {
-			SwingStart = Now,
-			HitTargets = { [Target.UserId] = true },
-		}
-	elseif (Now - Session.SwingStart) <= SwingWindow then
-		-- Trong cùng một cú vung kiếm: hỗ trợ chém lan (AoE) nhưng chặn đánh lặp lại cùng một người
-		if Session.HitTargets[Target.UserId] then
-			return
-		end
-		Session.HitTargets[Target.UserId] = true
-	else
-		-- Đòn đánh gửi đến sau khi cửa sổ vung kết thúc nhưng chưa hết thời gian hồi chiêu
+	-- 6. Xác thực Stateful Attack Session (Chặn bypass swing / fake hit)
+	local Session = IcicleService.GetAttackSession(Attacker)
+	if not Session or not Session.SwingStartTime then
 		return
 	end
 
-	-- 3. Server-side distance validation (chống lag exploit)
+	-- 7. Xác thực cửa sổ thời gian vung kiếm (Timing Window Validation)
+	local Now = os.clock()
+	local Elapsed = Now - Session.SwingStartTime
+	local SkinId = Session.SkinId or "Default"
+	local HitStartTime = AnimationConfig.GetHitStartTime(SkinId)
+	local HitEndTime   = AnimationConfig.GetHitEndTime(SkinId)
+	local LatencyTol   = (GameConfig.Tool and GameConfig.Tool.HitWindowLatencyTolerance) or 0.15
+
+	local MinDelay = math.max(0, HitStartTime - LatencyTol)
+	local MaxDelay = HitEndTime + LatencyTol
+
+	if Elapsed < MinDelay or Elapsed > MaxDelay then
+		return
+	end
+
+	-- Chặn đánh lặp lại cùng một mục tiêu trong cùng một cú vung kiếm
+	if Session.HitTargets and Session.HitTargets[Target.UserId] then
+		return
+	end
+
+	-- 8. Xác thực Hướng nhìn LookVector (Chống 360° Kill-Aura & Quay lưng chém)
 	local AttackerHRP = AttackerChar:FindFirstChild("HumanoidRootPart")
 	local TargetHRP   = TargetChar:FindFirstChild("HumanoidRootPart")
 	if not AttackerHRP or not TargetHRP then return end
 
+	-- Chiếu vector lên mặt phẳng ngang XZ để không bị sai lệch khi mục tiêu nhảy lên hoặc đứng dốc
+	local OffsetXZ = Vector3.new(TargetHRP.Position.X - AttackerHRP.Position.X, 0, TargetHRP.Position.Z - AttackerHRP.Position.Z)
+	local FacingXZ = Vector3.new(AttackerHRP.CFrame.LookVector.X, 0, AttackerHRP.CFrame.LookVector.Z)
+	local MinDistThreshold = (GameConfig.Tool and GameConfig.Tool.MinAttackDistanceThreshold) or 0.001
+
+	if OffsetXZ.Magnitude >= MinDistThreshold and FacingXZ.Magnitude >= MinDistThreshold then
+		local DotProduct = OffsetXZ.Unit:Dot(FacingXZ.Unit)
+		local MinDot = (GameConfig.Tool and GameConfig.Tool.MinDotProduct) or 0.5
+		if DotProduct < MinDot then
+			return
+		end
+	end
+
+	-- 9. Xác thực Khoảng cách (Server-side distance validation)
 	local Distance = (AttackerHRP.Position - TargetHRP.Position).Magnitude
 	local Tolerance = (GameConfig.Tool and GameConfig.Tool.HitLagTolerance) or 1.5
-	if Distance > GameConfig.Tool.HitboxRange * Tolerance then return end
+	local HitboxRange = (GameConfig.Tool and GameConfig.Tool.HitboxRange) or 8
+	if Distance > (HitboxRange * Tolerance) then return end
 
-	-- 4. Raycast Line-of-Sight validation (chống đánh xuyên tường / địa hình)
+	-- 10. Raycast Line-of-Sight validation (Chống chém xuyên tường / địa hình)
 	local RayParams = RaycastParams.new()
 	RayParams.FilterType = Enum.RaycastFilterType.Exclude
-	RayParams.FilterDescendantsInstances = { AttackerChar, TargetChar }
+	-- Lọc toàn bộ nhân vật người chơi trong game để không bị chặn nhầm người thứ 3
+	local FilterList = {}
+	for _, P in ipairs(Players:GetPlayers()) do
+		if P.Character then
+			table.insert(FilterList, P.Character)
+		end
+	end
+	RayParams.FilterDescendantsInstances = FilterList
+
 	local RayDirection = TargetHRP.Position - AttackerHRP.Position
 	local RayResult = workspace:Raycast(AttackerHRP.Position, RayDirection, RayParams)
 	if RayResult and RayResult.Instance and RayResult.Instance.CanCollide then
 		return
 	end
 
+	-- Đăng ký Target đã bị hit trong cú swing này
+	IcicleService.RegisterHitTarget(Attacker, Target)
+
+	-- 11. Thực hiện logic Freeze / Thaw theo mode
 	local ModeKey = SessionService.GetCurrentModeKey()
 
 	if GameModeHelper.IsTeamBased(ModeKey) then
@@ -580,9 +618,8 @@ function FreezeService:Init()
 
 	OnToolHitEvent.OnServerEvent:Connect(HandleToolHit)
 
-	-- Dọn cache và IceBlock khi player rời game (tránh memory leak & part orphan)
+	-- Dọn dẹp IceBlock khi player rời game (tránh memory leak & part orphan)
 	Players.PlayerRemoving:Connect(function(Player)
-		_AttackSessions[Player.UserId] = nil
 		RemoveIceBlock(Player)
 	end)
 

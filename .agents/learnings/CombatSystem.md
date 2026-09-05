@@ -1,6 +1,6 @@
 # CombatSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống chiến đấu (Icicle Tool, Hitbox Spatial Query, Freeze/Thaw mechanics, IceBlock Model và Tags CollectionService).
-> Cập nhật lần cuối: 04-09-2026
+> Cập nhật lần cuối: 05-09-2026
 
 ---
 
@@ -38,13 +38,17 @@
 - **Highlight khối băng xuyên vật thể:** Khi mục tiêu bị đóng băng (`State == "Frozen"`), Client gán `Highlight.Adornee = HighlightHelper` (Part nằm trong Model khối băng) với `DepthMode = Enum.HighlightDepthMode.AlwaysOnTop` để người chơi định vị rõ vị trí đồng minh/kẻ địch bị đóng băng xuyên qua các bức tường. Khi giải cứu (`Thaw`), `Adornee` được trả lại cho `Character`.
 - **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
 
-### 7. Mô hình Xác thực Đòn đánh Đa tầng Server Authority (Server-Assisted Hitreg)
-- **Chi tiết:** Client xử lý Spatial Query nhận diện va chạm cục bộ để giữ gameplay feel mượt mà, nhưng Server giữ quyền phán quyết tối cao (`Server Authority`) qua 4 lớp xác thực nghiêm ngặt khi nhận remote `OnToolHit`:
-  1. *Tool State:* Xác minh nhân vật Attacker đang thực sự cầm vũ khí trên tay (`Character:FindFirstChild("Icicle") or Character:FindFirstChildOfClass("Tool")`).
-  2. *Server Attack Session & AoE Window:* Quản lý phiên đánh `_AttackSessions[UserId] = { SwingStart, HitTargets }`. Trong cửa sổ `GameConfig.Tool.HitSwingWindow` (0.4s), cho phép trúng nhiều mục tiêu phân biệt (AoE) nhưng chặn đánh lặp lại cùng một người (`HitTargets[TargetId]`). Đòn đánh của phiên mới phải cách phiên cũ tối thiểu `GameConfig.Tool.HitDebounceWindow` (0.8s).
-  3. *Distance & Latency Tolerance:* Tính khoảng cách $D \le \text{HitboxRange} \times \text{HitLagTolerance}$.
-  4. *Raycast Line-of-Sight (LOS):* Bắn tia Raycast loại trừ 2 nhân vật (`Enum.RaycastFilterType.Exclude`). Nếu va chạm vật thể solid (`CanCollide == true`), lập tức từ chối đòn đánh nhằm triệt tiêu hoàn toàn wallhack.
-- **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
+### 7. Mô hình Stateful Attack Verification & Xác thực Đòn đánh Đa tầng (Server Authority)
+- **Chi tiết:** Triệt tiêu hoàn toàn fake-hit và bypass swing bằng quy trình xác thực trạng thái 2 pha có phân quyền rõ ràng giữa vũ khí và luật chơi:
+  1. *Khởi tạo Phiên đánh (IcicleService):* Client gửi `OnToolSwing` ngay khi click vung kiếm. Server kiểm tra Phase `InGame`, State `Normal`, `Health > 0`, Tool Icicle trên tay và Cooldown (`GameConfig.Tool.IcicleCooldown`). Nếu hợp lệ, tạo `_AttackSessions[UserId] = { SwingStartTime = Now, SkinId = SkinId, HitTargets = {} }` và broadcast SFX.
+  2. *Xác thực Đòn đánh (FreezeService):* Khi nhận `OnToolHit`, Server bắt buộc tra cứu `AttackSession` từ `IcicleService` (từ chối ngay nếu thiếu session).
+  3. *Timing Window:* Thời gian trôi qua $\Delta t = \text{Now} - \text{SwingStartTime}$ phải nằm trong khoảng $[\text{HitStartTime} - \text{Tol}, \text{HitEndTime} + \text{Tol}]$ (đọc từ `AnimationConfig` theo SkinId và `HitWindowLatencyTolerance`).
+  4. *Góc nhìn LookVector (XZ Projection):* Chiếu vector hướng nhìn và vector tới mục tiêu lên mặt phẳng XZ để loại bỏ sai số độ cao khi nhảy/dốc:
+     $$\text{Dot} = \vec{U}_{\text{Facing}} \cdot \vec{U}_{\text{Target}} \ge \text{GameConfig.Tool.MinDotProduct} \ (0.5)$$
+     Triệt tiêu hoàn toàn hành vi quay lưng chém hoặc 360° Kill-Aura.
+  5. *Khoảng cách & LoS:* Kiểm tra $D \le \text{HitboxRange} \times \text{HitLagTolerance}$ và Raycast LoS loại trừ toàn bộ nhân vật người chơi trong trận để tránh bị chặn nhầm bởi người thứ ba.
+  6. *Alive & Phase Check:* Bắt buộc cả hai bên có `Humanoid.Health > 0`, trận đấu đang `InGame` (thông qua `SessionService.GetCurrentPhase()`).
+- **File liên quan:** [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
 
 ### 8. Bảo Mật Server Authority & Cô Lập Mã Nguồn Quản Trị / Backend
 - **Chi tiết:** Mọi tệp chứa cấu hình quản trị viên, ID người dùng Admin (`AdminConfig.lua`) và thư viện DataStore can thiệp dữ liệu sâu (`ProfileService.lua`) tuyệt đối không được đặt trong `ReplicatedStorage`.
@@ -100,3 +104,9 @@
 - **Vấn đề:** Trong Luau/Lua 5.1, khai báo `local function StopHitboxPoll()` nằm bên dưới sự kiện `Tool.Unequipped:Connect` khiến handler tra cứu biến toàn cục `StopHitboxPoll` (`nil`). Khi người chơi cất vũ khí hoặc bị đóng băng/hạ gục giữa lúc vung đòn, game văng exception `attempt to call a nil value`, làm chết đứng luồng dọn dẹp animation.
 - **Giải pháp:** Bắt buộc đặt toàn bộ định nghĩa hàm tiện ích hoặc forward declaration (`local StopHitboxPoll`) lên trước các kết nối sự kiện lắng nghe vòng đời Tool.
 - **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
+
+### 9. Lỗ hổng 360° Kill-Aura & Bypass Vung Kiếm trong Combat (`CRIT-04`)
+- **Vấn đề:** `FreezeService` tiếp nhận `OnToolHit` độc lập và tự khởi tạo `_AttackSessions` bằng `os.clock()` khi nhận hit mà không cần biết Client có gọi `OnToolSwing` hay không. Đồng thời Server chỉ kiểm tra khoảng cách Euclidean 3D đơn thuần ($D \le 12\text{ studs}$), bỏ qua hoàn toàn góc nhìn và lượng máu `Health > 0`, cho phép kẻ gian quay lưng chém 360 độ hoặc chém từ cõi chết trước giờ đấu.
+- **Giải pháp:** Thiết lập chuỗi xác thực Stateful Attack: `IcicleService` bắt buộc tiếp nhận `OnToolSwing` trước để mở `AttackSession` trong RAM Server. `FreezeService` tra cứu session, kiểm tra cửa sổ thời gian trôi qua $\Delta t \in [\text{HitStartTime} - \text{Tol}, \text{HitEndTime} + \text{Tol}]$, chiếu vector hướng nhìn lên mặt phẳng ngang XZ kiểm tra $\text{Dot} \ge 0.5$ ($\pm 60^\circ$ phía trước), kiểm tra `Humanoid.Health > 0` cả hai bên và lọc sạch toàn bộ Character người chơi khỏi Raycast LoS.
+- **File liên quan:** [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
+

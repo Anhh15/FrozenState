@@ -370,7 +370,8 @@ end
 
 --- Intermission: đếm ngược, reset về max nếu không đủ người
 local function RunIntermission()
-	_currentPhase     = "Intermission"
+	_currentPhase = "Intermission"
+	SessionService.SetCurrentPhase("Intermission")
 	local Duration    = GameConfig.Phase.IntermissionDuration
 	local TimeLeft    = Duration
 
@@ -393,6 +394,7 @@ end
 --- @return boolean -- Trả về true nếu setup thành công, false nếu không đủ người sống
 local function RunSetup()
 	_currentPhase = "Setup"
+	SessionService.SetCurrentPhase("Setup")
 	_earlyResult  = nil
 
 	-- Reset session
@@ -474,6 +476,7 @@ end
 --- Ready: teleport + khóa di chuyển
 local function RunReady()
 	_currentPhase = "Ready"
+	SessionService.SetCurrentPhase("Ready")
 	local Duration = GameConfig.Phase.ReadyDuration
 	local ModeKey  = SessionService.GetCurrentModeKey()
 
@@ -544,6 +547,7 @@ end
 --- InGame: tối đa InGameDuration giây, có thể kết thúc sớm
 local function RunInGame()
 	_currentPhase    = "InGame"
+	SessionService.SetCurrentPhase("InGame")
 
 	-- Nếu đã có kết quả sớm từ Setup/Ready (ví dụ đối thủ out/reset sạch)
 	if _earlyResult then
@@ -590,6 +594,7 @@ end
 --- GameOver: thu tool, phát thưởng, đếm ngược, teleport lobby
 local function RunGameOver(Result)
 	_currentPhase  = "GameOver"
+	SessionService.SetCurrentPhase("GameOver")
 	local Duration = GameConfig.Phase.GameOverDuration
 
 	-- Thu hồi tool và kết thúc trận

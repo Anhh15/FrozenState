@@ -15,7 +15,8 @@ local GameConfig        = require(ReplicatedStorage.Shared.Config.GameConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 
-local _lastSwingTimes   = {} -- Cache cooldown chống spam remote: { [UserId] = os.clock() }
+local _LastSwingTimes = {} -- Cache cooldown chống spam remote: { [UserId: number] = number }
+local _AttackSessions  = {} -- Stateful attack sessions: { [UserId: number] = { SwingStartTime = number, SkinId = string, HitTargets = table } }
 
 -- =========================================================
 -- PRIVATE: Tool Creation
@@ -131,6 +132,32 @@ function IcicleService.RemoveToolFromAll()
 	end
 end
 
+--- Lấy phiên tấn công hiện tại của Player
+--- @param Player Player
+--- @return table?
+function IcicleService.GetAttackSession(Player)
+	if not Player then return nil end
+	return _AttackSessions[Player.UserId]
+end
+
+--- Ghi nhận mục tiêu đã trúng đòn trong phiên tấn công hiện tại
+--- @param Attacker Player
+--- @param Target Player
+function IcicleService.RegisterHitTarget(Attacker, Target)
+	if not Attacker or not Target then return end
+	local Session = _AttackSessions[Attacker.UserId]
+	if Session and Session.HitTargets then
+		Session.HitTargets[Target.UserId] = true
+	end
+end
+
+--- Hủy bỏ phiên tấn công hiện tại của Player
+--- @param Player Player
+function IcicleService.ClearAttackSession(Player)
+	if not Player then return end
+	_AttackSessions[Player.UserId] = nil
+end
+
 -- =========================================================
 -- KHỞI ĐỘNG SERVICE
 -- =========================================================
@@ -139,7 +166,7 @@ function IcicleService:Init()
 	local OnToolSwingEvent  = RemoteDefinitions.GetEvent("OnToolSwing")
 	local PlaySwingSFXEvent = RemoteDefinitions.GetEvent("PlaySwingSFX")
 
-	-- Lắng nghe tín hiệu vung kiếm từ client để broadcast 3D Spatial SFX
+	-- Lắng nghe tín hiệu vung kiếm từ client để broadcast 3D Spatial SFX và mở Stateful AttackSession
 	OnToolSwingEvent.OnServerEvent:Connect(function(Player)
 		if not Player or not Player:IsA("Player") then return end
 
@@ -149,21 +176,41 @@ function IcicleService:Init()
 		-- Kiểm tra người chơi có đang trong trận đấu không
 		if not PlayerStateHelper.IsInMatch(Player) then return end
 
+		-- Chỉ cho phép khi trận đấu đang InGame và match active
+		if SessionService.GetCurrentPhase() ~= "InGame" or not SessionService.IsMatchActive() then
+			return
+		end
+
 		-- Chỉ cho phép phát âm thanh khi ở trạng thái Normal (không bị đóng băng hay chết)
 		if SessionService.GetState(Player) ~= "Normal" then return end
 
+		-- Kiểm tra Humanoid còn sống
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+		if not Humanoid or Humanoid.Health <= 0 then return end
+
+		-- Xác thực Attacker đang cầm vũ khí Icicle trên tay
+		local Tool = Character:FindFirstChild("Icicle") or Character:FindFirstChildOfClass("Tool")
+		if not Tool then return end
+
 		-- Kiểm tra Cooldown chống spam mạng
 		local Now = os.clock()
-		local LastSwing = _lastSwingTimes[Player.UserId] or 0
-		local Cooldown = GameConfig.Tool.IcicleCooldown or 0.5
+		local LastSwing = _LastSwingTimes[Player.UserId] or 0
+		local Cooldown = GameConfig.Tool.IcicleCooldown or 1
 
 		if (Now - LastSwing) < (Cooldown - 0.05) then
 			return
 		end
-		_lastSwingTimes[Player.UserId] = Now
+		_LastSwingTimes[Player.UserId] = Now
 
 		-- Lấy SkinId đang trang bị
 		local SkinId = PlayerStateHelper.GetEquippedIcicleSkinId(Player) or "Default"
+
+		-- Khởi tạo phiên tấn công có trạng thái (Stateful Attack Session)
+		_AttackSessions[Player.UserId] = {
+			SwingStartTime = Now,
+			SkinId         = SkinId,
+			HitTargets     = {},
+		}
 
 		-- Broadcast đến tất cả Client khác để phát 3D Spatial Sound
 		PlaySwingSFXEvent:FireAllClients({
@@ -173,9 +220,10 @@ function IcicleService:Init()
 		})
 	end)
 
-	-- Dọn dẹp cache cooldown khi player thoát game
+	-- Dọn dẹp cache cooldown và attack session khi player thoát game
 	Players.PlayerRemoving:Connect(function(Player)
-		_lastSwingTimes[Player.UserId] = nil
+		_LastSwingTimes[Player.UserId] = nil
+		_AttackSessions[Player.UserId] = nil
 	end)
 
 	print("[IcicleService] Đã khởi tạo.")

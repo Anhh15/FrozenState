@@ -27,11 +27,14 @@ local GameConfig = {
 	-- TOOL: ICICLE
 	-- =========================================================
 	Tool = {
-		IcicleCooldown    = 1,    -- Thời gian hồi chiêu giữa 2 lần swing (giây)
-		HitboxRange       = 8,   -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
-		HitLagTolerance   = 1.5,  -- Hệ số bù trừ độ trễ mạng cho khoảng cách
-		HitDebounceWindow = 0.8,  -- Khoảng cách tối thiểu giữa 2 lần nhận hit trên server (giây)
-		HitSwingWindow    = 0.4,  -- Cửa sổ thời gian tối đa cho 1 cú vung (giây, cho phép chém lan AoE nhiều mục tiêu)
+		IcicleCooldown             = 1,    -- Thời gian hồi chiêu giữa 2 lần swing (giây)
+		HitboxRange                = 8,    -- Tolerance server-side validation (studs, ~= chiều dài Hitbox trong Studio)
+		HitLagTolerance            = 1.5,  -- Hệ số bù trừ độ trễ mạng cho khoảng cách
+		HitDebounceWindow          = 0.8,  -- Khoảng cách tối thiểu giữa 2 lần nhận hit trên server (giây)
+		HitSwingWindow             = 0.4,  -- Cửa sổ thời gian tối đa cho 1 cú vung (giây, cho phép chém lan AoE nhiều mục tiêu)
+		MinDotProduct              = 0.5,  -- Ngưỡng cosin góc nhìn tối thiểu phía trước mặt (cos 60 độ = 0.5, hình nón 120 độ)
+		HitWindowLatencyTolerance  = 0.15, -- Dung sai độ trễ mạng (giây) cho cửa sổ vung kiếm
+		MinAttackDistanceThreshold = 0.001, -- Ngưỡng khoảng cách tối thiểu tránh chia cho 0 khi tính Vector Unit
 	},
 
 	-- =========================================================

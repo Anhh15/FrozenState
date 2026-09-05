@@ -19,6 +19,7 @@ local _teamScores     = { Team1 = 0, Team2 = 0 }  -- { Team1 = number, Team2 = n
 local _isMatchActive  = false
 local _isFrozenState  = false
 local _currentModeKey = "Normal"  -- key của GameModeConfig hiện tại
+local _CurrentPhase   = "Intermission"
 
 -- BindableEvent: fires khi một đội bị đóng băng toàn bộ
 -- Payload: winTeam (string "Team1" | "Team2")
@@ -58,6 +59,14 @@ local SessionService = {}
 SessionService.MatchEndSignal = MatchEndSignal
 
 -- ── Match State ──────────────────────────────────────────
+
+function SessionService.GetCurrentPhase()
+	return _CurrentPhase
+end
+
+function SessionService.SetCurrentPhase(Phase)
+	_CurrentPhase = Phase
+end
 
 function SessionService.IsMatchActive()
 	return _isMatchActive

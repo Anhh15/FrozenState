@@ -217,6 +217,9 @@ Tool.Activated:Connect(function()
 	local Track = PlaySwingAnimation(IcicleSkinId)
 
 	if Track then
+		-- Gửi tín hiệu Swing lên Server ngay khi bắt đầu vung để mở Stateful Attack Session và broadcast SFX
+		OnToolSwing:FireServer()
+
 		local HitPlayers = {}
 
 		-- Lấy timing cửa sổ Hitbox từ AnimationConfig (per skin)
@@ -226,7 +229,6 @@ Tool.Activated:Connect(function()
 		task.delay(HitStartTime, function()
 			if _CurrentSwingTrack ~= Track then return end
 			PlaySwingAudio(IcicleSkinId)
-			OnToolSwing:FireServer()
 			StopHitboxPoll()
 			StartHitboxPoll(HitPlayers)
 		end)
