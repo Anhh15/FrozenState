@@ -250,7 +250,10 @@ end
 
 function GameOverAnnouncementController:Init()
 	ForceHide()
+	print("[GameOverAnnouncementController] Initialized.")
+end
 
+function GameOverAnnouncementController:Start()
 	-- Khôi phục và dọn dẹp khi nhân vật respawn
 	LocalPlayer.CharacterAdded:Connect(function()
 		ForceHide()
@@ -275,7 +278,7 @@ function GameOverAnnouncementController:Init()
 		end
 	end)
 
-	print("[GameOverAnnouncementController] Đã khởi tạo thành công.")
+	print("[GameOverAnnouncementController] Started.")
 end
 
 return GameOverAnnouncementController

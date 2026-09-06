@@ -39,31 +39,9 @@ local _ActiveTweens = {}
 local _HasUserModifiedSettings = false
 local _IsSettingsApplied = false
 
--- Lazy-require MenuController để điều phối mở/đóng cửa sổ
+-- References đến Controllers liên quan (được nạp trong :Start())
 local _MenuController = nil
-local function GetMenuController()
-	if not _MenuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_MenuController = require(Module)
-		end
-	end
-	return _MenuController
-end
-
--- Lazy-require PlayerDataController để lấy Settings từ DataStore
 local _PlayerDataController = nil
-local function GetPlayerDataController()
-	if not _PlayerDataController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("PlayerDataController")
-		if Module then
-			_PlayerDataController = require(Module)
-		end
-	end
-	return _PlayerDataController
-end
 
 -- =========================================================
 -- PRIVATE HELPERS: TWEEN & TOGGLE
@@ -239,8 +217,7 @@ local function OpenSetting()
 
 	-- Nếu người chơi chưa từng tự chỉnh và có dữ liệu settings từ DataStore
 	if not _HasUserModifiedSettings then
-		local PlayerDataCtrl = GetPlayerDataController()
-		local Data = PlayerDataCtrl and PlayerDataCtrl.GetData()
+		local Data = _PlayerDataController and _PlayerDataController.GetData()
 		if Data and Data.Settings then
 			ApplyLoadedSettings(Data.Settings)
 		end
@@ -320,34 +297,13 @@ function SettingController:Init()
 	_SfxSlider    = SetupSliderRow(SfxRow,    "SFX",    "SFXVolume")
 	_UiSlider     = SetupSliderRow(UiRow,     "UI",     "UIVolume")
 
-	-- 3. Nạp Settings từ DataStore thông qua OnDataLoaded Signal
-	local PlayerDataCtrl = GetPlayerDataController()
-	if PlayerDataCtrl and PlayerDataCtrl.OnDataLoaded then
-		PlayerDataCtrl.OnDataLoaded(function(Data)
-			if Data and Data.Settings and not _HasUserModifiedSettings then
-				ApplyLoadedSettings(Data.Settings)
-			end
-		end)
-	end
-
-	-- 4. Kết nối nút đóng nếu có
+	-- 3. Kết nối nút đóng nếu có
 	if CloseButton and CloseButton:IsA("GuiButton") then
 		CloseButton.MouseButton1Click:Connect(function()
-			local MenuCtrl = GetMenuController()
-			if MenuCtrl then
-				MenuCtrl.CloseCurrentTab()
+			if _MenuController then
+				_MenuController.CloseCurrentTab()
 			end
 		end)
-	end
-
-	-- Đăng ký tab Setting với MenuController
-	local MenuCtrl = GetMenuController()
-	if MenuCtrl then
-		MenuCtrl.RegisterTab("Setting", {
-			Open  = OpenSetting,
-			Close = CloseSetting,
-			Frame = SettingFrame,
-		})
 	end
 
 	print("[SettingController] Đã khởi tạo đầy đủ Gameplay & Sound Sections.")
@@ -355,11 +311,32 @@ end
 
 function SettingController:Start()
 	local Controllers = script.Parent
+
 	local MenuModule = Controllers:FindFirstChild("MenuController")
-	if MenuModule then _MenuController = require(MenuModule) end
+	if MenuModule then
+		_MenuController = require(MenuModule)
+		if SettingFrame then
+			_MenuController.RegisterTab("Setting", {
+				Open  = OpenSetting,
+				Close = CloseSetting,
+				Frame = SettingFrame,
+			})
+		end
+	end
 
 	local PlayerDataModule = Controllers:FindFirstChild("PlayerDataController")
-	if PlayerDataModule then _PlayerDataController = require(PlayerDataModule) end
+	if PlayerDataModule then
+		_PlayerDataController = require(PlayerDataModule)
+		if _PlayerDataController.OnDataLoaded then
+			_PlayerDataController.OnDataLoaded(function(Data)
+				if Data and Data.Settings and not _HasUserModifiedSettings then
+					ApplyLoadedSettings(Data.Settings)
+				end
+			end)
+		end
+	end
+
+	print("[SettingController] Started.")
 end
 
 return SettingController

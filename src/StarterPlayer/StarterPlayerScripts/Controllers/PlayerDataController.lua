@@ -22,18 +22,8 @@ local _isRefreshing      = false                    -- Cờ chống duplicate re
 local _dataLoadedBindable = Instance.new("BindableEvent") -- Signal bắn khi data load xong/refresh
 
 -- =========================================================
--- Lazy-require NavigationController để cập nhật GUI hiển thị tiền
-local _navigationController = nil
-local function GetNavigationController()
-	if not _navigationController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("NavigationController")
-		if Module then
-			_navigationController = require(Module)
-		end
-	end
-	return _navigationController
-end
+-- Tham chiếu NavigationController được nạp trực tiếp trong Start()
+local _NavigationController = nil
 
 local function UpdateMoneyDisplay(Amount)
 	local DisplayAmount = Amount
@@ -41,9 +31,8 @@ local function UpdateMoneyDisplay(Amount)
 		DisplayAmount = (_localData and _localData.Money) or 0
 	end
 
-	local NavCtrl = GetNavigationController()
-	if NavCtrl and NavCtrl.UpdateMoneyDisplay then
-		NavCtrl.UpdateMoneyDisplay(DisplayAmount)
+	if _NavigationController and _NavigationController.UpdateMoneyDisplay then
+		_NavigationController.UpdateMoneyDisplay(DisplayAmount)
 	end
 end
 
@@ -161,6 +150,16 @@ function PlayerDataController:Init()
 		NavGui.ResetOnSpawn = false
 	end
 
+	print("[PlayerDataController] Đã khởi tạo.")
+end
+
+function PlayerDataController:Start()
+	local Controllers = script.Parent
+	local NavModule = Controllers:FindFirstChild("NavigationController")
+	if NavModule then
+		_NavigationController = require(NavModule)
+	end
+
 	local UpdateMoneyEvent    = RemoteDefinitions.GetEvent("UpdateMoney")
 	local SyncPlayerDataEvent = RemoteDefinitions.GetEvent("SyncPlayerData")
 
@@ -201,8 +200,6 @@ function PlayerDataController:Init()
 			UpdateMoneyDisplay(_localData.Money or 0)
 		end)
 	end)
-
-	print("[PlayerDataController] Đã khởi tạo.")
 end
 
 return PlayerDataController

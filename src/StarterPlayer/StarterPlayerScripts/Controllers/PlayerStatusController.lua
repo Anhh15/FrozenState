@@ -194,13 +194,19 @@ function PlayerStatusController:Init()
 	-- Ngăn reset khi player respawn
 	_InGameGui.ResetOnSpawn = false
 
+	print("[PlayerStatusController] Đã khởi tạo.")
+end
+
+function PlayerStatusController:Start()
 	-- Lắng nghe SetGameMode để biết PlayerStatusType
 	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
 	SetGameModeEvent.OnClientEvent:Connect(function(Data)
 		if Data and Data.PlayerStatusType then
 			_playerStatusType = Data.PlayerStatusType
 			-- Ẩn/hiện StatusFrame theo type
-			_StatusFrame.Visible = (_playerStatusType ~= "Disabled")
+			if _StatusFrame then
+				_StatusFrame.Visible = (_playerStatusType ~= "Disabled")
+			end
 			if _playerStatusType == "Disabled" then
 				ClearAvatars()
 			end
@@ -228,11 +234,11 @@ function PlayerStatusController:Init()
 		if Data and Data.Phase == "Intermission" then
 			ClearAvatars()
 			_playerStatusType = "TwoTeams"  -- reset về default cho vòng tiếp theo
-			_StatusFrame.Visible = true
+			if _StatusFrame then
+				_StatusFrame.Visible = true
+			end
 		end
 	end)
-
-	print("[PlayerStatusController] Đã khởi tạo.")
 end
 
 return PlayerStatusController

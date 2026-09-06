@@ -35,44 +35,10 @@ local ScoreBoardButton = nil
 -- ObserverGui (ẩn khi Intermission/Setup, hiện khi InGame phases — giống InGameGui)
 local ObserverGui      = nil
 
--- Lazy-require MenuController để điều phối đóng/mở menu khi chuyển phase
+-- References đến Controllers liên quan (được nạp trong :Start())
 local _menuController = nil
-local function GetMenuController()
-	if not _menuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_menuController = require(Module)
-		end
-	end
-	return _menuController
-end
-
--- Lazy-require NavigationController để quản lý thanh nút điều hướng khi chuyển phase
 local _navigationController = nil
-local function GetNavigationController()
-	if not _navigationController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("NavigationController")
-		if Module then
-			_navigationController = require(Module)
-		end
-	end
-	return _navigationController
-end
-
--- Lazy-require HotbarController để quản lý hiển thị Hotbar khi chuyển phase
 local _hotbarController = nil
-local function GetHotbarController()
-	if not _hotbarController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("HotbarController")
-		if Module then
-			_hotbarController = require(Module)
-		end
-	end
-	return _hotbarController
-end
 
 -- =========================================================
 -- CONFIG
@@ -114,14 +80,12 @@ end
 --- Ẩn/hiện các lobby GUI theo phase và trạng thái team của LocalPlayer
 --- Spectator (chưa có team / không trong trận) luôn thấy GUI dù ở phase nào
 local function UpdateLobbyGuisVisibility(IsLobbyVisible)
-	local MenuCtrl = GetMenuController()
-	if MenuCtrl and MenuCtrl.SetVisible then
-		MenuCtrl.SetVisible(IsLobbyVisible)
+	if _menuController and _menuController.SetVisible then
+		_menuController.SetVisible(IsLobbyVisible)
 	end
 
-	local NavCtrl = GetNavigationController()
-	if NavCtrl and NavCtrl.SetVisible then
-		NavCtrl.SetVisible(IsLobbyVisible)
+	if _navigationController and _navigationController.SetVisible then
+		_navigationController.SetVisible(IsLobbyVisible)
 	end
 end
 
@@ -182,9 +146,8 @@ local function UpdateDisplay(Phase, TimeRemaining, IsFrozenState)
 	end
 
 	-- Đồng bộ hiển thị Custom Hotbar
-	local HotbarCtrl = GetHotbarController()
-	if HotbarCtrl and HotbarCtrl.SetVisible then
-		HotbarCtrl.SetVisible(ShowGameplayHud and IsInMatch)
+	if _hotbarController and _hotbarController.SetVisible then
+		_hotbarController.SetVisible(ShowGameplayHud and IsInMatch)
 	end
 end
 
@@ -220,6 +183,20 @@ function GameStateController:Init()
 
 	ObserverGui = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.ObserverGui)
 
+	print("[GameStateController] Initialized.")
+end
+
+function GameStateController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then _menuController = require(MenuModule) end
+
+	local NavModule = Controllers:FindFirstChild("NavigationController")
+	if NavModule then _navigationController = require(NavModule) end
+
+	local HotbarModule = Controllers:FindFirstChild("HotbarController")
+	if HotbarModule then _hotbarController = require(HotbarModule) end
+
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	local SetGameModeEvent     = RemoteDefinitions.GetEvent("SetGameMode")
 
@@ -253,19 +230,7 @@ function GameStateController:Init()
 	-- Đặt trạng thái ban đầu (lobby)
 	UpdateDisplay("Intermission", 0, false)
 
-	print("[GameStateController] Đã khởi tạo.")
-end
-
-function GameStateController:Start()
-	local Controllers = script.Parent
-	local MenuModule = Controllers:FindFirstChild("MenuController")
-	if MenuModule then _menuController = require(MenuModule) end
-
-	local NavModule = Controllers:FindFirstChild("NavigationController")
-	if NavModule then _navigationController = require(NavModule) end
-
-	local HotbarModule = Controllers:FindFirstChild("HotbarController")
-	if HotbarModule then _hotbarController = require(HotbarModule) end
+	print("[GameStateController] Started.")
 end
 
 return GameStateController

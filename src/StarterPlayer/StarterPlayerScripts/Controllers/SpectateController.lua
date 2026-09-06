@@ -40,31 +40,11 @@ local InGameGuiRef         = nil
 local ButtonsFrame         = nil
 local InGameSpectateButton = nil  -- nút SpectateButton trong Buttons frame
 
--- Lazy-require MenuController để đóng menu khi bắt đầu Spectate
-local _menuController = nil
-local function GetMenuController()
-	if not _menuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_menuController = require(Module)
-		end
-	end
-	return _menuController
-end
+local SpectateController = {}
 
--- Lazy-require NavigationController để ẩn/hiện thanh nút điều hướng
+-- References đến Controllers liên quan (được nạp trong :Start())
+local _menuController = nil
 local _navigationController = nil
-local function GetNavigationController()
-	if not _navigationController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("NavigationController")
-		if Module then
-			_navigationController = require(Module)
-		end
-	end
-	return _navigationController
-end
 
 -- =========================================================
 -- STATE
@@ -320,7 +300,6 @@ local function OnSpectateListUpdated(NormalPlayers)
 	-- Nếu danh sách rỗng → tự động tắt spectate
 	if #_targetList == 0 then
 		task.defer(function()
-			local SpectateController = require(script)
 			SpectateController.SetVisible(false)
 		end)
 		return
@@ -372,8 +351,6 @@ end
 -- PUBLIC API
 -- =========================================================
 
-local SpectateController = {}
-
 --- Trả về trạng thái đang spectate hay không
 --- Được dùng bởi GameStateController để tránh conflict NavGui
 --- @return boolean
@@ -409,16 +386,14 @@ function SpectateController.SetVisible(Visible)
 		end
 
 		-- Đóng toàn bộ tab Menu nếu đang mở (SpectateGui ở ObserverGui riêng, không cần exclude)
-		local MenuCtrl = GetMenuController()
-		if MenuCtrl then
-			MenuCtrl.CloseAll()
+		if _menuController then
+			_menuController.CloseAll()
 		end
 
 		-- Ẩn thanh nút điều hướng (chỉ với Lobby Spectator — Frozen Spectator không có nav)
 		if not _isFrozenSpectator then
-			local NavCtrl = GetNavigationController()
-			if NavCtrl then
-				NavCtrl.SetVisible(false)
+			if _navigationController then
+				_navigationController.SetVisible(false)
 			end
 		end
 
@@ -476,9 +451,8 @@ function SpectateController.SetVisible(Visible)
 
 		-- Khôi phục nav bar: chỉ với Lobby Spectator
 		if not WasFrozenSpectator then
-			local NavCtrl = GetNavigationController()
-			if NavCtrl then
-				NavCtrl.SetVisible(true)
+			if _navigationController then
+				_navigationController.SetVisible(true)
 			end
 		end
 
@@ -559,12 +533,27 @@ function SpectateController:Init()
 		end)
 	end
 
-	-- Lắng nghe danh sách Spectate từ server
-	local UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
-	UpdateSpectateListEvent.OnClientEvent:Connect(OnSpectateListUpdated)
+	print("[SpectateController] Initialized.")
+end
+
+function SpectateController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then
+		_menuController = require(MenuModule)
+	end
+
+	local NavModule = Controllers:FindFirstChild("NavigationController")
+	if NavModule then
+		_navigationController = require(NavModule)
+	end
 
 	-- Resolve remote để gửi yêu cầu ReplicationFocus lên server
 	RequestSpectateTargetEvent = RemoteDefinitions.GetEvent("RequestSpectateTarget")
+
+	-- Lắng nghe danh sách Spectate từ server
+	local UpdateSpectateListEvent = RemoteDefinitions.GetEvent("UpdateSpectateList")
+	UpdateSpectateListEvent.OnClientEvent:Connect(OnSpectateListUpdated)
 
 	-- Lắng nghe phase game để auto-close khi rời InGame và cache _hasTeams
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
@@ -605,7 +594,6 @@ function SpectateController:Init()
 			-- LocalPlayer bị Frozen → hiện SpectateButton
 			_isFrozen = true
 			SetSpectateButtonVisible(true)
-
 		else
 			-- LocalPlayer được Thaw, chết, hoặc bất kỳ trạng thái không phải Frozen
 			-- Tắt Spectate trước, sau đó reset state
@@ -619,7 +607,6 @@ function SpectateController:Init()
 	-- Tự động tắt spectate khi player được đưa vào trận (Lobby Spectator trường hợp)
 	PlayerStateHelper.ObserveMatchState(LocalPlayer, function(IsInMatch)
 		if IsInMatch and _isSpectating and not _isFrozenSpectator then
-			-- Lobby Spectator bị kéo vào trận → tắt spectate
 			SpectateController.SetVisible(false)
 		end
 	end)
@@ -629,31 +616,15 @@ function SpectateController:Init()
 		if _isSpectating then
 			SpectateController.SetVisible(false)
 		else
-			-- Không đang spectate nhưng có thể đang bị "kẹt" state Frozen phía client
-			-- (ví dụ: respawn sau khi chết, server đã broadcast Dead nhưng CharacterAdded đến trước)
 			if not _isFrozenSpectator then
 				UnlockSpectatorMovement()
 				RestoreCamera()
 			end
 		end
-		-- Đảm bảo SpectateButton ẩn sau respawn
 		ResetFrozenClientState()
 	end)
 
-	print("[SpectateController] Đã khởi tạo.")
-end
-
-function SpectateController:Start()
-	local Controllers = script.Parent
-	local MenuModule = Controllers:FindFirstChild("MenuController")
-	if MenuModule then
-		_menuController = require(MenuModule)
-	end
-
-	local NavModule = Controllers:FindFirstChild("NavigationController")
-	if NavModule then
-		_navigationController = require(NavModule)
-	end
+	print("[SpectateController] Started.")
 end
 
 return SpectateController

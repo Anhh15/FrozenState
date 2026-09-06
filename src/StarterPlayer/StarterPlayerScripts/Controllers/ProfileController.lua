@@ -44,22 +44,16 @@ local ItemCard              = require(ReplicatedStorage.Shared.Tools.ItemCard)
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui = GuiHelper.GetScreenGui("Menu")
-
--- Profile frame nằm trong Menu
-local Profile      = MenuGui and MenuGui:FindFirstChild("Profile", true)
-
--- Các phần tử bên trong Profile
-local CloseButton          = Profile and Profile:FindFirstChild("CloseButton", true)
-local PlayerInfo           = Profile and Profile:FindFirstChild("PlayerInfo", true)
-local AvatarThumbnailFrame = PlayerInfo and (PlayerInfo:FindFirstChild("AvatarThumbnail") or PlayerInfo:FindFirstChild("PlayerViewport"))
-local PlayerNameText      = PlayerInfo and PlayerInfo:FindFirstChild("PlayerNameText")
-
-local ItemList     = Profile and Profile:FindFirstChild("ItemList", true)
-
-local PlayerStatsFrame = Profile and Profile:FindFirstChild("PlayerStats", true)
-local StatsFrame       = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("Stats")
-local GameWinsFrame    = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("GameWins")
+local _MenuGui              = nil
+local Profile              = nil
+local CloseButton          = nil
+local PlayerInfo           = nil
+local AvatarThumbnailFrame = nil
+local PlayerNameText       = nil
+local ItemList             = nil
+local PlayerStatsFrame     = nil
+local StatsFrame           = nil
+local GameWinsFrame        = nil
 
 -- Tham chiếu nhanh các ValueText trong Stats
 
@@ -68,18 +62,8 @@ local function PlayGuiSound(SoundId)
 	GuiHelper.PlayGuiSound(SoundId)
 end
 
---- Lazy-require MenuController để điều phối mở/đóng cửa sổ
-local _menuController = nil
-local function GetMenuController()
-	if not _menuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_menuController = require(Module)
-		end
-	end
-	return _menuController
-end
+--- Tham chiếu MenuController được nạp trực tiếp trong Start()
+local _MenuController = nil
 
 local function GetStatValue(StatName)
 	if not StatsFrame then return nil end
@@ -239,30 +223,36 @@ end
 local ProfileController = {}
 
 function ProfileController:Init()
+	_MenuGui = GuiHelper.GetScreenGui("Menu", GuiConfig.Timeouts.DefaultWaitForGui)
+	if not _MenuGui then
+		warn("[ProfileController] Không tìm thấy ScreenGui 'Menu'.")
+		return
+	end
+
+	Profile = _MenuGui:FindFirstChild("Profile", true)
+		or _MenuGui:WaitForChild("Profile", GuiConfig.Timeouts.ShortWait)
 	if not Profile then
 		warn("[ProfileController] Không tìm thấy Profile frame trong Menu GUI.")
 		return
 	end
 
+	CloseButton          = Profile:FindFirstChild("CloseButton", true)
+	PlayerInfo           = Profile:FindFirstChild("PlayerInfo", true)
+	AvatarThumbnailFrame = PlayerInfo and (PlayerInfo:FindFirstChild("AvatarThumbnail") or PlayerInfo:FindFirstChild("PlayerViewport"))
+	PlayerNameText       = PlayerInfo and PlayerInfo:FindFirstChild("PlayerNameText")
+	ItemList             = Profile:FindFirstChild("ItemList", true)
+	PlayerStatsFrame     = Profile:FindFirstChild("PlayerStats", true)
+	StatsFrame           = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("Stats")
+	GameWinsFrame        = PlayerStatsFrame and PlayerStatsFrame:FindFirstChild("GameWins")
+
 	-- Ẩn mặc định khi khởi tạo
 	Profile.Visible = false
 
-	-- Đăng ký tab với MenuController
-	local MenuCtrl = GetMenuController()
-	if MenuCtrl then
-		MenuCtrl.RegisterTab("Profile", {
-			Open  = OpenProfile,
-			Close = CloseProfile,
-			Frame = Profile,
-		})
-	end
-
-	-- Nút đóng Profile
+	-- Nút đóng Profile nội bộ
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
-			local MenuC = GetMenuController()
-			if MenuC then
-				MenuC.CloseCurrentTab()
+			if _MenuController then
+				_MenuController.CloseCurrentTab()
 			else
 				CloseProfile()
 			end
@@ -285,7 +275,16 @@ end
 function ProfileController:Start()
 	local Module = script.Parent:FindFirstChild("MenuController")
 	if Module then
-		_menuController = require(Module)
+		_MenuController = require(Module)
+	end
+
+	-- Đăng ký tab với MenuController
+	if _MenuController and Profile then
+		_MenuController.RegisterTab("Profile", {
+			Open  = OpenProfile,
+			Close = CloseProfile,
+			Frame = Profile,
+		})
 	end
 end
 

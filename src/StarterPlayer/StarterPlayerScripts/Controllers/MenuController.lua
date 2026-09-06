@@ -21,44 +21,10 @@ local _ActiveTab = nil  -- Tên tab đang mở (vd: "Shop", "Inventory", "Profil
 -- Danh sách các tab đã đăng ký: { [TabName: string] = { Open = fn, Close = fn, Frame = GuiObject? } }
 local _RegisteredTabs = {}
 
--- Lazy-require NavigationController để tránh circular dependency
+-- Tham chiếu Controller khác được nạp trực tiếp trong Start()
 local _NavigationController = nil
-local function GetNavigationController()
-	if not _NavigationController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("NavigationController")
-		if Module then
-			_NavigationController = require(Module)
-		end
-	end
-	return _NavigationController
-end
-
--- Lazy-require ItemRewardController để reset khi CloseAll
 local _ItemRewardController = nil
-local function GetItemRewardController()
-	if not _ItemRewardController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("ItemRewardController")
-		if Module then
-			_ItemRewardController = require(Module)
-		end
-	end
-	return _ItemRewardController
-end
-
--- Lazy-require SpectateController để kiểm tra trạng thái Spectate
-local _SpectateController = nil
-local function GetSpectateController()
-	if not _SpectateController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("SpectateController")
-		if Module then
-			_SpectateController = require(Module)
-		end
-	end
-	return _SpectateController
-end
+local _SpectateController   = nil
 
 -- =========================================================
 -- PRIVATE HELPERS
@@ -102,7 +68,7 @@ function MenuController.OpenTab(TabName)
 	end
 
 	-- Nếu đang mở Spectate thì tắt Spectate để nhường chỗ cho Menu tab
-	local SpecCtrl = GetSpectateController()
+	local SpecCtrl = _SpectateController
 	if SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating() then
 		SpecCtrl.SetVisible(false)
 	end
@@ -129,7 +95,7 @@ function MenuController.OpenTab(TabName)
 	HideAllFrames()
 
 	-- Ẩn thanh nút điều hướng (NavigationButtons/Buttons) để nhường chỗ cho Menu
-	local NavCtrl = GetNavigationController()
+	local NavCtrl = _NavigationController
 	if NavCtrl and NavCtrl.SetButtonsContainerVisible then
 		NavCtrl.SetButtonsContainerVisible(false)
 	end
@@ -164,9 +130,9 @@ function MenuController.CloseTab(TabName)
 			GuiHelper.PopClose(TargetData.Frame, nil, function()
 				-- Khi animation đóng hoàn tất, nếu không còn tab nào mở, khôi phục lại thanh nút điều hướng
 				if not _ActiveTab then
-					local NavCtrl = GetNavigationController()
+					local NavCtrl = _NavigationController
 					if NavCtrl and NavCtrl.SetButtonsContainerVisible then
-						local SpecCtrl = GetSpectateController()
+						local SpecCtrl = _SpectateController
 						local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
 						NavCtrl.SetButtonsContainerVisible(not IsSpectating)
 					end
@@ -174,9 +140,9 @@ function MenuController.CloseTab(TabName)
 			end)
 		else
 			if not _ActiveTab then
-				local NavCtrl = GetNavigationController()
+				local NavCtrl = _NavigationController
 				if NavCtrl and NavCtrl.SetButtonsContainerVisible then
-					local SpecCtrl = GetSpectateController()
+					local SpecCtrl = _SpectateController
 					local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
 					NavCtrl.SetButtonsContainerVisible(not IsSpectating)
 				end
@@ -218,15 +184,15 @@ function MenuController.CloseAll(ExcludedFrame)
 	HideAllFrames(ExcludedFrame)
 
 	-- Reset hiệu ứng mở rương nếu đang chạy
-	local RewardCtrl = GetItemRewardController()
+	local RewardCtrl = _ItemRewardController
 	if RewardCtrl and RewardCtrl.Reset then
 		RewardCtrl.Reset()
 	end
 
 	-- Khôi phục hiển thị cho ButtonsContainer của NavigationButtons nếu không đang Spectate
-	local NavCtrl = GetNavigationController()
+	local NavCtrl = _NavigationController
 	if NavCtrl and NavCtrl.SetButtonsContainerVisible then
-		local SpecCtrl = GetSpectateController()
+		local SpecCtrl = _SpectateController
 		local IsSpectating = SpecCtrl and SpecCtrl.IsSpectating and SpecCtrl.IsSpectating()
 		NavCtrl.SetButtonsContainerVisible(not IsSpectating)
 	end
@@ -261,6 +227,18 @@ function MenuController:Init()
 	end
 
 	print("[MenuController] Đã khởi tạo.")
+end
+
+function MenuController:Start()
+	local Controllers = script.Parent
+	local NavModule = Controllers:FindFirstChild("NavigationController")
+	if NavModule then _NavigationController = require(NavModule) end
+
+	local RewardModule = Controllers:FindFirstChild("ItemRewardController")
+	if RewardModule then _ItemRewardController = require(RewardModule) end
+
+	local SpecModule = Controllers:FindFirstChild("SpectateController")
+	if SpecModule then _SpectateController = require(SpecModule) end
 end
 
 return MenuController

@@ -23,44 +23,10 @@ local ExtraContainer   = nil
 local StatsContainer   = nil
 local MoneyLabel       = nil
 
--- Lazy-require MenuController để chuyển tiếp sự kiện mở menu
+-- References đến Controllers liên quan (được nạp trong :Start())
 local _MenuController = nil
-local function GetMenuController()
-	if not _MenuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_MenuController = require(Module)
-		end
-	end
-	return _MenuController
-end
-
--- Lazy-require SpectateController để chuyển tiếp sự kiện Spectate
 local _SpectateController = nil
-local function GetSpectateController()
-	if not _SpectateController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("SpectateController")
-		if Module then
-			_SpectateController = require(Module)
-		end
-	end
-	return _SpectateController
-end
-
--- Lazy-require PlayerDataController để lấy số tiền hiển thị
 local _PlayerDataController = nil
-local function GetPlayerDataController()
-	if not _PlayerDataController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("PlayerDataController")
-		if Module then
-			_PlayerDataController = require(Module)
-		end
-	end
-	return _PlayerDataController
-end
 
 -- =========================================================
 -- PRIVATE HELPERS
@@ -81,9 +47,8 @@ local function BindNavigationActions()
 	local ShopBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Shop)
 	if ShopBtn then
 		ShopBtn.MouseButton1Click:Connect(function()
-			local MenuCtrl = GetMenuController()
-			if MenuCtrl then
-				MenuCtrl.ToggleTab("Shop")
+			if _MenuController then
+				_MenuController.ToggleTab("Shop")
 			end
 		end)
 	end
@@ -92,9 +57,8 @@ local function BindNavigationActions()
 	local InvBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Inventory)
 	if InvBtn then
 		InvBtn.MouseButton1Click:Connect(function()
-			local MenuCtrl = GetMenuController()
-			if MenuCtrl then
-				MenuCtrl.ToggleTab("Inventory")
+			if _MenuController then
+				_MenuController.ToggleTab("Inventory")
 			end
 		end)
 	end
@@ -103,9 +67,8 @@ local function BindNavigationActions()
 	local ProfBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Profile)
 	if ProfBtn then
 		ProfBtn.MouseButton1Click:Connect(function()
-			local MenuCtrl = GetMenuController()
-			if MenuCtrl then
-				MenuCtrl.ToggleTab("Profile")
+			if _MenuController then
+				_MenuController.ToggleTab("Profile")
 			end
 		end)
 	end
@@ -114,9 +77,8 @@ local function BindNavigationActions()
 	local QuestBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Quest)
 	if QuestBtn then
 		QuestBtn.MouseButton1Click:Connect(function()
-			local MenuCtrl = GetMenuController()
-			if MenuCtrl then
-				MenuCtrl.ToggleTab("Quest")
+			if _MenuController then
+				_MenuController.ToggleTab("Quest")
 			end
 		end)
 	end
@@ -125,9 +87,8 @@ local function BindNavigationActions()
 	local SpecBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Spectate)
 	if SpecBtn then
 		SpecBtn.MouseButton1Click:Connect(function()
-			local SpecCtrl = GetSpectateController()
-			if SpecCtrl and SpecCtrl.SetVisible then
-				SpecCtrl.SetVisible(true)
+			if _SpectateController and _SpectateController.SetVisible then
+				_SpectateController.SetVisible(true)
 			end
 		end)
 	end
@@ -136,9 +97,8 @@ local function BindNavigationActions()
 	local SettingBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Setting)
 	if SettingBtn then
 		SettingBtn.MouseButton1Click:Connect(function()
-			local MenuCtrl = GetMenuController()
-			if MenuCtrl then
-				MenuCtrl.ToggleTab("Setting")
+			if _MenuController then
+				_MenuController.ToggleTab("Setting")
 			end
 		end)
 	end
@@ -156,9 +116,8 @@ function NavigationController.SetVisible(Visible)
 	if not NavGui then return end
 
 	local IsSpectating = false
-	local SpecCtrl = GetSpectateController()
-	if SpecCtrl and SpecCtrl.IsSpectating then
-		IsSpectating = SpecCtrl.IsSpectating()
+	if _SpectateController and _SpectateController.IsSpectating then
+		IsSpectating = _SpectateController.IsSpectating()
 	end
 
 	NavGui.Enabled = Visible and not IsSpectating
@@ -167,8 +126,7 @@ function NavigationController.SetVisible(Visible)
 		NavigationController.UpdateMoneyDisplay()
 
 		-- Tầng bảo vệ phụ: Đảm bảo ButtonsContainer hiển thị khi không có tab menu nào active
-		local MenuCtrl = GetMenuController()
-		local ActiveTab = MenuCtrl and MenuCtrl.GetActiveTab and MenuCtrl.GetActiveTab()
+		local ActiveTab = _MenuController and _MenuController.GetActiveTab and _MenuController.GetActiveTab()
 		if not ActiveTab and not IsSpectating then
 			NavigationController.SetButtonsContainerVisible(true)
 		end
@@ -191,8 +149,7 @@ function NavigationController.UpdateMoneyDisplay(Amount)
 
 	local TargetAmount = Amount
 	if TargetAmount == nil then
-		local PlayerDataCtrl = GetPlayerDataController()
-		local Data = PlayerDataCtrl and PlayerDataCtrl.GetData()
+		local Data = _PlayerDataController and _PlayerDataController.GetData()
 		TargetAmount = (Data and Data.Money) or 0
 	end
 
@@ -213,17 +170,12 @@ function NavigationController:Init()
 	ExtraContainer   = NavGui:FindFirstChild(GuiConfig.NavContainers.Extra, true)
 	StatsContainer   = NavGui:FindFirstChild(GuiConfig.NavContainers.Stats, true)
 
-	-- Kết nối sự kiện mở menu cho các nút
-	BindNavigationActions()
-
-	-- Cập nhật hiển thị tiền tệ ban đầu
-	NavigationController.UpdateMoneyDisplay()
-
-	print("[NavigationController] Đã khởi tạo.")
+	print("[NavigationController] Initialized.")
 end
 
 function NavigationController:Start()
 	local Controllers = script.Parent
+
 	local MenuModule = Controllers:FindFirstChild("MenuController")
 	if MenuModule then _MenuController = require(MenuModule) end
 
@@ -232,6 +184,14 @@ function NavigationController:Start()
 
 	local PlayerDataModule = Controllers:FindFirstChild("PlayerDataController")
 	if PlayerDataModule then _PlayerDataController = require(PlayerDataModule) end
+
+	-- Kết nối sự kiện mở menu cho các nút
+	BindNavigationActions()
+
+	-- Cập nhật hiển thị tiền tệ ban đầu
+	NavigationController.UpdateMoneyDisplay()
+
+	print("[NavigationController] Started.")
 end
 
 return NavigationController

@@ -219,6 +219,10 @@ function RoundLoadingScreenController:Init()
 	-- Đảm bảo GUI ở trạng thái ban đầu ẩn
 	ForceHide()
 
+	print("[RoundLoadingScreenController] Initialized.")
+end
+
+function RoundLoadingScreenController:Start()
 	-- Lắng nghe nhân vật spawn lần đầu hoặc respawn để chuẩn hóa lại ScreenGui
 	LocalPlayer.CharacterAdded:Connect(function()
 		ForceHide()
@@ -246,7 +250,7 @@ function RoundLoadingScreenController:Init()
 		end
 	end)
 
-	print("[RoundLoadingScreenController] Đã khởi tạo.")
+	print("[RoundLoadingScreenController] Started.")
 end
 
 return RoundLoadingScreenController

@@ -333,6 +333,33 @@ function GameStatisticController:Init()
 
 	HideAll()
 
+	-- Cài đặt sự kiện nút bấm chuyển tiếp và đóng
+	if NextButton then
+		NextButton.MouseButton1Click:Connect(function()
+			ShowPlayerStats()
+		end)
+	end
+
+	if CloseButton1 and TopPlayersStats then
+		CloseButton1.MouseButton1Click:Connect(function()
+			GuiHelper.PopClose(TopPlayersStats, nil, function()
+				HideAll()
+			end)
+		end)
+	end
+
+	if CloseButton2 and PlayerStats then
+		CloseButton2.MouseButton1Click:Connect(function()
+			GuiHelper.PopClose(PlayerStats, nil, function()
+				HideAll()
+			end)
+		end)
+	end
+
+	print("[GameStatisticController] Khởi tạo thành công với Pop/Stagger Animation & SFX.")
+end
+
+function GameStatisticController:Start()
 	-- Lắng nghe dữ liệu cuối trận từ server
 	local ShowGameOverEvent = RemoteDefinitions.GetEvent("ShowGameOver")
 	ShowGameOverEvent.OnClientEvent:Connect(function(Data)
@@ -364,31 +391,6 @@ function GameStatisticController:Init()
 			HideAll()
 		end
 	end)
-
-	-- Cài đặt sự kiện nút bấm chuyển tiếp và đóng
-	if NextButton then
-		NextButton.MouseButton1Click:Connect(function()
-			ShowPlayerStats()
-		end)
-	end
-
-	if CloseButton1 and TopPlayersStats then
-		CloseButton1.MouseButton1Click:Connect(function()
-			GuiHelper.PopClose(TopPlayersStats, nil, function()
-				HideAll()
-			end)
-		end)
-	end
-
-	if CloseButton2 and PlayerStats then
-		CloseButton2.MouseButton1Click:Connect(function()
-			GuiHelper.PopClose(PlayerStats, nil, function()
-				HideAll()
-			end)
-		end)
-	end
-
-	print("[GameStatisticController] Khởi tạo thành công với Pop/Stagger Animation & SFX.")
 end
 
 return GameStatisticController

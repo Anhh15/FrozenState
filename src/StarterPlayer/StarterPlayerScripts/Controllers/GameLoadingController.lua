@@ -38,9 +38,8 @@ local _VisualProgress     = 0.0    -- Tiến độ hiển thị mượt mà trê
 local _RenderConnection   = nil    -- RenderStepped connection cho UI update & Wave
 local _WaveStartTime      = 0.0    -- Thời điểm bắt đầu hoạt ảnh Wave
 local _LoadStartTime      = 0.0    -- Thời điểm bắt đầu nạp (dùng cho cổng thời gian tối thiểu)
-local _IsWaveActive       = true   -- Cờ kiểm soát vòng lặp sóng Dot
-
 local _FinishEvent        = nil    -- RemoteEvent "FinishGameLoading"
+local _Elements           = nil    -- Cache cấu trúc GUI GameLoadingScreen
 
 -- =========================================================
 -- RESOLVER GUI DYNAMIC
@@ -441,18 +440,11 @@ end
 local GameLoadingController = {}
 
 function GameLoadingController:Init()
-	_FinishEvent = RemoteDefinitions.GetEvent("FinishGameLoading")
-
-	local Elements = ResolveElements()
-	if not Elements then
+	_Elements = ResolveElements()
+	if not _Elements then
 		warn("[GameLoadingController] Không tìm thấy cấu trúc GUI GameLoadingScreen.")
-		if _FinishEvent then
-			_FinishEvent:FireServer()
-		end
 		return
 	end
-
-	local AnimCfg = GuiHelper.GetGameLoadingAnimConfig()
 
 	-- 1. Thiết lập trạng thái ban đầu
 	_WaveStartTime      = os.clock()
@@ -464,28 +456,43 @@ function GameLoadingController:Init()
 	_IsPhase1Triggered  = false
 	_IsLoadingCompleted = false
 
-	UpdateTitleDisplay(Elements, 0.0)
+	UpdateTitleDisplay(_Elements, 0.0)
 
 	-- 2. Gắn sự kiện cho nút SkipButton
-	if Elements.SkipButton then
-		Elements.SkipButton.Active = true
-		Elements.SkipButton.Visible = true
+	if _Elements.SkipButton then
+		_Elements.SkipButton.Active = true
+		_Elements.SkipButton.Visible = true
 
-		if Elements.SkipButton:IsA("GuiButton") then
-			Elements.SkipButton.MouseButton1Click:Connect(function()
-				SkipLoading(Elements)
+		if _Elements.SkipButton:IsA("GuiButton") then
+			_Elements.SkipButton.MouseButton1Click:Connect(function()
+				SkipLoading(_Elements)
 			end)
 		end
 	end
 
-	-- 3. Vòng lặp RenderStepped cập nhật Dot Wave & Lerp Progress mượt mà
+	print("[GameLoadingController] Đã khởi tạo màn hình tải game ban đầu.")
+end
+
+function GameLoadingController:Start()
+	_FinishEvent = RemoteDefinitions.GetEvent("FinishGameLoading")
+
+	if not _Elements then
+		if _FinishEvent then
+			_FinishEvent:FireServer()
+		end
+		return
+	end
+
+	local AnimCfg = GuiHelper.GetGameLoadingAnimConfig()
+
+	-- 1. Vòng lặp RenderStepped cập nhật Dot Wave & Lerp Progress mượt mà
 	_RenderConnection = RunService.RenderStepped:Connect(function(DeltaTime)
 		if _IsLoadingCompleted then return end
 
 		-- Cập nhật sóng Dot
 		if _IsWaveActive then
 			local Elapsed = os.clock() - _WaveStartTime
-			UpdateDotWave(Elements.DotList, Elapsed)
+			UpdateDotWave(_Elements.DotList, Elapsed)
 		end
 
 		-- Tính toán tiến độ kép: kết hợp giữa AssetProgress thực tế và Cổng thời gian tối thiểu (MinLoadingDuration)
@@ -497,18 +504,18 @@ function GameLoadingController:Init()
 			local LerpSpeed = AnimCfg.ProgressLerpSpeed or 8
 			_VisualProgress = _VisualProgress + (_ActualProgress - _VisualProgress) * math.clamp(DeltaTime * LerpSpeed, 0, 1)
 
-			UpdateTitleDisplay(Elements, _VisualProgress)
+			UpdateTitleDisplay(_Elements, _VisualProgress)
 
 			-- Khi visual progress đạt >= 99% VÀ actual progress đạt >= 99%, kích hoạt Pha 1
 			if _VisualProgress >= 0.99 and _ActualProgress >= 0.99 then
 				_VisualProgress = 1.0
-				UpdateTitleDisplay(Elements, 1.0)
-				TriggerPhase1(Elements)
+				UpdateTitleDisplay(_Elements, 1.0)
+				TriggerPhase1(_Elements)
 			end
 		end
 	end)
 
-	-- 4. Bắt đầu thu thập và nạp trước tài nguyên (PreloadAsync)
+	-- 2. Bắt đầu thu thập và nạp trước tài nguyên (PreloadAsync)
 	task.spawn(function()
 		local AllAssets = CollectAllAssets()
 		local TotalCount = #AllAssets
@@ -544,8 +551,6 @@ function GameLoadingController:Init()
 		_AssetProgress = 1.0
 		CleanupTempAnimations()
 	end)
-
-	print("[GameLoadingController] Đã khởi tạo màn hình tải game ban đầu.")
 end
 
 return GameLoadingController

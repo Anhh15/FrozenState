@@ -1,6 +1,6 @@
 # CombatSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống chiến đấu (Icicle Tool, Hitbox Spatial Query, Freeze/Thaw mechanics, IceBlock Model và Tags CollectionService).
-> Cập nhật lần cuối: 06-09-2026
+> Cập nhật lần cuối: 07-09-2026
 
 ---
 
@@ -133,4 +133,9 @@
 - **Vấn đề:** Người chơi sau khi rơi map hoặc cạn máu vẫn có 1-2 giây hoạt ảnh tử nạn trước khi despawn. Trong thời gian này, hacker hoặc client lag có thể vung kiếm gửi `OnToolHit` để đóng băng người sống từ cõi chết; ngược lại, việc cố đóng băng hoặc giải cứu xác chết gây kẹt trạng thái nhân vật.
 - **Giải pháp:** Thiết lập phòng vệ đa tầng (Defense-in-Depth): Phía Client, `IcicleScript` chặn `Tool.Activated` và ngắt poll va chạm nếu `LocalPlayer` chết (`Health \le 0`), kiểm tra `TargetHumanoid.Health > 0` trước khi bắn remote. Phía Server, `FreezeService` kiểm tra máu cả hai bên trong `HandleToolHit` và bổ sung guard clause trong `FreezePlayer`, `ThawPlayer`; `IcicleService` cấm cấp Tool trong `GiveTool` nếu người chơi đã chết hoặc mang trạng thái `Dead`.
 - **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua)
+
+### 13. Rò Rỉ Bộ Nhớ (Memory Leak) Do Tồn Đọng Kết Nối & Table Keys Khi Người Chơi Rời Server (HIGH-06)
+- **Vấn đề:** Trong `HighlightController`, client kết nối các sự kiện `CharacterAdded`, `GetAttributeChangedSignal("Team")`, `GetAttributeChangedSignal("State")` và lưu trữ trạng thái người chơi trong các bảng cục bộ `KnownTeams`, `_frozenPlayers`, `_playerStates`. Khi một người chơi rời game (`PlayerRemoving`), controller không ngắt kết nối RBXScriptConnection và không xóa key trong các bảng trên, gây tích lũy tham chiếu rác (Memory Leak) làm tăng dần dung lượng RAM qua từng trận.
+- **Giải pháp:** Xây dựng bảng quản lý kết nối `_PlayerConnections = {}` (map UserId -> mảng connections). Đăng ký `Players.PlayerRemoving` kích hoạt hàm `CleanupPlayer(Player)`: ngắt toàn bộ connection trong `_PlayerConnections[UserId]`, tìm và `:Destroy()` instance `TeamHighlight` trên nhân vật, dọn sạch key khỏi `KnownTeams`, `_frozenPlayers`, `_playerStates`.
+- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua)
 

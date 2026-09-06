@@ -75,31 +75,9 @@ end
 -- PRIVATE HELPERS
 -- =========================================================
 
---- Lazy-require MenuController để điều phối mở/đóng cửa sổ
+--- References đến Controllers liên quan (được nạp trong :Start())
 local _menuController = nil
-local function GetMenuController()
-	if not _menuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_menuController = require(Module)
-		end
-	end
-	return _menuController
-end
-
---- Lazy-require ItemRewardController để kích hoạt hiệu ứng mở rương/vật phẩm
 local _itemRewardController = nil
-local function GetItemRewardController()
-	if not _itemRewardController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("ItemRewardController")
-		if Module then
-			_itemRewardController = require(Module)
-		end
-	end
-	return _itemRewardController
-end
 
 --- Highlight tab button đang active
 --- @param ActiveTab string  -- "Daily" | "Milestone"
@@ -379,14 +357,12 @@ local function RenderQuestList(QuestList, TriggerStagger)
 
 						-- Phân phối hiệu ứng nhận thưởng theo loại phần thưởng
 						if Result.RewardType == "Chest" and Result.ReceivedItems and #Result.ReceivedItems > 0 then
-							local ItemRewardCtrl = GetItemRewardController()
-							if ItemRewardCtrl and ItemRewardCtrl.ShowChestReward then
-								ItemRewardCtrl.ShowChestReward(Result.ReceivedItems, Result.ChestId)
+							if _itemRewardController and _itemRewardController.ShowChestReward then
+								_itemRewardController.ShowChestReward(Result.ReceivedItems, Result.ChestId)
 							end
 						elseif Result.RewardType == "Item" and Result.ReceivedItems and #Result.ReceivedItems > 0 then
-							local ItemRewardCtrl = GetItemRewardController()
-							if ItemRewardCtrl and ItemRewardCtrl.ShowItemReward then
-								ItemRewardCtrl.ShowItemReward(Result.ReceivedItems)
+							if _itemRewardController and _itemRewardController.ShowItemReward then
+								_itemRewardController.ShowItemReward(Result.ReceivedItems)
 							end
 						else
 							ShowRewardAnnouncement(Result.RewardType, Result.RewardAmount)
@@ -518,16 +494,6 @@ function QuestController:Init()
 		MenuGui.ResetOnSpawn = false
 	end
 
-	-- ── 1. ĐĂNG KÝ TAB SỚM VỚI MENU CONTROLLER (ĐẢM BẢO LUÔN MỞ ĐƯỢC) ──
-	local MenuCtrl = GetMenuController()
-	if MenuCtrl then
-		MenuCtrl.RegisterTab("Quest", {
-			Open  = OpenQuest,
-			Close = CloseQuest,
-			Frame = _questGui,
-		})
-	end
-
 	-- ── 2. TÌM KIẾM TEMPLATES VÀ QUESTLIST (TÌM KIẾM ĐỆ QUY AN TOÀN) ──
 	_templates = _questGui:FindFirstChild("Templates", true)
 		or _questGui:WaitForChild("Templates", GuiConfig.Timeouts.ShortWait)
@@ -616,9 +582,8 @@ function QuestController:Init()
 	-- Kết nối sự kiện nút bấm
 	if _closeButton then
 		_closeButton.MouseButton1Click:Connect(function()
-			local MenuC = GetMenuController()
-			if MenuC then
-				MenuC.CloseCurrentTab()
+			if _menuController then
+				_menuController.CloseCurrentTab()
 			else
 				CloseQuest()
 			end
@@ -651,10 +616,26 @@ function QuestController.SetVisible(Visible)
 end
 
 function QuestController:Start()
-	local MenuModule = script.Parent:FindFirstChild("MenuController")
+	local Controllers = script.Parent
+
+	local MenuModule = Controllers:FindFirstChild("MenuController")
 	if MenuModule then
 		_menuController = require(MenuModule)
+		if _questGui then
+			_menuController.RegisterTab("Quest", {
+				Open  = OpenQuest,
+				Close = CloseQuest,
+				Frame = _questGui,
+			})
+		end
 	end
+
+	local ItemRewardModule = Controllers:FindFirstChild("ItemRewardController")
+	if ItemRewardModule then
+		_itemRewardController = require(ItemRewardModule)
+	end
+
+	print("[QuestController] Started.")
 end
 
 return QuestController

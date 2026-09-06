@@ -211,6 +211,10 @@ function ModeAnnouncementController:Init()
 	-- Trạng thái ban đầu: ẩn
 	ForceHide()
 
+	print("[ModeAnnouncementController] Đã khởi tạo.")
+end
+
+function ModeAnnouncementController:Start()
 	-- Lắng nghe nhân vật spawn lần đầu hoặc respawn để chuẩn hóa lại ScreenGui
 	LocalPlayer.CharacterAdded:Connect(function()
 		ForceHide()
@@ -235,8 +239,6 @@ function ModeAnnouncementController:Init()
 			ForceHide()
 		end
 	end)
-
-	print("[ModeAnnouncementController] Đã khởi tạo.")
 end
 
 return ModeAnnouncementController

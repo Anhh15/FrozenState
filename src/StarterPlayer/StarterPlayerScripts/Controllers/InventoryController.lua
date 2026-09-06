@@ -42,23 +42,19 @@ local ItemCard              = require(ReplicatedStorage.Shared.Tools.ItemCard)
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui = GuiHelper.GetScreenGui("Menu")
-
--- Inventory frame nằm bên trong Menu
-local Inventory        = MenuGui and MenuGui:FindFirstChild("Inventory", true)
-
--- Các phần tử bên trong Inventory (dùng FindFirstChild để không crash nếu GUI chưa đúng tên)
-local CloseButton      = Inventory and Inventory:FindFirstChild("CloseButton", true)
-local TabContainer     = Inventory and Inventory:FindFirstChild("TabContainer", true)
-local IciclesTab       = TabContainer and TabContainer:FindFirstChild("IciclesTab")
-local BlocksTab        = TabContainer and TabContainer:FindFirstChild("BlocksTab")
-local ItemList         = Inventory and Inventory:FindFirstChild("ItemList", true)
-local ScrollingFrame   = ItemList and ItemList:FindFirstChildOfClass("ScrollingFrame")
-local ItemSelection    = Inventory and Inventory:FindFirstChild("ItemSelection", true)
-local SelectionViewport = ItemSelection and ItemSelection:FindFirstChild("ItemViewport")
-local SelectionName    = ItemSelection and ItemSelection:FindFirstChild("NameText")
-local SelectionRarity  = ItemSelection and ItemSelection:FindFirstChild("RarityText")
-local EquipButton      = ItemSelection and ItemSelection:FindFirstChild("EquipButton")
+local _MenuGui           = nil
+local Inventory          = nil
+local CloseButton        = nil
+local TabContainer       = nil
+local IciclesTab         = nil
+local BlocksTab          = nil
+local ItemList           = nil
+local ScrollingFrame     = nil
+local ItemSelection      = nil
+local SelectionViewport  = nil
+local SelectionName      = nil
+local SelectionRarity    = nil
+local EquipButton        = nil
 
 -- =========================================================
 -- STATE
@@ -87,18 +83,8 @@ end
 -- HELPERS
 -- =========================================================
 
---- Lazy-require MenuController để điều phối mở/đóng cửa sổ
+--- Tham chiếu MenuController được nạp trực tiếp trong Start()
 local _MenuController = nil
-local function GetMenuController()
-	if not _MenuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_MenuController = require(Module)
-		end
-	end
-	return _MenuController
-end
 
 --- Dọn dẹp toàn bộ nội dung ViewportFrame để tránh memory leak
 --- Ủy quyền cho ViewportManager để đảm bảo dọn đúng cả Camera lẫn Model
@@ -387,30 +373,39 @@ end
 local InventoryController = {}
 
 function InventoryController:Init()
+	_MenuGui = GuiHelper.GetScreenGui("Menu", GuiConfig.Timeouts.DefaultWaitForGui)
+	if not _MenuGui then
+		warn("[InventoryController] Không tìm thấy ScreenGui 'Menu'.")
+		return
+	end
+
+	Inventory = _MenuGui:FindFirstChild("Inventory", true)
+		or _MenuGui:WaitForChild("Inventory", GuiConfig.Timeouts.ShortWait)
 	if not Inventory then
 		warn("[InventoryController] Không tìm thấy Inventory frame trong Menu GUI.")
 		return
 	end
 
+	CloseButton       = Inventory:FindFirstChild("CloseButton", true)
+	TabContainer      = Inventory:FindFirstChild("TabContainer", true)
+	IciclesTab        = TabContainer and TabContainer:FindFirstChild("IciclesTab")
+	BlocksTab         = TabContainer and TabContainer:FindFirstChild("BlocksTab")
+	ItemList          = Inventory:FindFirstChild("ItemList", true)
+	ScrollingFrame    = ItemList and ItemList:FindFirstChildOfClass("ScrollingFrame")
+	ItemSelection     = Inventory:FindFirstChild("ItemSelection", true)
+	SelectionViewport = ItemSelection and ItemSelection:FindFirstChild("ItemViewport")
+	SelectionName     = ItemSelection and ItemSelection:FindFirstChild("NameText")
+	SelectionRarity   = ItemSelection and ItemSelection:FindFirstChild("RarityText")
+	EquipButton       = ItemSelection and ItemSelection:FindFirstChild("EquipButton")
+
 	-- Đóng Inventory khi khởi tạo (đảm bảo trạng thái ban đầu là ẩn)
 	Inventory.Visible = false
 
-	-- Đăng ký tab với MenuController
-	local MenuCtrl = GetMenuController()
-	if MenuCtrl then
-		MenuCtrl.RegisterTab("Inventory", {
-			Open  = OpenInventory,
-			Close = CloseInventory,
-			Frame = Inventory,
-		})
-	end
-
-	-- Nút đóng Inventory
+	-- Nút đóng Inventory nội bộ
 	if CloseButton then
 		CloseButton.MouseButton1Click:Connect(function()
-			local MenuC = GetMenuController()
-			if MenuC then
-				MenuC.CloseCurrentTab()
+			if _MenuController then
+				_MenuController.CloseCurrentTab()
 			else
 				CloseInventory()
 			end
@@ -453,6 +448,15 @@ function InventoryController:Start()
 	local Module = script.Parent:FindFirstChild("MenuController")
 	if Module then
 		_MenuController = require(Module)
+	end
+
+	-- Đăng ký tab với MenuController
+	if _MenuController and Inventory then
+		_MenuController.RegisterTab("Inventory", {
+			Open  = OpenInventory,
+			Close = CloseInventory,
+			Frame = Inventory,
+		})
 	end
 end
 

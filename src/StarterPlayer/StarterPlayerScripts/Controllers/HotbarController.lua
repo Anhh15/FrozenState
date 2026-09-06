@@ -603,9 +603,14 @@ function HotbarController:Init()
 	DisableRobloxBackpack()
 
 	-- 2. Resolve GUI components
-	if not ResolveGuiReferences() then return end
+	ResolveGuiReferences()
 
-	-- 3. Bắt sự kiện phím số 1..9 từ bàn phím
+	print("[HotbarController] Initialized.")
+end
+
+--- Kết nối sự kiện và bắt đầu vòng đời hoạt động
+function HotbarController:Start()
+	-- 1. Bắt sự kiện phím số 1..9 từ bàn phím
 	if _InputConnection then
 		_InputConnection:Disconnect()
 		_InputConnection = nil
@@ -623,7 +628,7 @@ function HotbarController:Init()
 		end
 	end)
 
-	-- 4. Lắng nghe trạng thái Frozen / Dead từ Server
+	-- 2. Lắng nghe trạng thái Frozen / Dead từ Server
 	local UpdatePlayerStateEvent = RemoteDefinitions.GetEvent("UpdatePlayerState")
 	UpdatePlayerStateEvent.OnClientEvent:Connect(function(Data)
 		if not Data or Data.PlayerId ~= LocalPlayer.UserId then return end
@@ -655,7 +660,7 @@ function HotbarController:Init()
 		end
 	end)
 
-	-- 5. Lắng nghe CharacterAdded để bind lại Backpack / Character listeners khi respawn
+	-- 3. Lắng nghe CharacterAdded để bind lại Backpack / Character listeners khi respawn
 	local function BindCharacter(Character)
 		for _, Conn in ipairs(_characterConnections) do
 			Conn:Disconnect()
@@ -708,14 +713,14 @@ function HotbarController:Init()
 		BindCharacter(LocalPlayer.Character)
 	end
 
-	-- 6. Lắng nghe thay đổi SkinIcicle từ Attribute
+	-- 4. Lắng nghe thay đổi SkinIcicle từ Attribute
 	LocalPlayer:GetAttributeChangedSignal("EquippedIcicleSkinId"):Connect(function()
 		if _isVisible and not _IsFrozen and not _IsDead then
 			HotbarController.RefreshHotbar()
 		end
 	end)
 
-	-- 7. Lắng nghe vòng đời trận đấu để làm sạch Hotbar khi về sảnh (Intermission) và đồng bộ state
+	-- 5. Lắng nghe vòng đời trận đấu để làm sạch Hotbar khi về sảnh (Intermission) và đồng bộ state
 	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 	UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
 		if not Data then return end
@@ -743,7 +748,7 @@ function HotbarController:Init()
 		end
 	end)
 
-	print("[HotbarController] Đã khởi tạo.")
+	print("[HotbarController] Started.")
 end
 
 return HotbarController

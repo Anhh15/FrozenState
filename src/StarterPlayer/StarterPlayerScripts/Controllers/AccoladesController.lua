@@ -122,14 +122,16 @@ function AccoladesController:Init()
 	end
 	_Announcement.Visible = false
 
+	print("[AccoladesController] Đã khởi tạo.")
+end
+
+function AccoladesController:Start()
 	-- Lắng nghe NotifyAccolade từ server (chỉ LocalPlayer nhận được vì server dùng FireClient)
 	local NotifyAccoladeEvent = RemoteDefinitions.GetEvent("NotifyAccolade")
 	NotifyAccoladeEvent.OnClientEvent:Connect(function(Data)
 		if not Data or not Data.Type then return end
 		ShowAnnouncement(Data.Type)
 	end)
-
-	print("[AccoladesController] Đã khởi tạo.")
 end
 
 return AccoladesController

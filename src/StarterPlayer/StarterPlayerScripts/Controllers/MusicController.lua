@@ -134,6 +134,10 @@ end
 local MusicController = {}
 
 function MusicController:Init()
+	print("[MusicController] Đã khởi tạo.")
+end
+
+function MusicController:Start()
 	UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
 
 	-- Lắng nghe cập nhật phase từ server
@@ -155,7 +159,7 @@ function MusicController:Init()
 		UpdateMusic()
 	end)
 
-	print("[MusicController] Đã khởi tạo.")
+	UpdateMusic()
 end
 
 return MusicController

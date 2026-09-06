@@ -131,7 +131,10 @@ end
 function FrozenStateAnnouncementController:Init()
 	-- Khởi tạo ban đầu: ẩn TextLabel và scale về 0
 	ForceHide()
+	print("[FrozenStateAnnouncementController] Initialized.")
+end
 
+function FrozenStateAnnouncementController:Start()
 	-- Dọn dẹp khi nhân vật respawn
 	LocalPlayer.CharacterAdded:Connect(function()
 		ForceHide()
@@ -169,7 +172,7 @@ function FrozenStateAnnouncementController:Init()
 		_LastPhase = CurrentPhase
 	end)
 
-	print("[FrozenStateAnnouncementController] Đã khởi tạo.")
+	print("[FrozenStateAnnouncementController] Started.")
 end
 
 return FrozenStateAnnouncementController

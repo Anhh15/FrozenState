@@ -479,4 +479,8 @@ function ItemRewardController:Init()
 	print("[ItemRewardController] Đã khởi tạo.")
 end
 
+function ItemRewardController:Start()
+	-- Tuân thủ chuẩn kiến trúc Lifecycle 2-pha
+end
+
 return ItemRewardController

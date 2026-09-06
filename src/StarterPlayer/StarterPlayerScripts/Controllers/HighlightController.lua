@@ -35,6 +35,7 @@ local _isFrozenState = false
 local _frozenPlayers = {}   -- { [tostring(userId)] = true | false }
 local _playerStates  = {}   -- { [tostring(userId)] = "Normal" | "Frozen" | "Dead" }
 local _highlightMode = "TeamBased"  -- "TeamBased" | "FFA" | "Disabled"
+local _PlayerConnections = {} -- [Player] = { RBXScriptConnection }
 
 -- =========================================================
 -- PRIVATE
@@ -173,15 +174,28 @@ end
 
 --- Gắn listener cho character mới của một player
 local function WatchPlayer(Player)
+	if not Player then return end
+
+	-- Dọn connection cũ nếu có
+	if _PlayerConnections[Player] then
+		for _, Conn in ipairs(_PlayerConnections[Player]) do
+			if Conn and Conn.Connected then
+				Conn:Disconnect()
+			end
+		end
+	end
+	_PlayerConnections[Player] = {}
+
 	if Player == LocalPlayer then
-		Player.CharacterAdded:Connect(function(Character)
+		local Conn = Player.CharacterAdded:Connect(function(Character)
 			Character:WaitForChild("HumanoidRootPart", 5)
 			RemoveHighlight(Character)
 		end)
+		table.insert(_PlayerConnections[Player], Conn)
 		return
 	end
 
-	Player.CharacterAdded:Connect(function(Character)
+	local Conn = Player.CharacterAdded:Connect(function(Character)
 		-- Đợi nhân vật fully loaded
 		Character:WaitForChild("HumanoidRootPart", 5)
 		task.wait(0.1)
@@ -194,11 +208,35 @@ local function WatchPlayer(Player)
 			RefreshAll()
 		end
 	end)
+	table.insert(_PlayerConnections[Player], Conn)
 
 	-- Nếu character đã có sẵn (join mid-game)
 	if Player.Character then
 		RefreshAll()
 	end
+end
+
+--- Dọn dẹp Highlight, connection và cache khi một player rời khỏi game (Vá [HIGH-06])
+local function CleanupPlayer(Player)
+	if not Player then return end
+
+	if _PlayerConnections[Player] then
+		for _, Conn in ipairs(_PlayerConnections[Player]) do
+			if Conn and Conn.Connected then
+				Conn:Disconnect()
+			end
+		end
+		_PlayerConnections[Player] = nil
+	end
+
+	if Player.Character then
+		RemoveHighlight(Player.Character)
+	end
+
+	local PlayerUserIdStr = tostring(Player.UserId)
+	KnownTeams[PlayerUserIdStr]     = nil
+	_frozenPlayers[PlayerUserIdStr] = nil
+	_playerStates[PlayerUserIdStr]  = nil
 end
 
 -- =========================================================
@@ -208,6 +246,17 @@ end
 local HighlightController = {}
 
 function HighlightController:Init()
+	KnownTeams         = {}
+	_frozenPlayers     = {}
+	_playerStates      = {}
+	_isFrozenState     = false
+	_highlightMode     = "TeamBased"
+	_PlayerConnections = {}
+
+	print("[HighlightController] Đã khởi tạo.")
+end
+
+function HighlightController:Start()
 	-- Nhận GameMode khi mỗi trận bắt đầu
 	local SetGameModeEvent = RemoteDefinitions.GetEvent("SetGameMode")
 	SetGameModeEvent.OnClientEvent:Connect(function(Data)
@@ -293,6 +342,9 @@ function HighlightController:Init()
 	-- Watch player mới join
 	Players.PlayerAdded:Connect(WatchPlayer)
 
+	-- Dọn dẹp bộ nhớ khi player rời game (Vá [HIGH-06])
+	Players.PlayerRemoving:Connect(CleanupPlayer)
+
 	-- Lắng nghe khi IceBlock Model thêm/xóa qua CollectionService để cập nhật Highlight.Adornee theo từng player (O(1))
 	local function HandleIceBlockChanged(BlockInstance)
 		if not BlockInstance or not BlockInstance:IsA("Model") then return end
@@ -307,8 +359,6 @@ function HighlightController:Init()
 
 	TagHelper.ObserveTagAdded(TagConfig.Tags.IceBlock, HandleIceBlockChanged)
 	TagHelper.ObserveTagRemoved(TagConfig.Tags.IceBlock, HandleIceBlockChanged)
-
-	print("[HighlightController] Đã khởi tạo.")
 end
 
 return HighlightController

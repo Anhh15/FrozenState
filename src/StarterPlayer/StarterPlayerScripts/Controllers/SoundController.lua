@@ -28,6 +28,10 @@ function SoundController:Init()
 	-- 1. Preload toàn bộ Audio vào RAM của Client ngay khi vào game
 	AudioHelper.PreloadAllGameAudios()
 
+	print("[SoundController] Đã khởi tạo và nạp trước toàn bộ SFX.")
+end
+
+function SoundController:Start()
 	PlayFreezeSFXEvent = RemoteDefinitions.GetEvent("PlayFreezeSFX")
 	PlayThawSFXEvent   = RemoteDefinitions.GetEvent("PlayThawSFX")
 	local PlaySwingSFXEvent  = RemoteDefinitions.GetEvent("PlaySwingSFX")
@@ -71,8 +75,6 @@ function SoundController:Init()
 			AudioHelper.PlaySpatialSound(TargetChar, SwingSoundEntry)
 		end
 	end)
-
-	print("[SoundController] Đã khởi tạo và nạp trước toàn bộ SFX.")
 end
 
 return SoundController

@@ -38,36 +38,28 @@ local GuiHelper            = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local ItemCard             = require(ReplicatedStorage.Shared.Tools.ItemCard)
 
 -- =========================================================
--- GUI REFERENCES
+-- GUI REFERENCES (Được nạp an toàn trong Init)
 -- =========================================================
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local MenuGui = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.Menu)
-
--- Shop frame nằm bên trong Menu
-local Shop = MenuGui and MenuGui:FindFirstChild(GuiConfig.MenuFrames.Shop, true)	
-
--- Các phần tử bên trong Shop
-local ShopClose       = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.CloseButton, true)
-local TabContainer    = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.TabContainer, true)
-local IciclesTab      = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.IciclesTab)
-local BlocksTab       = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.BlocksTab)
-local RobuxTab        = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.RobuxTab)
-local ChestList       = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.ChestList, true)
-local ChestScroll     = ChestList and ChestList:FindFirstChildOfClass("ScrollingFrame")
-local RobuxShopList   = Shop and Shop:FindFirstChild(GuiConfig.ShopElements.RobuxShopList, true)
-local CurrencySection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.CurrencySection, true)
-local GamePassSection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.GamePassSection, true)
-
--- Template nằm trong Menu/Shop/Templates (không phải ReplicatedStorage)
-local TemplatesFolder       = Shop and Shop:FindFirstChild("Templates")
-local ChestPreviewTemplate  = TemplatesFolder and TemplatesFolder:FindFirstChild("ChestPreview")
-
--- Folder chứa model 3D rương
-local Assets       = ReplicatedStorage:FindFirstChild("Assets")
-local ChestsFolder = Assets and Assets:FindFirstChild("Chests")
+local _MenuGui              = nil
+local Shop                 = nil
+local ShopClose            = nil
+local TabContainer         = nil
+local IciclesTab           = nil
+local BlocksTab            = nil
+local RobuxTab             = nil
+local ChestList            = nil
+local ChestScroll          = nil
+local RobuxShopList        = nil
+local CurrencySection      = nil
+local GamePassSection      = nil
+local TemplatesFolder      = nil
+local ChestPreviewTemplate = nil
+local Assets               = nil
+local ChestsFolder         = nil
 
 -- =========================================================
 -- STATE
@@ -165,30 +157,9 @@ end
 -- HELPERS
 -- =========================================================
 
---- Lazy-require ItemRewardController để tránh circular dependency
+--- Tham chiếu ItemRewardController & MenuController được nạp trực tiếp trong Start()
 local _ItemRewardController = nil
-local function GetItemRewardController()
-	if not _ItemRewardController then
-		local Module = script.Parent:FindFirstChild("ItemRewardController")
-		if Module then
-			_ItemRewardController = require(Module)
-		end
-	end
-	return _ItemRewardController
-end
-
---- Lazy-require MenuController để điều phối mở/đóng cửa sổ
-local _MenuController = nil
-local function GetMenuController()
-	if not _MenuController then
-		local Controllers = script.Parent
-		local Module = Controllers:FindFirstChild("MenuController")
-		if Module then
-			_MenuController = require(Module)
-		end
-	end
-	return _MenuController
-end
+local _MenuController       = nil
 
 --- Dọn dẹp ViewportFrame tránh memory leak (cả Camera lẫn Model)
 --- Ủy quyền cho ViewportManager thay vì giữ lại Camera tĩnh cũ
@@ -322,9 +293,8 @@ local function ExecuteBuy(ChestEntry, Amount)
 	if Result and Result.Success then
 		PlayGuiSound(AudioConfig.Shop.ChestBuy)
 		-- Kích hoạt hiệu ứng mở rương (phần thưởng đã được trao bởi server)
-		local RewardCtrl = GetItemRewardController()
-		if RewardCtrl and Result.ReceivedItems then
-			RewardCtrl.ShowChestReward(Result.ReceivedItems, ChestEntry.Id)
+		if _ItemRewardController and Result.ReceivedItems then
+			_ItemRewardController.ShowChestReward(Result.ReceivedItems, ChestEntry.Id)
 		end
 		task.spawn(function()
 			PlayerDataController.RefreshData()
@@ -612,16 +582,15 @@ local ShopController = {}
 --- @param Visible boolean
 function ShopController.SetVisible(Visible)
 	if not Shop then return end
-	local MenuCtrl = GetMenuController()
 	if Visible then
-		if MenuCtrl then
-			MenuCtrl.OpenTab("Shop")
+		if _MenuController then
+			_MenuController.OpenTab("Shop")
 		else
 			OpenShop()
 		end
 	else
-		if MenuCtrl then
-			MenuCtrl.CloseTab("Shop")
+		if _MenuController then
+			_MenuController.CloseTab("Shop")
 		else
 			CloseShop()
 		end
@@ -629,30 +598,44 @@ function ShopController.SetVisible(Visible)
 end
 
 function ShopController:Init()
+	_MenuGui = GuiHelper.GetScreenGui(GuiConfig.ScreenGuis.Menu, GuiConfig.Timeouts.DefaultWaitForGui)
+	if not _MenuGui then
+		warn("[ShopController] Không tìm thấy ScreenGui 'Menu'.")
+		return
+	end
+
+	Shop = _MenuGui:FindFirstChild(GuiConfig.MenuFrames.Shop, true)
+		or _MenuGui:WaitForChild(GuiConfig.MenuFrames.Shop, GuiConfig.Timeouts.ShortWait)
 	if not Shop then
 		warn("[ShopController] Không tìm thấy Shop frame trong Menu GUI. Kiểm tra lại tên GUI.")
 		return
 	end
 
+	ShopClose       = Shop:FindFirstChild(GuiConfig.ShopElements.CloseButton, true)
+	TabContainer    = Shop:FindFirstChild(GuiConfig.ShopElements.TabContainer, true)
+	IciclesTab      = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.IciclesTab)
+	BlocksTab       = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.BlocksTab)
+	RobuxTab        = TabContainer and TabContainer:FindFirstChild(GuiConfig.ShopElements.RobuxTab)
+	ChestList       = Shop:FindFirstChild(GuiConfig.ShopElements.ChestList, true)
+	ChestScroll     = ChestList and ChestList:FindFirstChildOfClass("ScrollingFrame")
+	RobuxShopList   = Shop:FindFirstChild(GuiConfig.ShopElements.RobuxShopList, true)
+	CurrencySection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.CurrencySection, true)
+	GamePassSection = RobuxShopList and RobuxShopList:FindFirstChild(GuiConfig.ShopElements.GamePassSection, true)
+
+	TemplatesFolder      = Shop:FindFirstChild("Templates")
+	ChestPreviewTemplate = TemplatesFolder and TemplatesFolder:FindFirstChild("ChestPreview")
+
+	Assets       = ReplicatedStorage:FindFirstChild("Assets")
+	ChestsFolder = Assets and Assets:FindFirstChild("Chests")
+
 	-- Shop bắt đầu ẩn
 	Shop.Visible = false
-
-	-- Đăng ký tab với MenuController
-	local MenuCtrl = GetMenuController()
-	if MenuCtrl then
-		MenuCtrl.RegisterTab("Shop", {
-			Open  = OpenShop,
-			Close = CloseShop,
-			Frame = Shop,
-		})
-	end
 
 	-- ─── CLOSE BUTTON (đóng toàn bộ Shop) ──────────────────────────
 	if ShopClose then
 		ShopClose.MouseButton1Click:Connect(function()
-			local MenuC = GetMenuController()
-			if MenuC then
-				MenuC.CloseCurrentTab()
+			if _MenuController then
+				_MenuController.CloseCurrentTab()
 			else
 				CloseShop()
 			end
@@ -687,6 +670,29 @@ function ShopController:Init()
 		end)
 	end
 
+	-- Highlight tab mặc định
+	UpdateTabHighlight("Icicle")
+
+	print("[ShopController] Đã khởi tạo.")
+end
+
+function ShopController:Start()
+	local Controllers = script.Parent
+	local MenuModule = Controllers:FindFirstChild("MenuController")
+	if MenuModule then _MenuController = require(MenuModule) end
+
+	local ItemRewardModule = Controllers:FindFirstChild("ItemRewardController")
+	if ItemRewardModule then _ItemRewardController = require(ItemRewardModule) end
+
+	-- Đăng ký tab với MenuController
+	if _MenuController and Shop then
+		_MenuController.RegisterTab("Shop", {
+			Open  = OpenShop,
+			Close = CloseShop,
+			Frame = Shop,
+		})
+	end
+
 	-- ─── MARKETPLACE SERVICE: MUA PRODUCT THÀNH CÔNG (CLIENT FEEDBACK) ────
 	MarketplaceService.PromptProductPurchaseFinished:Connect(function(UserId, ProductId, IsPurchased)
 		if UserId == LocalPlayer.UserId and IsPurchased then
@@ -706,20 +712,6 @@ function ShopController:Init()
 			end)
 		end
 	end)
-
-	-- Highlight tab mặc định
-	UpdateTabHighlight("Icicle")
-
-	print("[ShopController] Đã khởi tạo.")
-end
-
-function ShopController:Start()
-	local Controllers = script.Parent
-	local MenuModule = Controllers:FindFirstChild("MenuController")
-	if MenuModule then _MenuController = require(MenuModule) end
-
-	local ItemRewardModule = Controllers:FindFirstChild("ItemRewardController")
-	if ItemRewardModule then _ItemRewardController = require(ItemRewardModule) end
 end
 
 return ShopController

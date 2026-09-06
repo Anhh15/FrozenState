@@ -286,6 +286,10 @@ function ScoreBoardController:Init()
 		end)
 	end
 
+	print("[ScoreBoardController] Đã khởi tạo.")
+end
+
+function ScoreBoardController:Start()
 	-- ── TOGGLE: PC — giữ Ctrl để hiện, thả để ẩn ──
 	UserInputService.InputBegan:Connect(function(Input, GameProcessed)
 		if GameProcessed then return end
@@ -358,8 +362,6 @@ function ScoreBoardController:Init()
 			SetScoreBoardVisible(false)
 		end
 	end)
-
-	print("[ScoreBoardController] Đã khởi tạo.")
 end
 
 return ScoreBoardController
