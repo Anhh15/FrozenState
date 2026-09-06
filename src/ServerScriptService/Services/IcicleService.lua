@@ -70,6 +70,14 @@ local IcicleService = {}
 --- Cấp Tool cho một player cụ thể, đọc skin từ DataService
 --- @param Player Player
 function IcicleService.GiveTool(Player)
+	if not Player or not Player:IsA("Player") then return end
+
+	-- Không cấp Tool cho người chơi đã bị loại hoặc đang chết
+	if SessionService.GetState(Player) == "Dead" then return end
+	local Character = Player.Character
+	local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+	if not Humanoid or Humanoid.Health <= 0 then return end
+
 	IcicleService.RemoveTool(Player)  -- Xóa cũ nếu có
 
 	-- Đọc skin đang trang bị từ DataService (Phase 2)

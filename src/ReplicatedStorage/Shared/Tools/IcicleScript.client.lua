@@ -166,6 +166,14 @@ local function StartHitboxPoll(HitPlayers)
 	Params.FilterDescendantsInstances = { Player.Character }
 
 	_HitboxConnection = RunService.Heartbeat:Connect(function()
+		-- Kiểm tra LocalPlayer còn sống, nếu chết thì dừng poll ngay
+		local Character = Player.Character
+		local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+		if not Humanoid or Humanoid.Health <= 0 then
+			StopHitboxPoll()
+			return
+		end
+
 		local TouchingParts = workspace:GetPartsInPart(Hitbox, Params)
 
 		for _, Part in ipairs(TouchingParts) do
@@ -183,6 +191,10 @@ local function StartHitboxPoll(HitPlayers)
 			end
 
 			if not TargetPlayer or TargetPlayer == Player then continue end
+
+			-- Kiểm tra Target còn sống (Humanoid.Health > 0)
+			local TargetHumanoid = TargetChar:FindFirstChildOfClass("Humanoid")
+			if not TargetHumanoid or TargetHumanoid.Health <= 0 then continue end
 
 			-- Tránh hit cùng 1 player nhiều lần trong 1 swing
 			if HitPlayers[TargetPlayer] then continue end
@@ -205,6 +217,13 @@ Tool:SetAttribute("IsOnCooldown", false)
 Tool.Activated:Connect(function()
 	-- Cooldown check
 	if _IsOnCooldown then return end
+
+	-- Kiểm tra nhân vật LocalPlayer còn sống
+	local Character = Player.Character
+	if not Character then return end
+	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+	if not Humanoid or Humanoid.Health <= 0 then return end
+
 	_IsOnCooldown = true
 
 	-- Gán attributes để UI Hotbar bắt tín hiệu đồng bộ hoạt ảnh Cooldown

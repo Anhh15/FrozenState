@@ -35,6 +35,8 @@ local GameConfig = {
 		MinDotProduct              = 0.5,  -- Ngưỡng cosin góc nhìn tối thiểu phía trước mặt (cos 60 độ = 0.5, hình nón 120 độ)
 		HitWindowLatencyTolerance  = 0.15, -- Dung sai độ trễ mạng (giây) cho cửa sổ vung kiếm
 		MinAttackDistanceThreshold = 0.001, -- Ngưỡng khoảng cách tối thiểu tránh chia cho 0 khi tính Vector Unit
+		RaycastMaxTransparency     = 0.9,  -- Ngưỡng trong suốt tối đa: Part có Transparency >= 0.9 và CanCollide = false được coi là Trigger vô hình không cản tầm nhìn
+		RaycastMaxAttempts         = 4,    -- Số lần dò tia tối đa khi xuyên qua các Volume vô hình
 	},
 
 	-- =========================================================

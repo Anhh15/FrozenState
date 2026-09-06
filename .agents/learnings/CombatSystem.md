@@ -1,6 +1,6 @@
 # CombatSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống chiến đấu (Icicle Tool, Hitbox Spatial Query, Freeze/Thaw mechanics, IceBlock Model và Tags CollectionService).
-> Cập nhật lần cuối: 05-09-2026
+> Cập nhật lần cuối: 06-09-2026
 
 ---
 
@@ -46,14 +46,20 @@
   4. *Góc nhìn LookVector (XZ Projection):* Chiếu vector hướng nhìn và vector tới mục tiêu lên mặt phẳng XZ để loại bỏ sai số độ cao khi nhảy/dốc:
      $$\text{Dot} = \vec{U}_{\text{Facing}} \cdot \vec{U}_{\text{Target}} \ge \text{GameConfig.Tool.MinDotProduct} \ (0.5)$$
      Triệt tiêu hoàn toàn hành vi quay lưng chém hoặc 360° Kill-Aura.
-  5. *Khoảng cách & LoS:* Kiểm tra $D \le \text{HitboxRange} \times \text{HitLagTolerance}$ và Raycast LoS loại trừ toàn bộ nhân vật người chơi trong trận để tránh bị chặn nhầm bởi người thứ ba.
-  6. *Alive & Phase Check:* Bắt buộc cả hai bên có `Humanoid.Health > 0`, trận đấu đang `InGame` (thông qua `SessionService.GetCurrentPhase()`).
-- **File liên quan:** [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
+  5. *Khoảng cách & Multi-Pass LoS:* Kiểm tra $D \le \text{HitboxRange} \times \text{HitLagTolerance}$. Raycast LoS loại trừ 100% Character và Model IceBlock; phân loại cản qua `Terrain`, `CanCollide == true`, hoặc `Transparency < RaycastMaxTransparency` ($0.9$); tự động lặp dò tiếp qua trigger volume vô hình (tối đa $\text{RaycastMaxAttempts} = 4$).
+  6. *Phòng thủ Sống/Chết Đa tầng:* Client ngắt poll và chặn vung kiếm nếu chết (`Humanoid.Health <= 0`), không bắn hit vào mục tiêu chết. Server kiểm tra `Humanoid.Health > 0` cả hai bên trong `HandleToolHit`, chặn Freeze/Thaw người chết và từ chối cấp Tool khi `State == "Dead"`.
+- **File liên quan:** [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
 
 ### 8. Bảo Mật Server Authority & Cô Lập Mã Nguồn Quản Trị / Backend
 - **Chi tiết:** Mọi tệp chứa cấu hình quản trị viên, ID người dùng Admin (`AdminConfig.lua`) và thư viện DataStore can thiệp dữ liệu sâu (`ProfileService.lua`) tuyệt đối không được đặt trong `ReplicatedStorage`.
 - **Nguyên lý Cô lập:** Di dời toàn bộ vào `ServerScriptService/Config/AdminConfig.lua` và `ServerScriptService/Lib/ProfileService.lua`. Cấu hình Rojo map trực tiếp vào Server, Client hoàn toàn bị cô lập khỏi mã nguồn nhạy cảm, loại bỏ nguy cơ hacker dịch ngược Client để khai thác danh sách Admin.
 - **File liên quan:** [AdminConfig.lua](../../src/ServerScriptService/Config/AdminConfig.lua), [ProfileService.lua](../../src/ServerScriptService/Lib/ProfileService.lua), [AdminService.lua](../../src/ServerScriptService/Services/AdminService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
+### 9. Cơ chế Replication Hoạt ảnh Đóng băng bằng Server-Side LoadAnimation (Action4 Priority)
+- **Chi tiết:** Khi nhân vật bị đóng băng, Server khóa cứng vị trí nạn nhân bằng `HumanoidRootPart.Anchored = true`. Việc Anchor khiến Assembly mất Network Ownership phía Client, khiến các animation kích hoạt từ Client không thể truyền tin cậy sang các máy khác.
+- **Giải pháp Server-Side Authority:** Server trực tiếp nạp hoạt ảnh qua `AnimationConfig.GetPoseAnimation(BlockSkinId)` và gọi `Animator:LoadAnimation()` trên `Humanoid.Animator` của nạn nhân với mức ưu tiên cao nhất `Enum.AnimationPriority.Action4` (`Looped = true`). Theo cơ chế Roblox Luau Engine, hoạt ảnh nạp từ Server sẽ tự động nhân bản (replicate) xuống 100% Client bất kể HRP có bị Anchor hay không.
+- **Quản lý vòng đời:** Module `FreezeService` duy trì bảng cache `_FrozenAnimationTracks[UserId]` trên Server, tự động dừng (`:Stop()`) và dọn dẹp track khi nạn nhân được rã đông (`ThawPlayer`), rã đông cuối trận (`ThawAll`), bị loại (`EliminatePlayer`), hoặc thoát game (`Players.PlayerRemoving`).
+- **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [AnimationHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua)
 
 ---
 
@@ -109,4 +115,22 @@
 - **Vấn đề:** `FreezeService` tiếp nhận `OnToolHit` độc lập và tự khởi tạo `_AttackSessions` bằng `os.clock()` khi nhận hit mà không cần biết Client có gọi `OnToolSwing` hay không. Đồng thời Server chỉ kiểm tra khoảng cách Euclidean 3D đơn thuần ($D \le 12\text{ studs}$), bỏ qua hoàn toàn góc nhìn và lượng máu `Health > 0`, cho phép kẻ gian quay lưng chém 360 độ hoặc chém từ cõi chết trước giờ đấu.
 - **Giải pháp:** Thiết lập chuỗi xác thực Stateful Attack: `IcicleService` bắt buộc tiếp nhận `OnToolSwing` trước để mở `AttackSession` trong RAM Server. `FreezeService` tra cứu session, kiểm tra cửa sổ thời gian trôi qua $\Delta t \in [\text{HitStartTime} - \text{Tol}, \text{HitEndTime} + \text{Tol}]$, chiếu vector hướng nhìn lên mặt phẳng ngang XZ kiểm tra $\text{Dot} \ge 0.5$ ($\pm 60^\circ$ phía trước), kiểm tra `Humanoid.Health > 0` cả hai bên và lọc sạch toàn bộ Character người chơi khỏi Raycast LoS.
 - **File liên quan:** [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
+
+### 10. Hoạt Ảnh Tư Thế Đóng Băng Bị Đứng Hình (T-Pose) Do Client-Side Play & Server Anchor RootPart (HIGH-03)
+- **Vấn đề:** Khi bị đóng băng, nhân vật của nạn nhân hiển thị đúng pose trên máy cá nhân nhưng toàn bộ người chơi khác nhìn thấy nạn nhân đứng đơ ở tư thế Idle/T-pose mặc định.
+- **Nguyên nhân:** `SoundController` phía Client chỉ gọi `PlayPoseAnimation` nếu `Payload.VictimPlayer == LocalPlayer` (các Client khác bỏ qua). Đồng thời, việc Server gán `HRP.Anchored = true` khiến Engine không replicate Motor6D transform từ Client của nạn nhân lên Server. Ngoài ra, việc đặt logic hoạt ảnh nhân vật trong `SoundController` vi phạm nguyên lý Single Responsibility.
+- **Giải pháp:** Chuyển toàn bộ quyền điều khiển hoạt ảnh về Server trong `FreezeService`, nạp trực tiếp qua `Animator:LoadAnimation` với `Priority = Action4`, lưu trữ vào `_FrozenAnimationTracks[UserId]` và giải phóng khi Thaw/Eliminate/Disconnect. Dọn sạch toàn bộ logic pose animation khỏi `SoundController`, trả lại chức năng thuần túy xử lý 3D SFX.
+- **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [SoundController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SoundController.lua), [AnimationHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua)
+
+### 11. Thuật Toán Raycast Line-of-Sight Hai Chiều: Chặn Nhầm Người Thứ Ba & Bỏ Lọt Vật Thể Xuyên Thấu (HIGH-04)
+- **Vấn đề:** 
+  1. *Chặn nhầm (False Negative):* Raycast chỉ loại trừ Attacker và Target khiến người chơi thứ ba đứng chen ngang (có `CanCollide = true`) hấp thụ tia ray, làm hủy bỏ oan đòn đánh hợp lệ.
+  2. *Bỏ lọt (False Positive):* Chỉ kiểm tra `CanCollide == true` khiến tia ray xuyên qua cửa kính mờ, rèm, song sắt bị tắt va chạm; đồng thời các Part khối băng `IceBlock` (`CanCollide = false`) nuốt chửng tia ray khiến hacker chém xuyên tường đằng sau khối băng.
+- **Giải pháp:** Cấu hình `FilterDescendantsInstances` loại trừ toàn bộ Character người chơi và Model `IceBlock`. Áp dụng thuật toán Multi-Pass Raycast: chặn đòn nếu gặp `Terrain`, Part có `CanCollide == true`, hoặc Part có `CanCollide == false` nhưng $\text{Transparency} < \text{RaycastMaxTransparency}$ ($0.9$); nếu gặp trigger zone vô hình ($\text{Transparency} \ge 0.9$), thêm vào bộ lọc và tiếp tục phóng tia dò đoạn còn lại (tối đa $\text{RaycastMaxAttempts} = 4$).
+- **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)
+
+### 12. Bỏ Sót Xác Thực Trạng Thái Sống Chết (Humanoid.Health) Gây Chém Từ Cõi Chết & Tương Tác Xác Chết (HIGH-08)
+- **Vấn đề:** Người chơi sau khi rơi map hoặc cạn máu vẫn có 1-2 giây hoạt ảnh tử nạn trước khi despawn. Trong thời gian này, hacker hoặc client lag có thể vung kiếm gửi `OnToolHit` để đóng băng người sống từ cõi chết; ngược lại, việc cố đóng băng hoặc giải cứu xác chết gây kẹt trạng thái nhân vật.
+- **Giải pháp:** Thiết lập phòng vệ đa tầng (Defense-in-Depth): Phía Client, `IcicleScript` chặn `Tool.Activated` và ngắt poll va chạm nếu `LocalPlayer` chết (`Health \le 0`), kiểm tra `TargetHumanoid.Health > 0` trước khi bắn remote. Phía Server, `FreezeService` kiểm tra máu cả hai bên trong `HandleToolHit` và bổ sung guard clause trong `FreezePlayer`, `ThawPlayer`; `IcicleService` cấm cấp Tool trong `GiveTool` nếu người chơi đã chết hoặc mang trạng thái `Dead`.
+- **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua)
 

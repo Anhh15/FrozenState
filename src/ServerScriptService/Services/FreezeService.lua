@@ -25,6 +25,7 @@ local TagConfig         = require(ReplicatedStorage.Shared.Config.TagConfig)
 local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
+local AnimationHelper   = require(ReplicatedStorage.Shared.Tools.AnimationHelper)
 
 local ShopService  = nil
 local QuestService = nil
@@ -39,11 +40,15 @@ local QuestService = nil
 -- STATE
 -- =========================================================
 
-local _firstBloodClaimed = false
+local _FirstBloodClaimed = false
 
 -- Cache IceBlock theo UserId — để RemoveIceBlock chạy O(1) thay vì scan workspace
 -- { [UserId: number] = BlockModel: Model }
-local _iceBlocks = {}
+local _IceBlocks = {}
+
+-- Cache AnimationTrack theo UserId để điều khiển dừng pose animation khi Thaw / Eliminate
+-- { [UserId: number] = Track: AnimationTrack }
+local _FrozenAnimationTracks = {}
 
 local UpdatePlayerStateEvent
 local UpdateMoneyEvent
@@ -115,7 +120,7 @@ local function SpawnIceBlock(Attacker, Victim)
 	BlockModel.Parent = workspace
 
 	-- Lưu reference vào cache — dùng cho RemoveIceBlock O(1)
-	_iceBlocks[Victim.UserId] = BlockModel
+	_IceBlocks[Victim.UserId] = BlockModel
 
 	-- Di chuyển Model về vị trí HRP sau khi đã parent vào workspace
 	BlockModel:PivotTo(HRP.CFrame)
@@ -144,23 +149,59 @@ local function SpawnIceBlock(Attacker, Victim)
 	Weld.Parent = PrimaryPart
 end
 
---- Xóa Model IceBlock của một player — O(1) qua cache _iceBlocks
+--- Xóa Model IceBlock của một player — O(1) qua cache _IceBlocks
 --- @param Victim Player
 local function RemoveIceBlock(Victim)
-	local Block = _iceBlocks[Victim.UserId]
+	local Block = _IceBlocks[Victim.UserId]
 	if Block then
 		TagHelper.RemoveTag(Block, TagConfig.Tags.IceBlock)
 		Block:Destroy()
-		_iceBlocks[Victim.UserId] = nil
+		_IceBlocks[Victim.UserId] = nil
 	end
 end
 
 -- =========================================================
--- PRIVATE: Audio
+-- PRIVATE: Animation
 -- =========================================================
 
+--- Kích hoạt Pose Animation đóng băng trên Animator của nạn nhân từ Server
+--- Tự động replicate xuống toàn bộ Client kể cả khi HumanoidRootPart bị Anchor
+--- @param Victim Player
+--- @param BlockSkinId string?
+local function PlayFreezeAnimation(Victim, BlockSkinId)
+	if not Victim then return end
+	local Character = Victim.Character
+	if not Character then return end
 
+	-- Dừng track cũ nếu còn tồn tại
+	local OldTrack = _FrozenAnimationTracks[Victim.UserId]
+	if OldTrack then
+		AnimationHelper.StopTrack(OldTrack)
+		_FrozenAnimationTracks[Victim.UserId] = nil
+	end
 
+	local AnimId = AnimationConfig.GetPoseAnimation(BlockSkinId)
+	local Track = AnimationHelper.LoadTrack(Character, AnimId, {
+		Looped   = true,
+		Priority = Enum.AnimationPriority.Action4,
+	})
+
+	if Track then
+		AnimationHelper.PlayTrack(Track)
+		_FrozenAnimationTracks[Victim.UserId] = Track
+	end
+end
+
+--- Dừng Pose Animation đóng băng của nạn nhân từ Server
+--- @param Victim Player
+local function StopFreezeAnimation(Victim)
+	if not Victim then return end
+	local Track = _FrozenAnimationTracks[Victim.UserId]
+	if Track then
+		AnimationHelper.StopTrack(Track)
+		_FrozenAnimationTracks[Victim.UserId] = nil
+	end
+end
 -- =========================================================
 -- PRIVATE: Helpers
 -- =========================================================
@@ -204,23 +245,23 @@ local FreezeService = {}
 --- @param Attacker Player  -- người tấn công
 --- @param Victim Player    -- mục tiêu
 function FreezeService.FreezePlayer(Attacker, Victim)
+	-- Guard clause: Đảm bảo Victim còn sống và có Character
+	local VictimChar = Victim.Character
+	if not VictimChar then return end
+	local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
+	if not Humanoid or Humanoid.Health <= 0 then return end
+
 	-- Đặt trạng thái Frozen
 	SessionService.SetState(Victim, "Frozen")
 	BroadcastPlayerState(Victim)
 
 	-- Khóa chuyển động và vị trí
-	local VictimChar = Victim.Character
-	if VictimChar then
-		local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
-		if Humanoid then
-			Humanoid.WalkSpeed  = 0
-			Humanoid.JumpPower  = 0
-			Humanoid.JumpHeight = 0
-		end
-		local HRP = VictimChar:FindFirstChild("HumanoidRootPart")
-		if HRP then
-			HRP.Anchored = true
-		end
+	Humanoid.WalkSpeed  = 0
+	Humanoid.JumpPower  = 0
+	Humanoid.JumpHeight = 0
+	local HRP = VictimChar:FindFirstChild("HumanoidRootPart")
+	if HRP then
+		HRP.Anchored = true
 	end
 
 	-- Thu hồi tool của victim khi bị đóng băng
@@ -229,7 +270,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	-- Tạo Model IceBlock theo skin của attacker
 	SpawnIceBlock(Attacker, Victim)
 
-	-- Đọc skin Block của attacker để chọn đúng SFX
+	-- Đọc skin Block của attacker để chọn đúng SFX & Animation
 	local BlockSkinId = "Default"
 	local AttackerData = DataService.GetData(Attacker)
 	if AttackerData and AttackerData.EquippedIceBlock then
@@ -237,7 +278,10 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		BlockSkinId = Entry and Entry.Id or "Default"
 	end
 
-	-- Broadcast đến tất cả Client để tự phát 3D SFX và kích hoạt pose animation phía Client
+	-- Kích hoạt Pose Animation đóng băng trực tiếp từ Server (replicate tới 100% Client)
+	PlayFreezeAnimation(Victim, BlockSkinId)
+
+	-- Broadcast đến tất cả Client để tự phát 3D SFX
 	PlayFreezeSFXEvent:FireAllClients({
 		VictimPlayer    = Victim,
 		VictimCharacter = Victim.Character,
@@ -273,8 +317,8 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 
 	-- First Blood: người đầu tiên freeze trong trận
 	local IsFirstBlood = false
-	if not _firstBloodClaimed then
-		_firstBloodClaimed = true
+	if not _FirstBloodClaimed then
+		_FirstBloodClaimed = true
 		IsFirstBlood = true
 		SessionService.SetStat(Attacker, "FirstBlood", true)
 		DataService.IncrementStat(Attacker, "TotalFirstBlood")
@@ -307,6 +351,12 @@ end
 --- @param Rescuer Player
 --- @param Victim Player
 function FreezeService.ThawPlayer(Rescuer, Victim)
+	-- Guard clause: Đảm bảo Victim còn sống và có Character
+	local VictimChar = Victim.Character
+	if not VictimChar then return end
+	local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
+	if not Humanoid or Humanoid.Health <= 0 then return end
+
 	local ModeKey = SessionService.GetCurrentModeKey()
 
 	-- Không thể thaw nếu mode không cho phép (EternalFreeze, Chaos)
@@ -322,22 +372,17 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	BroadcastPlayerState(Victim)
 
 	-- Khôi phục chuyển động và vị trí
-	local VictimChar = Victim.Character
-	if VictimChar then
-		local Humanoid = VictimChar:FindFirstChildOfClass("Humanoid")
-		if Humanoid then
-			Humanoid.WalkSpeed  = GameConfig.Player.DefaultWalkSpeed
-			Humanoid.JumpPower  = GameConfig.Player.DefaultJumpPower
-			Humanoid.JumpHeight = GameConfig.Player.DefaultJumpHeight
-		end
-		local HRP = VictimChar:FindFirstChild("HumanoidRootPart")
-		if HRP then
-			HRP.Anchored = false
-		end
+	Humanoid.WalkSpeed  = GameConfig.Player.DefaultWalkSpeed
+	Humanoid.JumpPower  = GameConfig.Player.DefaultJumpPower
+	Humanoid.JumpHeight = GameConfig.Player.DefaultJumpHeight
+	local HRP = VictimChar:FindFirstChild("HumanoidRootPart")
+	if HRP then
+		HRP.Anchored = false
 	end
 
-	-- Xóa IceBlock
+	-- Xóa IceBlock & Dừng Pose Animation đóng băng trên Server
 	RemoveIceBlock(Victim)
+	StopFreezeAnimation(Victim)
 
 	-- Trao trả tool cho victim nếu trận đấu vẫn đang active
 	if SessionService.IsMatchActive() then
@@ -352,7 +397,7 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 		BlockSkinId = Entry and Entry.Id or "Default"
 	end
 
-	-- Broadcast đến tất cả Client để tự phát 3D SFX và dừng pose animation phía Client
+	-- Broadcast đến tất cả Client để tự phát 3D SFX
 	PlayThawSFXEvent:FireAllClients({
 		VictimPlayer    = Victim,
 		VictimCharacter = Victim.Character,
@@ -416,10 +461,11 @@ function FreezeService.ThawAll()
 				end
 			end
 			RemoveIceBlock(Player)
+			StopFreezeAnimation(Player)
 			SessionService.SetState(Player, "Normal")
 			BroadcastPlayerState(Player)
 
-			-- Báo client dừng pose animation và phát âm thanh giải cứu (cuối trận)
+			-- Báo client phát âm thanh giải cứu (cuối trận)
 			PlayThawSFXEvent:FireAllClients({
 				VictimPlayer    = Player,
 				VictimCharacter = Char,
@@ -446,9 +492,10 @@ function FreezeService.EliminatePlayer(Player)
 		end
 	end
 
-	-- Thu hồi Tool & xóa IceBlock
+	-- Thu hồi Tool, xóa IceBlock & dừng Pose Animation đóng băng
 	IcicleService.RemoveTool(Player)
 	RemoveIceBlock(Player)
+	StopFreezeAnimation(Player)
 
 	-- Chuyển trạng thái sang Dead và gỡ InMatch attribute (giữ nguyên phân đội trong SessionService cho ván đấu)
 	SessionService.SetState(Player, "Dead")
@@ -470,7 +517,7 @@ end
 
 --- Reset flag First Blood (gọi khi bắt đầu trận mới)
 function FreezeService.ResetRound()
-	_firstBloodClaimed = false
+	_FirstBloodClaimed = false
 end
 
 -- =========================================================
@@ -557,19 +604,60 @@ local function HandleToolHit(Attacker, Target)
 	-- 10. Raycast Line-of-Sight validation (Chống chém xuyên tường / địa hình)
 	local RayParams = RaycastParams.new()
 	RayParams.FilterType = Enum.RaycastFilterType.Exclude
-	-- Lọc toàn bộ nhân vật người chơi trong game để không bị chặn nhầm người thứ 3
+
+	-- Danh sách loại trừ: Toàn bộ Character người chơi và toàn bộ Model IceBlock trong trận
 	local FilterList = {}
 	for _, P in ipairs(Players:GetPlayers()) do
 		if P.Character then
 			table.insert(FilterList, P.Character)
 		end
 	end
+	for _, BlockModel in pairs(_IceBlocks) do
+		if BlockModel and BlockModel.Parent then
+			table.insert(FilterList, BlockModel)
+		end
+	end
 	RayParams.FilterDescendantsInstances = FilterList
 
-	local RayDirection = TargetHRP.Position - AttackerHRP.Position
-	local RayResult = workspace:Raycast(AttackerHRP.Position, RayDirection, RayParams)
-	if RayResult and RayResult.Instance and RayResult.Instance.CanCollide then
-		return
+	local MaxAttempts = (GameConfig.Tool and GameConfig.Tool.RaycastMaxAttempts) or 4
+	local MaxTransparency = (GameConfig.Tool and GameConfig.Tool.RaycastMaxTransparency) or 0.9
+	local CurrentOrigin = AttackerHRP.Position
+	local RayDirection = TargetHRP.Position - CurrentOrigin
+
+	while MaxAttempts > 0 and RayDirection.Magnitude > 0.05 do
+		MaxAttempts -= 1
+		local RayResult = workspace:Raycast(CurrentOrigin, RayDirection, RayParams)
+		if not RayResult then
+			-- Tầm nhìn hoàn toàn thông suốt, không có vật cản
+			break
+		end
+
+		local HitPart = RayResult.Instance
+		local IsObstacle = false
+
+		if HitPart:IsA("Terrain") then
+			IsObstacle = true
+		elseif HitPart:IsA("BasePart") then
+			if HitPart.CanCollide then
+				-- Vật thể có va chạm vật lý (tường, cột, invisible barrier của map)
+				IsObstacle = true
+			elseif HitPart.Transparency < MaxTransparency then
+				-- Vật thể không va chạm nhưng có hiển thị thị giác (cửa kính, rèm mờ, song sắt)
+				IsObstacle = true
+			end
+		end
+
+		if IsObstacle then
+			-- Bị chặn bởi chướng ngại vật hợp lệ của map -> Hủy đòn đánh
+			return
+		end
+
+		-- Part là trigger zone / volume vô hình (CanCollide = false và Transparency >= MaxTransparency)
+		-- Thêm Part vào FilterList và tiếp tục phóng tia dò phần còn lại
+		table.insert(FilterList, HitPart)
+		RayParams.FilterDescendantsInstances = FilterList
+		CurrentOrigin = RayResult.Position + RayDirection.Unit * 0.05
+		RayDirection = TargetHRP.Position - CurrentOrigin
 	end
 
 	-- Đăng ký Target đã bị hit trong cú swing này
@@ -619,8 +707,9 @@ function FreezeService:Init()
 
 	OnToolHitEvent.OnServerEvent:Connect(HandleToolHit)
 
-	-- Dọn dẹp IceBlock khi player rời game (tránh memory leak & part orphan)
+	-- Dọn dẹp IceBlock và Pose Animation khi player rời game (tránh memory leak & part orphan)
 	Players.PlayerRemoving:Connect(function(Player)
+		StopFreezeAnimation(Player)
 		RemoveIceBlock(Player)
 	end)
 
