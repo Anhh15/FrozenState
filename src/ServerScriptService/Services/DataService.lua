@@ -143,23 +143,47 @@ local function OnPlayerAdded(Player)
 	end
 end
 
---- Xử lý khi player rời server
-local function OnPlayerRemoving(Player)
+--- Giải phóng profile của người chơi một cách an toàn và thực thi tất cả callback tiền giải phóng
+--- @param Player Player
+local function ReleasePlayerProfile(Player)
+	local Profile = ActiveProfiles[Player]
+	if not Profile then
+		return
+	end
+
 	-- 1. Chạy tuần tự tất cả callback đã đăng ký đồng bộ TRƯỚC KHI giải phóng Profile
 	for _, Callback in ipairs(_BeforeProfileReleaseCallbacks) do
 		local Success, Error = pcall(Callback, Player)
 		if not Success then
-			warn(("[DataService] Lỗi trong BeforeProfileRelease callback: %s"):format(tostring(Error)))
+			warn(("[DataService] Lỗi trong BeforeProfileRelease callback cho %s: %s"):format(Player and Player.Name or "Unknown", tostring(Error)))
 		end
 	end
 
 	-- 2. Giải phóng Profile
-	local Profile = ActiveProfiles[Player]
-	if Profile ~= nil then
+	if Profile:IsActive() then
 		Profile:Release()
-		ActiveProfiles[Player] = nil
-		print(("[DataService] Profile đã release: %s"):format(Player.Name))
 	end
+	ActiveProfiles[Player] = nil
+	print(("[DataService] Profile đã release: %s"):format(Player and Player.Name or "Unknown"))
+end
+
+--- Xử lý khi player rời server
+local function OnPlayerRemoving(Player)
+	ReleasePlayerProfile(Player)
+end
+
+--- Xử lý khi máy chủ đóng (game:BindToClose)
+local function OnServerShutdown()
+	print("[DataService] Máy chủ đang tắt. Bắt đầu flush dữ liệu và giải phóng profiles...")
+	local PlayersToRelease = {}
+	for Player in pairs(ActiveProfiles) do
+		table.insert(PlayersToRelease, Player)
+	end
+
+	for _, Player in ipairs(PlayersToRelease) do
+		ReleasePlayerProfile(Player)
+	end
+	print(("[DataService] Hoàn tất giải phóng %d profiles."):format(#PlayersToRelease))
 end
 
 -- =========================================================
@@ -786,6 +810,7 @@ function DataService:Init()
 	-- Kết nối events
 	Players.PlayerAdded:Connect(OnPlayerAdded)
 	Players.PlayerRemoving:Connect(OnPlayerRemoving)
+	game:BindToClose(OnServerShutdown)
 
 	-- Xử lý trường hợp player đã join trước khi service Init
 	for _, Player in ipairs(Players:GetPlayers()) do

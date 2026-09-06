@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Objective Engine 2.0, Hiệu ứng Mở rương, Phần thưởng Đa hình, Nhiệm vụ Lặp Vô hạn, Mutex In-Flight Lock và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 05-09-2026
+> Cập nhật lần cuối: 06-09-2026
 
 ---
 
@@ -31,10 +31,10 @@
   - *Tầng Bền Vững (`QuestData`)*: Lưu trực tiếp `{ Progress, Completed, Claimed }` trong `PROFILE_TEMPLATE` của ProfileService cho các quest `Accumulative` và `Milestone`.
 - **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
 
-### 5. Theo dõi PlayTime Tối Giản Hiệu Năng Thời Gian Thực
+### 5. Theo dõi PlayTime Tối Giản Hiệu Năng & Single Source of Truth Vòng Đời Profile
 - **Chi tiết:** Server lưu thời điểm join (`_sessionStart`). Khi tính toán tiến trình cho `PlayTime`, Server tự động cộng thêm thời gian session hiện tại:
   $$\text{PlayTime} = \text{Data.PlayTime} + (\text{os.time}() - \text{\_sessionStart}[Player])$$
-- Khi người chơi rời game (`PlayerRemoving`), Server mới ghi giá trị này vào DataStore để lưu trữ bền vững, tránh spam ghi DataStore liên tục.
+- **Single Source of Truth cho Vòng Đời Giải Phóng Profile:** `DataService` là trung tâm duy nhất điều phối dọn dẹp và lưu dữ liệu. Các service con (như `QuestService`) chỉ đăng ký hàm flush qua `DataService.RegisterBeforeProfileRelease(Callback)` mà tuyệt đối không tự kết nối `PlayerRemoving`. `DataService` đảm bảo kích hoạt các callback này đồng bộ cả khi người chơi thoát game (`PlayerRemoving`) lẫn khi máy chủ đóng đột ngột (`game:BindToClose`), tránh ghi DataStore liên tục giữa chừng mà vẫn không mất mát dữ liệu.
 - **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
 
 ### 6. Module Độc Lập ItemRewardController & Reward-First Pattern
@@ -281,3 +281,11 @@
 - **Vấn đề:** Để lưu giờ chơi trước khi thoát, `FlushSession` được đăng ký vào `RegisterBeforeProfileRelease` và gọi `QuestService.DispatchEvent(Player, "OnPlayTime")`. Tuy nhiên, ngay đầu hàm `DispatchEvent` có dòng guard: `if not Player:IsDescendantOf(Players) then return end`. Khi người chơi đang trong quá trình thoát, instance Player đã bị Roblox gỡ khỏi `Players`, khiến toàn bộ tiến trình nhiệm vụ tính theo giờ chơi của phiên đó bị hủy bỏ trong âm thầm dù DataStore đã cộng thời gian.
 - **Giải pháp:** Nới lỏng điều kiện kiểm tra: `if not Player or (not Player:IsDescendantOf(Players) and not DataService.GetProfile(Player)) then return end`. Miễn là Profile của người chơi vẫn đang hoạt động trong RAM (`ActiveProfiles[Player]`), `DispatchEvent` vẫn cho phép cập nhật tiến trình nhiệm vụ trọn vẹn, đồng thời bọc kiểm tra `Player:IsDescendantOf(Players)` trước các lệnh `FireClient` để tránh lỗi gửi gói tin đến client đã ngắt kết nối.
 - **File liên quan:** [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
+### 24. Mất Dữ Liệu PlayTime & Tiến Trình Quest Khi Server Shutdown Đột Ngột & Trùng Lặp Listener Giải Phóng Profile
+- **Vấn đề:** Khi máy chủ tắt đột ngột (Restart Servers để cập nhật game, Roblox Migrate Server, Server Shutdown), `Players.PlayerRemoving` không kích hoạt cho các player còn lại trong phòng. Thư viện `ProfileService` tự kích hoạt `game:BindToClose` của riêng nó để lưu và đóng Profile DataStore. Do `DataService` không có hook `game:BindToClose`, mảng `_BeforeProfileReleaseCallbacks` bị bỏ qua 100%, làm mất sạch `PlayTime` và tiến trình quest trong RAM session của `QuestService`. Đồng thời, `QuestService` tự nối thêm `Players.PlayerRemoving:Connect(FlushSession)`, khiến `FlushSession` bị gọi hai lần khi thoát game bình thường.
+- **Giải pháp:**
+  1. Trích xuất hàm `ReleasePlayerProfile(Player)` trong `DataService` với cơ chế Idempotent (`if not Profile then return end`), thực thi tuần tự `_BeforeProfileReleaseCallbacks` trong `pcall` trước khi gọi `Profile:Release()` và gán `ActiveProfiles[Player] = nil`.
+  2. Bổ sung `OnServerShutdown()` duyệt snapshot `ActiveProfiles` và đăng ký trực tiếp `game:BindToClose(OnServerShutdown)` trong `DataService:Init()`.
+  3. Xóa bỏ kết nối thừa `Players.PlayerRemoving:Connect(FlushSession)` tại `QuestService.lua`, quy tụ toàn bộ quyền điều phối vòng đời giải phóng dữ liệu về duy nhất `DataService`.
+- **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)

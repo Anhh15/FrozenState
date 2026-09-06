@@ -44,7 +44,8 @@ local GameConfig = {
 		DefaultWalkSpeed  = 16,   -- WalkSpeed khi không bị lock
 		DefaultJumpPower  = 50,   -- JumpPower khi không bị lock (legacy)
 		DefaultJumpHeight = 7.2,  -- JumpHeight khi không bị lock
-		AfkCooldown       = 1.5,  -- Khoảng cách tối thiểu giữa 2 lần chuyển đổi trạng thái AFK (giây)
+		AfkCooldown             = 1.5,  -- Khoảng cách tối thiểu giữa 2 lần chuyển đổi trạng thái AFK (giây)
+		SpectateRequestCooldown = 0.5,  -- Khoảng cách tối thiểu giữa 2 lần yêu cầu chuyển mục tiêu quan sát (giây)
 	},
 
 }

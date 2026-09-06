@@ -692,8 +692,6 @@ function QuestService:Init()
 		DataService.RegisterBeforeProfileRelease(FlushSession)
 	end
 
-	Players.PlayerRemoving:Connect(FlushSession)
-
 	for _, Player in ipairs(Players:GetPlayers()) do
 		_sessionStart[Player]     = os.time()
 		_lastPlayTimeSync[Player] = os.time()
