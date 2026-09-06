@@ -1,6 +1,6 @@
 # SpectateSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống quan sát trận đấu (ObserverGui, Phân biệt Lobby Spectator vs Frozen Spectator, Streaming ReplicationFocus và Camera Management).
-> Cập nhật lần cuối: 04-09-2026
+> Cập nhật lần cuối: 06-09-2026
 
 ---
 
@@ -88,3 +88,14 @@
   1. Client khai báo sequence counter `_SpectateRequestId += 1` mỗi khi đổi mục tiêu. Luồng poll chỉ gán `CameraSubject` nếu ID của luồng khớp chính xác với `_SpectateRequestId` hiện tại.
   2. Server gán trực tiếp `SpectatorPlayer.ReplicationFocus = SpectatorHRP or nil`, đảm bảo luôn trả focus về mặc định engine khi Spectator không còn HRP.
 - **File liên quan:** [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+ 
+### 8. Phòng Chống DoS Spatial Streaming Bằng Rate-Limit Hai Đầu & Cơ Chế Miễn Trừ Reset ReplicationFocus
+- **Vấn đề:** 
+  1. Spam RemoteEvent `RequestSpectateTarget` liên tục ép Spatial Streaming của Roblox Engine dọn và tải lại chunk bản đồ diện rộng, gây sụt giảm FPS Server và crash client yếu.
+  2. Nếu áp dụng Rate-limit phẳng cho cả lệnh thoát (`TargetPlayer == nil`), khi người chơi đổi mục tiêu rồi thoát spectate ngay, lệnh reset focus bị drop khiến nhân vật ở Sảnh bị mất mô phỏng vật lý (kẹt lơ lửng).
+  3. Nếu Client không có Debounce, UI đổi sang mục tiêu mới nhưng Server từ chối request dẫn tới lệch mục tiêu giữa hai đầu.
+- **Giải pháp:** 
+  1. *Server Debounce:* Cấu hình `GameConfig.Player.SpectateRequestCooldown = 0.5s`. Server kiểm tra `(Now - LastRequest) < Cooldown` chỉ khi `TargetPlayer ~= nil`, dọn dẹp key tại `Players.PlayerRemoving`.
+  2. *Exempt Reset Focus:* Lệnh `TargetPlayer == nil` luôn được thực thi ngay lập tức để reset `ReplicationFocus = SpectatorHRP or nil`.
+  3. *Client Debounce:* `SpectateController.lua` áp dụng Debounce $0.5\text{s}$ cho `CycleNext()` và `CycleBack()`.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SpectateController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SpectateController.lua), [GameConfig.lua](../../src/ReplicatedStorage/Shared/Config/GameConfig.lua)

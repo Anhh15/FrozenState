@@ -317,13 +317,20 @@ function ShopService.PlayerOwnsGamePass(Player, PassKey)
 		return MarketplaceService:UserOwnsGamePassAsync(Player.UserId, PassConfig.PassId)
 	end)
 
-	local Result = (Success and OwnsPass == true)
-
-	-- 4. Lưu kết quả vào RAM cache
-	if not _GamePassCache[Player] then
-		_GamePassCache[Player] = {}
+	if not Success then
+		warn(string.format("[ShopService] UserOwnsGamePassAsync thất bại cho Player %s (%d), PassKey %s: %s", Player.Name, Player.UserId, PassKey, tostring(OwnsPass)))
+		return false
 	end
-	_GamePassCache[Player][PassKey] = Result
+
+	local Result = (OwnsPass == true)
+
+	-- 4. Chỉ lưu kết quả vào RAM cache khi API thành công và Player còn trong game
+	if Player:IsDescendantOf(Players) then
+		if not _GamePassCache[Player] then
+			_GamePassCache[Player] = {}
+		end
+		_GamePassCache[Player][PassKey] = Result
+	end
 
 	return Result
 end

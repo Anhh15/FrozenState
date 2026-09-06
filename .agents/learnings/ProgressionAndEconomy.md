@@ -211,10 +211,14 @@
   3. Đặt Hard Cap $1$ lần Instant Restock/ngày, lưu trạng thái `ResetsUsed` trong `QuestData.Daily` và reset tự động cùng `ResetTimestamp`.
 - **File liên quan:** [EconomyConfig.lua](../../src/ReplicatedStorage/Shared/Config/EconomyConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua)
 
-### 13. Phân Biệt Cơ Chế Kiểm Tra Quyền Sở Hữu GamePass Client-Server & Tránh Rate-Limit API (GamePass Ownership Cache & Verification)
-- **Vấn đề:** Gọi `MarketplaceService:UserOwnsGamePassAsync` liên tục trong mỗi action gameplay (mỗi lần freeze/thaw hoặc mỗi trận) sẽ gây nghẽn mạng và dính lỗi Rate Limit HTTP 429 trên Server.
-- **Giải pháp:** Tích hợp tầng cache trạng thái sở hữu GamePass trên Server khi người chơi join (`_gamePassCache[Player][PassId]`). Khi người chơi mua thành công trong game qua `PromptGamePassPurchaseFinished`, Server cập nhật cache ngay lập tức. Mọi kiểm tra thưởng $2\times$ hay $+50\%$ quest chỉ đọc từ RAM cache $0\text{ms}$.
-- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+### 13. Cơ Chế Cache Quyền GamePass Tránh Rate-Limit & Nguyên Tắc Không Cache Khi Lỗi Mạng (GamePass Ownership Cache & Fault-Tolerant Verification)
+- **Vấn đề:** 
+  1. Gọi `MarketplaceService:UserOwnsGamePassAsync` liên tục trong gameplay gây dính lỗi Rate Limit HTTP 429 trên Server.
+  2. Khi API Roblox gặp sự cố mạng (HTTP timeout/500), `pcall` trả về `Success = false`. Nếu ghi đè `_GamePassCache[Player][PassKey] = false`, người chơi đã mua GamePass sẽ bị tước đoạt vĩnh viễn quyền lợi trong suốt phiên chơi chỉ vì lag mạng 1 giây.
+- **Giải pháp:** 
+  1. Duy trì RAM cache `_GamePassCache[Player][PassKey]` trên Server khi join. Cập nhật tức thì khi có sự kiện `PromptGamePassPurchaseFinished`. Mọi kiểm tra gameplay chỉ đọc từ RAM cache $0\text{ms}$.
+  2. *Fault-Tolerant Guard:* Khi `Success == false`, in `warn()`, trả về `false` an toàn nhưng **tuyệt đối không ghi đè vào cache**, cho phép tự động thử lại ở các lần gọi sau khi mạng phục hồi. Chỉ ghi cache khi API thành công (`Success == true`) và người chơi vẫn còn trong game (`Player:IsDescendantOf(Players)`).
+- **File liên quan:** [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua), [ProductConfig.lua](../../src/ReplicatedStorage/Shared/Config/ProductConfig.lua), [RewardHelper.lua](../../src/ReplicatedStorage/Shared/Tools/RewardHelper.lua)
 
 ### 14. Bẫy Dữ Liệu Bảng Nhiệm Vụ Rỗng Khi Timestamp Chu Kỳ Còn Hiệu Lực (Empty Quest Table State Guard)
 - **Vấn đề:** Nếu profile người chơi có `ResetTimestamp > 0` (do dữ liệu cũ, wipe test hoặc lỗi migration), nhưng bảng `DailyData.Quests` đang rỗng `{}` hoặc `nil`, điều kiện kiểm tra chu kỳ `(Now - ResetTimestamp) >= ResetSeconds` trả về `false`. `PickRandomDailyQuests` không được gọi, dẫn đến server trả về mảng rỗng `Daily = {}` và giao diện nhiệm vụ của người chơi bị trống hoàn toàn cho đến hết 24h.

@@ -38,6 +38,7 @@ local _currentPhase  = "Intermission"
 local _earlyResult   = nil   -- { WinTeam = "..." } hoặc { WinPlayer = player } khi kết thúc sớm
 local _roundCounter  = 0     -- đếm số vòng đã chơi (dùng cho chu kỳ mode)
 local _LastAfkToggleTimes = {} -- Rate-limit chống flood RemoteEvent SetAfkState
+local _LastSpectateRequestTimes = {} -- Rate-limit chống spam RemoteEvent RequestSpectateTarget
 
 local UpdateGameStateEvent
 local ShowGameOverEvent
@@ -797,6 +798,7 @@ function MatchService:Init()
 
 	Players.PlayerRemoving:Connect(function(Player)
 		_LastAfkToggleTimes[Player.UserId] = nil
+		_LastSpectateRequestTimes[Player.UserId] = nil
 	end)
 
 	-- Khi player mới join giữa trận
@@ -828,18 +830,33 @@ function MatchService:Init()
 
 	-- Spectator yêu cầu focus vào target hoặc reset về chính mình
 	RequestSpectateTargetEvent.OnServerEvent:Connect(function(SpectatorPlayer, TargetPlayer)
+		if not SpectatorPlayer or not SpectatorPlayer:IsA("Player") then return end
+
 		-- Validate TargetPlayer: phải là nil hoặc một Instance kiểu Player
 		if TargetPlayer ~= nil and (typeof(TargetPlayer) ~= "Instance" or not TargetPlayer:IsA("Player")) then
 			return
 		end
 
 		-- Nếu TargetPlayer là nil: reset ReplicationFocus về chính spectator (hoặc nil nếu không có HRP)
+		-- Luôn cho phép reset ngay lập tức mà không bị chặn bởi rate-limit
 		if TargetPlayer == nil then
 			local SpectatorCharacter = SpectatorPlayer.Character
 			local SpectatorHRP = SpectatorCharacter and SpectatorCharacter:FindFirstChild("HumanoidRootPart")
-			SpectatorPlayer.ReplicationFocus = SpectatorHRP or nil
+			local DesiredFocus = SpectatorHRP or nil
+			if SpectatorPlayer.ReplicationFocus ~= DesiredFocus then
+				SpectatorPlayer.ReplicationFocus = DesiredFocus
+			end
 			return
 		end
+
+		-- Rate-limit khi chuyển đổi sang mục tiêu người chơi khác (chống spam DoS Spatial Streaming)
+		local Now = os.clock()
+		local LastRequest = _LastSpectateRequestTimes[SpectatorPlayer.UserId] or 0
+		local Cooldown = (GameConfig.Player and GameConfig.Player.SpectateRequestCooldown) or 0.5
+		if (Now - LastRequest) < Cooldown then
+			return
+		end
+		_LastSpectateRequestTimes[SpectatorPlayer.UserId] = Now
 
 		-- Chỉ cho phép trong phase InGame
 		if _currentPhase ~= "InGame" then return end
@@ -878,7 +895,9 @@ function MatchService:Init()
 			return
 		end
 
-		SpectatorPlayer.ReplicationFocus = TargetHRP
+		if SpectatorPlayer.ReplicationFocus ~= TargetHRP then
+			SpectatorPlayer.ReplicationFocus = TargetHRP
+		end
 	end)
 
 	print("[MatchService] Đã khởi tạo.")

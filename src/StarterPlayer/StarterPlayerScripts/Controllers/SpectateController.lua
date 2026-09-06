@@ -80,6 +80,7 @@ local _currentIndex        = 1       -- Vị trí hiện tại trong vòng lặp
 local _savedCameraSubject  = nil     -- Lưu CameraSubject gốc để restore
 local _currentPhase        = "Intermission"  -- Cache phase hiện tại
 local _SpectateRequestId   = 0     -- Sequence ID chống race condition camera khi đổi target nhanh
+local _LastCycleTime       = 0     -- Timestamp chuyển mục tiêu gần nhất để debounce theo GameConfig
 
 -- Remote
 local RequestSpectateTargetEvent
@@ -228,6 +229,7 @@ local function ApplyCurrentTarget()
 		_currentIndex = #_targetList
 	end
 
+	_LastCycleTime = os.clock()
 	FocusOnTarget(_targetList[_currentIndex])
 	UpdatePlayerNameDisplay()
 end
@@ -238,12 +240,26 @@ end
 
 local function CycleNext()
 	if not _isSpectating or #_targetList == 0 then return end
+
+	local Now = os.clock()
+	local Cooldown = (GameConfig.Player and GameConfig.Player.SpectateRequestCooldown) or 0.5
+	if (Now - _LastCycleTime) < Cooldown then
+		return
+	end
+
 	_currentIndex = (_currentIndex % #_targetList) + 1
 	ApplyCurrentTarget()
 end
 
 local function CycleBack()
 	if not _isSpectating or #_targetList == 0 then return end
+
+	local Now = os.clock()
+	local Cooldown = (GameConfig.Player and GameConfig.Player.SpectateRequestCooldown) or 0.5
+	if (Now - _LastCycleTime) < Cooldown then
+		return
+	end
+
 	_currentIndex = ((_currentIndex - 2) % #_targetList) + 1
 	ApplyCurrentTarget()
 end
