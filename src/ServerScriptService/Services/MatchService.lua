@@ -452,8 +452,6 @@ local function RunSetup()
 	-- Broadcast team sau (HighlightController đã biết mode, sẽ xử lý đúng)
 	TeamService.BroadcastTeamAssignment()
 
-	SessionService.SetMatchActive(true)
-
 	-- Báo client bắt đầu Setup (và ModeAnnouncement nếu là Special Round)
 	BroadcastGameState("Setup", 0, false)
 
@@ -548,8 +546,15 @@ end
 local function RunInGame()
 	_currentPhase    = "InGame"
 	SessionService.SetCurrentPhase("InGame")
+	SessionService.SetMatchActive(true)
 
 	-- Nếu đã có kết quả sớm từ Setup/Ready (ví dụ đối thủ out/reset sạch)
+	if _earlyResult then
+		return _earlyResult
+	end
+
+	-- Kiểm tra điều kiện thắng sớm ngay khi bước vào InGame (nếu có đội bị out/chết hết trong lúc Ready)
+	SessionService.CheckWinCondition()
 	if _earlyResult then
 		return _earlyResult
 	end
@@ -738,7 +743,7 @@ function MatchService:Init()
 		if not Humanoid then return end
 
 		Humanoid.Died:Connect(function()
-			if SessionService.IsMatchActive() then
+			if (SessionService.IsMatchActive() or _currentPhase == "Ready") and PlayerStateHelper.IsInMatch(Player) then
 				FreezeService.EliminatePlayer(Player)
 			end
 		end)

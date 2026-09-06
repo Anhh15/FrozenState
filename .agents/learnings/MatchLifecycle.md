@@ -1,6 +1,6 @@
 # MatchLifecycle
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về vòng đời trận đấu (State Machine, Player State, WinCondition, Special Round, Death/Disconnect Lifecycle và Map Management).
-> Cập nhật lần cuối: 04-09-2026
+> Cập nhật lần cuối: 06-09-2026
 
 ---
 
@@ -11,10 +11,10 @@
   $$\text{Intermission} \longrightarrow \text{Setup} \longrightarrow \text{Ready} \longrightarrow \text{InGame} \longrightarrow \text{GameOver} \longrightarrow \text{Intermission}$$
 - **Phân bổ trách nhiệm theo phase:**
   - `Intermission`: Đếm ngược tại Lobby, tập hợp danh sách người chơi sẵn sàng.
-  - `Setup`: Tải Map ngẫu nhiên, phân chia đội (`SessionService`), phát thông báo Special Round (nếu có), màn hình chuyển cảnh fade-in che phủ.
-  - `Ready`: Teleport người chơi vào điểm spawn, khóa di chuyển, đếm ngược 3-2-1, fade-out màn hình tải.
-  - `InGame`: Mở khóa di chuyển, cấp phát Icicle Tool, kích hoạt gameplay đếm ngược và kiểm tra điều kiện thắng/thua.
-  - `GameOver`: Thu hồi tool, rã đông tất cả (`ThawAll`), chụp snapshot dữ liệu thống kê (`PrepareGameOverPayloads`), đếm ngược kết thúc, teleport người chơi về Lobby, dọn dẹp map và phát sóng kết quả (`SendGameOverPayloads`).
+  - `Setup`: Tải Map ngẫu nhiên, phân chia đội (`SessionService`), phát thông báo Special Round (nếu có), màn hình chuyển cảnh fade-in che phủ. Cờ `_isMatchActive` giữ nguyên `false`.
+  - `Ready`: Teleport người chơi vào điểm spawn, khóa di chuyển, đếm ngược 3-2-1, fade-out màn hình tải. Cho phép ngắt sớm nếu có người out/reset sạch đội.
+  - `InGame`: Mở khóa di chuyển, kích hoạt `SessionService.SetMatchActive(true)` mở cửa sổ giao tranh, cấp phát Icicle Tool, kiểm tra điều kiện thắng/thua.
+  - `GameOver`: Thu hồi tool, tắt `SessionService.SetMatchActive(false)`, rã đông tất cả (`ThawAll`), chụp snapshot dữ liệu thống kê (`PrepareGameOverPayloads`), đếm ngược kết thúc, teleport người chơi về Lobby, dọn dẹp map và phát sóng kết quả (`SendGameOverPayloads`).
 - **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
 
 ### 2. Single Source of Truth cho Player State (PlayerStateConfig & PlayerStateHelper)
@@ -189,3 +189,12 @@
 - **Vấn đề:** Khi `SessionService.CheckWinCondition()` phát hiện điều kiện thắng và phát `MatchEndSignal`, biến `_isMatchActive` vẫn giữ giá trị `true`. Cờ này chỉ được chuyển thành `false` khi vòng lặp 1 giây của `RunInGame` bước sang giây tiếp theo để chuyển phase `RunGameOver`. Trong khoảng trễ này (~1s), người chơi vẫn có thể vung kiếm chém trúng hoặc kích hoạt đóng băng đối thủ ngoài ý muốn.
 - **Giải pháp:** Thiết lập `_isMatchActive = false` ngay tại thời điểm điều kiện thắng được xác nhận trong `CheckWinCondition()`, trước khi gọi `MatchEndSignal:Fire(...)`. Đảm bảo toàn bộ logic kiểm tra `HandleToolHit` lập tức từ chối mọi đòn đánh phát sinh sau khi trận đấu đã ngã ngũ.
 - **File liên quan:** [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
+
+### 19. Lỗ Hổng Bật Sớm Cờ Giao Tranh trong Setup & Ready (Premature Combat Window Exploit)
+- **Vấn đề:** `MatchService` gọi `SessionService.SetMatchActive(true)` ngay trong hàm `RunSetup()`. Suốt 6–10 giây nạp map và đếm ngược `Ready`, người chơi bị khóa chân tại vạch xuất phát nhưng cờ trạng thái trận đấu đã bật, mở đường cho exploiter gửi remote `OnToolHit` / `OnToolSwing` đóng băng toàn bộ đối thủ trước giờ đấu.
+- **Nguyên nhân:** Xung đột khái niệm giữa Vòng đời Trận đấu (Macro Lifecycle: `Setup` $\rightarrow$ `Ready`) và Cửa sổ Giao tranh thực tế (Active Combat Window: chỉ mở trong `InGame`).
+- **Giải pháp:**
+  1. Dời `SessionService.SetMatchActive(true)` từ `RunSetup()` sang đầu hàm `RunInGame()`.
+  2. Áp dụng phòng thủ kép tại `FreezeService` và `IcicleService`: Từ chối mọi đòn đánh khi `GetCurrentPhase() ~= "InGame" or not IsMatchActive()`.
+  3. Mở rộng bộ lọc tại `SessionService.CheckWinCondition()`, `Players.PlayerRemoving` và `Humanoid.Died` để nhận diện và ngắt sớm trận đấu (`_earlyResult`) nếu đối thủ tự sát hoặc thoát game ngay trong phase `Ready`.
+- **File liên quan:** [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua), [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua)

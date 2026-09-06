@@ -348,7 +348,7 @@ end
 
 --- Kiểm tra điều kiện kết thúc trận đấu và phát MatchEndSignal nếu thỏa mãn
 function SessionService.CheckWinCondition()
-	if not _isMatchActive then return end
+	if not _isMatchActive and _CurrentPhase ~= "Ready" then return end
 
 	local WinCondition = GameModeHelper.GetWinCondition(_currentModeKey)
 
@@ -425,7 +425,7 @@ function SessionService:Init()
 
 	Players.PlayerRemoving:Connect(function(Player)
 		-- Nếu thoát giữa trận: loại khỏi trận (Dead) → trigger win condition nếu làm team bị wipe / FFA kết thúc
-		if _isMatchActive then
+		if _isMatchActive or _CurrentPhase == "Ready" then
 			local Team = _teamAssignment[Player]
 			_playerStates[Player] = "Dead"
 

@@ -433,7 +433,8 @@ end
 --- Đặt trạng thái Dead, gỡ InMatch & Team attribute, thu Tool, xóa IceBlock và kiểm tra điều kiện thắng
 --- @param Player Player
 function FreezeService.EliminatePlayer(Player)
-	if not SessionService.IsMatchActive() then return end
+	local CurrentPhase = SessionService.GetCurrentPhase()
+	if not SessionService.IsMatchActive() and CurrentPhase ~= "Ready" then return end
 	if SessionService.GetState(Player) == "Dead" then return end
 
 	-- Unanchor HRP nếu player đang bị frozen
