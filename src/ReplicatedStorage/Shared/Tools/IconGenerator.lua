@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local IconPipelineConfig = require(ReplicatedStorage.Shared.Config.IconPipelineConfig)
 local ItemRegistry       = require(ReplicatedStorage.Shared.Config.ItemRegistry)
 local ViewportConfig     = require(ReplicatedStorage.Shared.Config.ViewportConfig)
+local ViewportManager    = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 
 local IconGenerator = {}
 
@@ -240,15 +241,7 @@ local function SetupCamera(TargetInstance, ItemType, ItemId)
 	local Config = ViewportConfig.Resolve(ItemType, ItemId)
 	local ModelCFrame, ModelSize = GetSafeBoundingBox(TargetInstance)
 
-	local Radius = ModelSize.Magnitude / 2
-	local HalfFovRad = math.rad(Config.FieldOfView / 2)
-	local BaseDistance = Radius / math.sin(HalfFovRad)
-	local FinalDistance = BaseDistance * Config.PaddingFactor
-
-	local RotationCFrame = CFrame.Angles(math.rad(Config.PitchAngle), math.rad(Config.YawAngle), 0)
-	local CameraCFrame = CFrame.new(ModelCFrame.Position)
-		* RotationCFrame
-		* CFrame.new(0, 0, FinalDistance)
+	local CameraCFrame = ViewportManager.ComputeCameraCFrame(ModelCFrame, ModelSize, Config)
 
 	Camera.CameraType   = Enum.CameraType.Scriptable
 	Camera.FieldOfView  = Config.FieldOfView

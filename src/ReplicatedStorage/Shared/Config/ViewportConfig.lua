@@ -15,6 +15,7 @@ local Default = {
 	FieldOfView   = 30,   -- FOV nhỏ giúp giảm méo góc rộng (perspective distortion)
 	PitchAngle    = -15,  -- Góc nghiêng dọc camera (âm = nhìn hơi xuống vào vật phẩm)
 	YawAngle      = 45,   -- Góc quay ngang camera (45° = nhìn góc chéo đẹp)
+	RollAngle     = 0,    -- Góc nghiêng quanh trục ngắm camera (độ, dương = nghiêng theo chiều kim đồng hồ)
 	PaddingFactor = 1.2,  -- Hệ số khoảng cách sau khi tính qua BBox (1.0 = khít, >1 = thoáng hơn)
 }
 
@@ -28,17 +29,20 @@ local TypeOverrides = {
 	Icicle = {
 		PitchAngle    = 0,
 		YawAngle      = 180,
+		RollAngle     = 45,
 		PaddingFactor = 1,
 	},
 	Block = {
 		PitchAngle    = 10,
 		YawAngle      = 135,
+		RollAngle     = 0,
 		PaddingFactor = 1,
 	},
 	Chest = {
 		FieldOfView   = 70,
 		PitchAngle    = 0,
 		YawAngle      = 180,
+		RollAngle     = 0,
 		PaddingFactor = .85,
 	},
 }
@@ -53,6 +57,7 @@ local ItemOverrides = {
 	-- GoldenIcicle = {
 	--     YawAngle   = 60,
 	--     PitchAngle = -10,
+	--     RollAngle  = 45,
 	-- },
 	-- ObsidianBlock = {
 	--     PaddingFactor = 1.5,

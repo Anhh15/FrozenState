@@ -13,7 +13,7 @@ local IconPipelineConfig = {
 	StudioBoxSize = Vector3.new(120, 120, 120),
 
 	-- Vật liệu của các vách buồng chụp (SmoothPlastic loại bỏ phản xạ nhám không mong muốn)
-	BoxMaterial = Enum.Material.SmoothPlastic,
+	BoxMaterial = Enum.Material.Neon,
 
 	-- Tấm phông phẳng độc lập đặt sau lưng Item theo góc nhìn của Camera (loại bỏ nẹp góc tường)
 	Backdrop = {
@@ -40,7 +40,7 @@ local IconPipelineConfig = {
 		KeyLight = {
 			Name       = "KeyLight",
 			Offset     = Vector3.new(8, 10, 12),
-			Brightness = 2,
+			Brightness = 3,
 			Range      = 25,
 			Angle      = 60,
 			Color      = Color3.fromRGB(255, 255, 255),

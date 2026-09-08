@@ -3,6 +3,7 @@
 -- KHÔNG áp dụng cho PlayerViewport (avatar 3D — xem ProfileController)
 --
 -- API công khai:
+--   ViewportManager.ComputeCameraCFrame(ModelCFrame, ModelSize, Config)
 --   ViewportManager.RenderItem(Viewport, Model, ItemType, ItemId)
 --   ViewportManager.CleanViewport(Viewport)
 
@@ -13,30 +14,34 @@ local ViewportConfig = require(ReplicatedStorage.Shared.Config.ViewportConfig)
 local ViewportManager = {}
 
 -- =========================================================
--- INTERNAL HELPERS
+-- PUBLIC CAMERA MATH API
 -- =========================================================
 
 --- Tính toán CFrame camera hướng về tâm model với khoảng cách phù hợp
---- Thuật toán: Bounding Box → Radius → Distance qua lượng giác → CFrame từ Pitch/Yaw
+--- Thuật toán: Bounding Box → Radius → Distance qua lượng giác → CFrame từ Pitch/Yaw/Roll
 --- @param ModelCFrame CFrame  — Tâm của model (từ GetBoundingBox)
 --- @param ModelSize   Vector3 — Kích thước bao ngoài model (từ GetBoundingBox)
 --- @param Config      table   — Bảng tham số từ ViewportConfig.Resolve()
 --- @return CFrame — CFrame vị trí camera
-local function ComputeCameraCFrame(ModelCFrame, ModelSize, Config)
+function ViewportManager.ComputeCameraCFrame(ModelCFrame, ModelSize, Config)
 	-- Bán kính của hình cầu bao quanh model
 	local Radius = ModelSize.Magnitude / 2
 
 	-- Khoảng cách tối thiểu để model vừa khít trong FOV
 	-- Công thức: d = r / sin(FOV/2)
-	local HalfFovRad = math.rad(Config.FieldOfView / 2)
+	local HalfFovRad = math.rad((Config.FieldOfView or 30) / 2)
 	local BaseDistance = Radius / math.sin(HalfFovRad)
 
 	-- Áp dụng hệ số padding để có khoảng thoáng
-	local FinalDistance = BaseDistance * Config.PaddingFactor
+	local FinalDistance = BaseDistance * (Config.PaddingFactor or 1.2)
 
-	-- Tính CFrame camera từ góc Pitch (dọc) và Yaw (ngang)
+	-- Tính CFrame camera từ góc Pitch (dọc), Yaw (ngang) và Roll (nghiêng trục ngắm)
 	-- Camera bắt đầu từ tâm model, xoay theo góc chỉ định, rồi lùi ra theo trục Z
-	local RotationCFrame = CFrame.Angles(math.rad(Config.PitchAngle), math.rad(Config.YawAngle), 0)
+	local PitchRad = math.rad(Config.PitchAngle or 0)
+	local YawRad   = math.rad(Config.YawAngle or 0)
+	local RollRad  = math.rad(Config.RollAngle or 0)
+
+	local RotationCFrame = CFrame.Angles(PitchRad, YawRad, RollRad)
 	local CameraCFrame = CFrame.new(ModelCFrame.Position)
 		* RotationCFrame
 		* CFrame.new(0, 0, FinalDistance)
@@ -83,7 +88,7 @@ function ViewportManager.RenderItem(Viewport, Model, ItemType, ItemId)
 	end
 
 	-- Tính toán vị trí và hướng camera
-	local CameraCFrame = ComputeCameraCFrame(ModelCFrame, ModelSize, Config)
+	local CameraCFrame = ViewportManager.ComputeCameraCFrame(ModelCFrame, ModelSize, Config)
 
 	-- Tạo Camera và gắn vào Viewport
 	local Camera = Instance.new("Camera")
