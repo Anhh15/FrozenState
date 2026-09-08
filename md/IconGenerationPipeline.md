@@ -98,17 +98,17 @@ Chạy ngầm trên máy tính phát triển:
    - Nhận tín hiệu `Step = "White"`: Chụp vùng Viewport, lưu tạm ma trận màu Trắng.
    - Thực hiện tính toán ma trận để trích xuất `Alpha` và khôi phục kênh `RGB`.
    - Cắt vuông (Center Square Crop) và Resize chuẩn về kích thước **512x512** (hoặc 256x256).
-   - Lưu file vào thư mục: `renders/{ItemType}/{ItemId}.png`.
+   - Lưu file vào thư mục: `SuperFrozenState/GUI_FrozenState/Icon/Item/{ItemType}/{ItemId}.png`.
 
 ---
 
 ## 5. Mở Rộng: Tự Động Hóa Upload Lên Roblox (End-to-End Pipeline)
 
-Sau khi toàn bộ ảnh PNG trong suốt được lưu trong thư mục `renders/`, khâu upload cũng có thể tự động hóa 100% thay vì kéo thả thủ công:
+Sau khi toàn bộ ảnh PNG trong suốt được lưu trong thư mục `GUI_FrozenState/Icon/Item/`, khâu upload cũng có thể tự động hóa 100% thay vì kéo thả thủ công:
 
 1. **Roblox Open Cloud Assets API:**
    - Sử dụng API Key tạo từ `create.roblox.com/dashboard/credentials` với quyền `Assets: Write`.
-   - Script Python quét thư mục `renders/`, gửi request POST upload từng file ảnh lên kho Asset của game.
+   - Script Python quét thư mục `GUI_FrozenState/Icon/Item/`, gửi request POST upload từng file ảnh lên kho Asset của game.
 2. **Tự động Cập nhật Code:**
    - Khi Roblox phản hồi trả về mã `assetId` (ví dụ: `123456789`), script Python tự động đọc và cập nhật trực tiếp vào file cấu hình `src/ReplicatedStorage/Shared/Config/ItemRegistry.lua`:
      ```lua

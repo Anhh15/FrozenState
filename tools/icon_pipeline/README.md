@@ -13,7 +13,7 @@ Hệ thống được thiết kế tách biệt thành 2 pha hoàn toàn chuyên
 Roblox Studio (Command Bar) ──(HTTP)──> Python Worker (studio_capture.py)
                                                │
                                                ▼
-                                      renders/{Type}/{Id}.png
+                                       GUI_FrozenState/Icon/Item/{Type}/{Id}.png
                                                │
                                                ▼
                                    [Dev xem & duyệt ảnh]
@@ -55,7 +55,7 @@ Worker sẽ hiển thị:
 ```
 [Worker] KHỞI CHẠY PYTHON STUDIO CAPTURE WORKER...
 [Worker] Lắng nghe tại http://127.0.0.1:5000
-[Worker] Thư mục lưu ảnh: .../renders
+[Worker] Thư mục lưu ảnh: .../SuperFrozenState/GUI_FrozenState/Icon/Item
 ```
 
 ### Bước 3.2: Chạy lệnh chụp trong Roblox Studio
@@ -81,9 +81,9 @@ Worker sẽ hiển thị:
 Studio sẽ tự động dựng buồng chụp tại $Y = 100,000$, căn góc camera chuẩn theo `ViewportConfig.lua`, đổi nền đen/trắng và gửi tín hiệu cho Python worker.
 
 ### Bước 3.3: Kiểm duyệt ảnh đã tạo
-Mở thư mục `renders/` tại gốc dự án. Bạn sẽ thấy các file ảnh PNG nền trong suốt chuẩn 512x512 tại:
-- `renders/Icicle/<Id>.png`
-- `renders/Block/<Id>.png`
+Mở thư mục `SuperFrozenState/GUI_FrozenState/Icon/Item/` bên ngoài dự án. Bạn sẽ thấy các file ảnh PNG nền trong suốt chuẩn 512x512 tại:
+- `SuperFrozenState/GUI_FrozenState/Icon/Item/Icicle/<Id>.png`
+- `SuperFrozenState/GUI_FrozenState/Icon/Item/Block/<Id>.png`
 
 Kiểm tra độ trong suốt, màu sắc, viền và góc nhìn của từng ảnh. Nếu cần điều chỉnh góc nhìn, chỉnh sửa file `src/ReplicatedStorage/Shared/Config/ViewportConfig.lua`.
 
@@ -91,7 +91,7 @@ Kiểm tra độ trong suốt, màu sắc, viền và góc nhìn của từng �
 
 ## 4. Pha 2: Upload Lên Roblox & Cập Nhật ItemRegistry
 
-Khi đã kiểm duyệt và hài lòng với chất lượng các ảnh trong `renders/`:
+Khi đã kiểm duyệt và hài lòng với chất lượng các ảnh trong `GUI_FrozenState/Icon/Item/`:
 
 ### Bước 4.1: Cấu hình Open Cloud API Key
 Tạo file `tools/icon_pipeline/.env` với nội dung:
@@ -114,6 +114,6 @@ python tools/icon_pipeline/upload_icons.py --dry-run
 python tools/icon_pipeline/upload_icons.py
 ```
 Script sẽ tự động:
-1. Upload từng file ảnh trong `renders/` lên Roblox.
+1. Upload từng file ảnh trong `GUI_FrozenState/Icon/Item/` lên Roblox.
 2. Chờ Roblox cấp mã `assetId`.
 3. Tự động ghi mã `rbxassetid://<assetId>` vào đúng entry trong `src/ReplicatedStorage/Shared/Config/ItemRegistry.lua`.

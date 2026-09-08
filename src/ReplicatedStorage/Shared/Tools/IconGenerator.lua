@@ -19,6 +19,7 @@ local IconGenerator = {}
 local StudioBoxFolder = nil
 local WallParts       = {}
 local LightInstances  = {}
+local BackdropPart    = nil
 
 -- =========================================================
 -- INTERNAL HELPERS: BUỒNG CHỤP & ÁNH SÁNG
@@ -37,7 +38,7 @@ local function CreateWallPart(Name, Position, Size, Parent)
 	Wall.CanCollide   = false
 	Wall.CanTouch     = false
 	Wall.CanQuery     = false
-	Wall.CastShadow   = false
+	Wall.CastShadow   = true -- Ngăn chặn 100% ánh sáng mặt trời, skybox và ambient của game
 	Wall.Material     = IconPipelineConfig.BoxMaterial
 	Wall.Color        = IconPipelineConfig.BackgroundColors.Black
 	Wall.Size         = Size
@@ -59,13 +60,14 @@ local function SetupStudioBox()
 
 	WallParts = {}
 	LightInstances = {}
+	BackdropPart = nil
 
 	local Center   = IconPipelineConfig.StudioBoxPosition
 	local BoxSize  = IconPipelineConfig.StudioBoxSize
 	local HalfSize = BoxSize / 2
 	local WallThick = 2
 
-	-- Dựng 6 mặt của buồng chụp
+	-- Dựng 6 mặt của buồng chụp lớn để cách ly hoàn toàn
 	local WallsDef = {
 		{ Name = "Floor",   Pos = Center + Vector3.new(0, -HalfSize.Y, 0), Size = Vector3.new(BoxSize.X + WallThick * 2, WallThick, BoxSize.Z + WallThick * 2) },
 		{ Name = "Ceiling", Pos = Center + Vector3.new(0, HalfSize.Y, 0),  Size = Vector3.new(BoxSize.X + WallThick * 2, WallThick, BoxSize.Z + WallThick * 2) },
@@ -80,7 +82,21 @@ local function SetupStudioBox()
 		table.insert(WallParts, Wall)
 	end
 
-	-- Bố trí nguồn sáng 3 điểm (Key Light, Fill Light, Back Light)
+	-- Tạo tấm phông vô cực Backdrop đặt sau lưng item theo hướng nhìn camera
+	BackdropPart = Instance.new("Part")
+	BackdropPart.Name         = "StudioBackdrop"
+	BackdropPart.Anchored     = true
+	BackdropPart.CanCollide   = false
+	BackdropPart.CanTouch     = false
+	BackdropPart.CanQuery     = false
+	BackdropPart.CastShadow   = false
+	BackdropPart.Material     = IconPipelineConfig.BoxMaterial
+	BackdropPart.Color        = IconPipelineConfig.BackgroundColors.Black
+	BackdropPart.Size         = IconPipelineConfig.Backdrop.Size
+	BackdropPart.CFrame       = CFrame.new(Center + Vector3.new(0, 0, -IconPipelineConfig.Backdrop.Distance))
+	BackdropPart.Parent       = StudioBoxFolder
+
+	-- Bố trí nguồn sáng 3 điểm gom chùm tia (SpotLight định hướng)
 	local LightingCfg = IconPipelineConfig.Lighting
 	local LightsToCreate = {
 		LightingCfg.KeyLight,
@@ -89,33 +105,41 @@ local function SetupStudioBox()
 	}
 
 	for Index, LightDef in ipairs(LightsToCreate) do
+		local LightPos = Center + LightDef.Offset
 		local AnchorPart = Instance.new("Part")
-		AnchorPart.Name         = "LightAnchor_" .. tostring(Index)
+		AnchorPart.Name         = LightDef.Name or ("LightAnchor_" .. tostring(Index))
 		AnchorPart.Anchored     = true
 		AnchorPart.CanCollide   = false
 		AnchorPart.CanTouch     = false
 		AnchorPart.CanQuery     = false
 		AnchorPart.Transparency = 1
 		AnchorPart.Size         = Vector3.new(1, 1, 1)
-		AnchorPart.CFrame       = CFrame.new(Center + LightDef.Offset)
+		-- Định hướng AnchorPart nhìn thẳng vào tâm buồng chụp (tâm Model)
+		AnchorPart.CFrame       = CFrame.lookAt(LightPos, Center)
 		AnchorPart.Parent       = StudioBoxFolder
 
-		local PointLight = Instance.new("PointLight")
-		PointLight.Brightness = LightDef.Brightness
-		PointLight.Range      = LightDef.Range
-		PointLight.Color      = LightDef.Color
-		PointLight.Shadows    = false
-		PointLight.Parent     = AnchorPart
+		local Spot = Instance.new("SpotLight")
+		Spot.Name       = LightDef.Name or ("SpotLight_" .. tostring(Index))
+		Spot.Face       = Enum.NormalId.Front
+		Spot.Angle      = LightDef.Angle or 60
+		Spot.Brightness = LightDef.Brightness
+		Spot.Range      = LightDef.Range
+		Spot.Color      = LightDef.Color
+		Spot.Shadows    = LightDef.Shadows or false
+		Spot.Parent     = AnchorPart
 
-		table.insert(LightInstances, PointLight)
+		table.insert(LightInstances, Spot)
 	end
 end
 
---- Đổi màu toàn bộ vách buồng chụp
+--- Đổi màu toàn bộ vách buồng chụp và tấm phông Backdrop
 --- @param TargetColor Color3
 local function SetStudioBackgroundColor(TargetColor)
 	for _, Wall in ipairs(WallParts) do
 		Wall.Color = TargetColor
+	end
+	if BackdropPart then
+		BackdropPart.Color = TargetColor
 	end
 end
 
@@ -127,6 +151,7 @@ local function CleanupStudioBox()
 	end
 	WallParts = {}
 	LightInstances = {}
+	BackdropPart = nil
 end
 
 -- =========================================================
@@ -229,6 +254,14 @@ local function SetupCamera(TargetInstance, ItemType, ItemId)
 	Camera.FieldOfView  = Config.FieldOfView
 	Camera.CFrame       = CameraCFrame
 	Camera.Focus        = ModelCFrame
+
+	-- Tự động căn chỉnh tấm phông vô cực Backdrop nằm vuông góc 100% phía sau lưng model
+	-- Loại bỏ triệt để việc camera nhìn vào mép nối góc tường buồng chụp
+	if BackdropPart then
+		local LookDirection = (ModelCFrame.Position - CameraCFrame.Position).Unit
+		local BackdropPosition = ModelCFrame.Position + (LookDirection * IconPipelineConfig.Backdrop.Distance)
+		BackdropPart.CFrame = CFrame.lookAt(BackdropPosition, BackdropPosition + LookDirection)
+	end
 end
 
 -- =========================================================

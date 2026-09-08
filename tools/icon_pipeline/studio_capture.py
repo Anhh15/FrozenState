@@ -169,7 +169,7 @@ def ProcessAndSaveIcon(BlackImage, WhiteImage, ItemType, ItemId):
 	# 4. Resize chuẩn về độ phân giải đích (512x512) với bộ lọc Lanczos
 	FinalIcon = SquareIcon.resize(config.TargetResolution, Image.Resampling.LANCZOS)
 
-	# 5. Lưu kết quả ra thư mục renders/{ItemType}/{ItemId}.png
+	# 5. Lưu kết quả ra thư mục {config.OutputDir}/{ItemType}/{ItemId}.png
 	TargetFolder = config.OutputDir / ItemType
 	TargetFolder.mkdir(parents=True, exist_ok=True)
 	OutputPath = TargetFolder / f"{ItemId}.png"

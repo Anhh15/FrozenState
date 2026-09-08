@@ -57,10 +57,10 @@
   $$\text{Alpha} = 1.0 - (\text{Color}_{\text{White}} - \text{Color}_{\text{Black}})$$
   $$\text{FinalColor} = \frac{\text{Color}_{\text{Black}}}{\text{Alpha}}$$
 - **Kiến trúc Client-Server Cục Bộ:** Roblox Studio dựng buồng chụp hộp kín cách ly tại $Y = 100,000$ (tắt shadow, bố trí đèn 3 điểm Key/Fill/Back), đồng bộ góc chụp với `ViewportConfig.lua`, đổi màu nền và gọi HTTP POST sang Python Local Worker qua `HttpService`.
-- **Tách Biệt 2 Pha Chuyên Biệt (Decoupled Capture & Upload):**
-  - *Pha 1 (Tạo & Kiểm duyệt):* Python Worker chụp, tách nền, crop vuông tâm và xuất file PNG 512x512 vào `renders/{Type}/{Id}.png` để nhà phát triển kiểm tra trước.
-  - *Pha 2 (Upload & Sync):* Script `upload_icons.py` chạy riêng biệt theo yêu cầu, upload qua Roblox Open Cloud Assets API và tự động ghi đè mã `rbxassetid://...` vào `ItemRegistry.lua`.
-- **File liên quan:** [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua), [IconGenerator.lua](../../src/ReplicatedStorage/Shared/Tools/IconGenerator.lua), [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [upload_icons.py](../../tools/icon_pipeline/upload_icons.py), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)
+- **Tách Biệt 2 Pha Chuyên Biệt (Decoupled Capture & Upload) & SSOT Output Path:**
+  - *Pha 1 (Tạo & Kiểm duyệt):* Python Worker chụp, tách nền, crop vuông tâm và xuất file PNG 512x512 vào thư mục tập trung ngoài dự án `SuperFrozenState/GUI_FrozenState/Icon/Item/{Type}/{Id}.png` theo phân cấp để nhà phát triển kiểm tra trước.
+  - *Pha 2 (Upload & Sync):* Script `upload_icons.py` tái sử dụng `config.OutputDir` làm nguồn chân lý duy nhất (SSOT), upload qua Roblox Open Cloud Assets API và tự động ghi đè mã `rbxassetid://...` vào `ItemRegistry.lua`.
+- **File liên quan:** [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua), [IconGenerator.lua](../../src/ReplicatedStorage/Shared/Tools/IconGenerator.lua), [config.py](../../tools/icon_pipeline/config.py), [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [upload_icons.py](../../tools/icon_pipeline/upload_icons.py), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)
 
 ---
 
@@ -103,3 +103,11 @@
   2. **Bảo vệ chia cho 0 & Lọc ngưỡng Alpha:** Vector hóa ma trận với NumPy: `np.where(Alpha > Threshold, ColorBlack / Alpha, 0.0)` và kẹp Alpha $[0.0, 1.0]$.
   3. **Windows DPI-Aware:** Kích hoạt `SetProcessDpiAwareness(2)` ngay khi khởi động Python worker để khớp tuyệt đối pixel vật lý.
 - **File liên quan:** [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua)
+
+### 7. Xung Đột Ghi Đè Tài Nguyên Khi Lưu Trữ Phẳng & Phân Mảnh Nguồn Dữ Liệu Pipeline
+- **Vấn đề:** Khi kết xuất icon từ nhiều phân loại vật phẩm (`Icicle`, `Block`) ra thư mục chung, các item có cùng `ItemId` (như `Default`, `Green`, `Red`) sẽ ghi đè và làm mất file của nhau nếu lưu cấu trúc phẳng. Đồng thời, việc script upload tự khai báo hardcode đường dẫn cục bộ thay vì dùng chung biến cấu hình dẫn đến rủi ro lệch pha dữ liệu khi di dời thư mục lưu trữ.
+- **Giải pháp:**
+  1. **Bảo tồn phân cấp danh mục:** Áp dụng cấu trúc thư mục con `{OutputDir}/{ItemType}/{ItemId}.png` bảo vệ tính toàn vẹn của dữ liệu hình ảnh.
+  2. **Single Source of Truth (SSOT):** Tập trung hóa biến `OutputDir` tại `config.py`; buộc toàn bộ các script vệ tinh (`studio_capture.py`, `upload_icons.py`) import trực tiếp từ config để loại bỏ hoàn toàn hardcode đường dẫn.
+- **File liên quan:** [config.py](../../tools/icon_pipeline/config.py), [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [upload_icons.py](../../tools/icon_pipeline/upload_icons.py)
+

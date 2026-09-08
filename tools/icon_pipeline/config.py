@@ -12,8 +12,8 @@ ProjectRoot = Path(__file__).resolve().parent.parent.parent
 ServerHost = "127.0.0.1"
 ServerPort = 5000
 
-# Thư mục lưu trữ ảnh PNG trong suốt xuất ra
-OutputDir = ProjectRoot / "renders"
+# Thư mục lưu trữ ảnh PNG trong suốt xuất ra (GUI_FrozenState/Icon/Item)
+OutputDir = ProjectRoot.parent / "GUI_FrozenState" / "Icon" / "Item"
 
 # Độ phân giải đích của Icon (Vuông 512x512)
 TargetResolution = (512, 512)

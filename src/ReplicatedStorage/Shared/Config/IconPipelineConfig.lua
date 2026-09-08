@@ -9,11 +9,17 @@ local IconPipelineConfig = {
 	-- Vị trí đặt Buồng Chụp (Photo Studio Box) - biệt lập hoàn toàn khỏi Map
 	StudioBoxPosition = Vector3.new(0, 100000, 0),
 
-	-- Kích thước buồng chụp hộp kín
-	StudioBoxSize = Vector3.new(50, 50, 50),
+	-- Kích thước buồng chụp hộp kín (mở rộng để tường cách xa tâm, triệt tiêu bounce light)
+	StudioBoxSize = Vector3.new(120, 120, 120),
 
-	-- Vật liệu của các vách buồng chụp (SmoothPlastic giảm thiểu phản xạ specular không mong muốn)
-	BoxMaterial = Enum.Material.Plastic,
+	-- Vật liệu của các vách buồng chụp (SmoothPlastic loại bỏ phản xạ nhám không mong muốn)
+	BoxMaterial = Enum.Material.SmoothPlastic,
+
+	-- Tấm phông phẳng độc lập đặt sau lưng Item theo góc nhìn của Camera (loại bỏ nẹp góc tường)
+	Backdrop = {
+		Distance = 35,                     -- Khoảng cách sau lưng model (studs)
+		Size     = Vector3.new(80, 80, 2), -- Kích thước tấm phông che kín FOV camera
+	},
 
 	-- Màu sắc cho 2 pha chụp Dual-Shot Matte
 	BackgroundColors = {
@@ -28,26 +34,35 @@ local IconPipelineConfig = {
 		BetweenItems     = 0.10, -- Giãn cách giữa 2 item liên tiếp
 	},
 
-	-- Cấu hình hệ thống đèn chiếu sáng trung tính trong buồng chụp
+	-- Cấu hình hệ thống đèn SpotLight định hướng gom chùm sáng, có tự đổ bóng (Self-Shadowing)
 	Lighting = {
 		AmbientLightColor = Color3.fromRGB(200, 200, 200),
 		KeyLight = {
-			Offset     = Vector3.new(8, 12, 12),
-			Brightness = 2.0,
-			Range      = 40,
+			Name       = "KeyLight",
+			Offset     = Vector3.new(8, 10, 12),
+			Brightness = 2,
+			Range      = 25,
+			Angle      = 60,
 			Color      = Color3.fromRGB(255, 255, 255),
+			Shadows    = true,
 		},
 		FillLight = {
-			Offset     = Vector3.new(-10, 6, 8),
-			Brightness = 1.0,
-			Range      = 35,
-			Color      = Color3.fromRGB(220, 230, 255),
+			Name       = "FillLight",
+			Offset     = Vector3.new(-10, 5, 8),
+			Brightness = 0.8,
+			Range      = 22,
+			Angle      = 70,
+			Color      = Color3.fromRGB(210, 225, 255),
+			Shadows    = false,
 		},
 		BackLight = {
+			Name       = "BackLight",
 			Offset     = Vector3.new(0, 8, -12),
-			Brightness = 1.2,
-			Range      = 35,
-			Color      = Color3.fromRGB(255, 240, 230),
+			Brightness = 1.0,
+			Range      = 22,
+			Angle      = 65,
+			Color      = Color3.fromRGB(255, 245, 235),
+			Shadows    = false,
 		},
 	},
 

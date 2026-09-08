@@ -20,6 +20,9 @@ if sys.platform == "win32":
 import requests
 from dotenv import load_dotenv
 
+# Nạp cấu hình tập trung
+import config
+
 # Nạp biến môi trường từ .env nếu có
 EnvPath = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=EnvPath)
@@ -28,17 +31,17 @@ ROBLOX_API_KEY   = os.getenv("ROBLOX_API_KEY", "")
 ROBLOX_CREATOR_ID = os.getenv("ROBLOX_CREATOR_ID", "")
 CREATOR_TYPE     = os.getenv("CREATOR_TYPE", "User") # "User" hoặc "Group"
 
-ProjectRoot = Path(__file__).resolve().parent.parent.parent
-RendersDir  = ProjectRoot / "renders"
+ProjectRoot  = Path(__file__).resolve().parent.parent.parent
+IconsDir     = config.OutputDir
 RegistryPath = ProjectRoot / "src" / "ReplicatedStorage" / "Shared" / "Config" / "ItemRegistry.lua"
 
 OPEN_CLOUD_UPLOAD_URL = "https://apis.roblox.com/assets/v1/assets"
 OPEN_CLOUD_OPERATION_URL = "https://apis.roblox.com/assets/v1/operations/{operationId}"
 
 def CheckPrerequisites():
-	"""Kiểm tra sự tồn tại của thư mục renders và file cấu hình."""
-	if not RendersDir.exists():
-		print(f"[Upload] LỖI: Thư mục ảnh '{RendersDir}' không tồn tại. Hãy chạy pipeline chụp ảnh trước.")
+	"""Kiểm tra sự tồn tại của thư mục icon và file cấu hình."""
+	if not IconsDir.exists():
+		print(f"[Upload] LỖI: Thư mục ảnh '{IconsDir}' không tồn tại. Hãy chạy pipeline chụp ảnh trước.")
 		return False
 	if not RegistryPath.exists():
 		print(f"[Upload] LỖI: File '{RegistryPath}' không tồn tại.")
@@ -46,9 +49,9 @@ def CheckPrerequisites():
 	return True
 
 def ScanApprovedIcons(TargetType=None):
-	"""Quét toàn bộ ảnh PNG đã sẵn sàng trong thư mục renders."""
+	"""Quét toàn bộ ảnh PNG đã sẵn sàng trong thư mục icon."""
 	Icons = []
-	for TypeFolder in RendersDir.iterdir():
+	for TypeFolder in IconsDir.iterdir():
 		if TypeFolder.is_dir():
 			TypeName = TypeFolder.name # "Icicle", "Block", "Chest"
 			if TargetType and TypeName.lower() != TargetType.lower():
@@ -158,7 +161,7 @@ def Main():
 		AllIcons = [Icon for Icon in AllIcons if Icon["Id"].lower() == Args.id.lower()]
 
 	if not AllIcons:
-		print("[Upload] Không tìm thấy icon nào để upload trong renders/.")
+		print(f"[Upload] Không tìm thấy icon nào để upload trong '{IconsDir}'.")
 		sys.exit(0)
 
 	print(f"[Upload] Tìm thấy {len(AllIcons)} icon đã được kiểm duyệt:")
