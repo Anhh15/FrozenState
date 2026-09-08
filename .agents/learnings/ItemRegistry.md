@@ -1,6 +1,6 @@
 # ItemRegistry
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard, chuyển đổi 2D ItemImage và cơ chế hiển thị Avatar (ItemRegistry, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar và Shop Lazy Rendering).
-> Cập nhật lần cuối: 01-09-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard, chuyển đổi 2D ItemImage, cơ chế hiển thị Avatar và Pipeline tự động hóa tạo Icon 2D (ItemRegistry, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar, Shop Lazy Rendering và Dual-Shot Matte Photo Booth).
+> Cập nhật lần cuối: 08-09-2026
 
 ---
 
@@ -52,6 +52,16 @@
 - **Triệt tiêu Dead Code:** Do 2D Icon nạp tức thì trong $0\text{ms}$ và được engine gom vào 1 Draw Call duy nhất, toàn bộ hệ thống Lazy Loading (`_LazyRenderQueue`, `CheckLazyQueue`, `_ScrollConn`) trong `InventoryController` và `InventoryConfig.LazyRenderBuffer` được dỡ bỏ hoàn toàn, giảm tải độ phức tạp mã nguồn.
 - **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [InventoryConfig.lua](../../src/ReplicatedStorage/Shared/Config/InventoryConfig.lua)
 
+### 8. Pipeline Tự Động Hóa Tạo Icon 2D Từ Model 3D (Dual-Shot Difference Matte Photo Booth)
+- **Chi tiết:** Để thay thế `ViewportFrame` bằng `ImageLabel` mà vẫn bảo toàn 100% shader, vật liệu (`Ice`, `Glass`, `Neon`) và màu sắc trong Studio (tránh lỗi ám viền xanh và mất thân item màu lục khi dùng Chroma Key phông xanh), áp dụng kỹ thuật **Dual-Shot Difference Matte** với 2 lần chụp trên nền Đen (`#000000`) và Trắng (`#FFFFFF`):
+  $$\text{Alpha} = 1.0 - (\text{Color}_{\text{White}} - \text{Color}_{\text{Black}})$$
+  $$\text{FinalColor} = \frac{\text{Color}_{\text{Black}}}{\text{Alpha}}$$
+- **Kiến trúc Client-Server Cục Bộ:** Roblox Studio dựng buồng chụp hộp kín cách ly tại $Y = 100,000$ (tắt shadow, bố trí đèn 3 điểm Key/Fill/Back), đồng bộ góc chụp với `ViewportConfig.lua`, đổi màu nền và gọi HTTP POST sang Python Local Worker qua `HttpService`.
+- **Tách Biệt 2 Pha Chuyên Biệt (Decoupled Capture & Upload):**
+  - *Pha 1 (Tạo & Kiểm duyệt):* Python Worker chụp, tách nền, crop vuông tâm và xuất file PNG 512x512 vào `renders/{Type}/{Id}.png` để nhà phát triển kiểm tra trước.
+  - *Pha 2 (Upload & Sync):* Script `upload_icons.py` chạy riêng biệt theo yêu cầu, upload qua Roblox Open Cloud Assets API và tự động ghi đè mã `rbxassetid://...` vào `ItemRegistry.lua`.
+- **File liên quan:** [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua), [IconGenerator.lua](../../src/ReplicatedStorage/Shared/Tools/IconGenerator.lua), [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [upload_icons.py](../../tools/icon_pipeline/upload_icons.py), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -85,3 +95,11 @@
   - 100% các ô thẻ trong danh sách và Hotbar sử dụng `ImageLabel` 2D (**`ItemImage`**).
   - Duy trì duy nhất **1** `ViewportFrame` ở khung xem trước chi tiết (`ItemSelection`) để người chơi quan sát mô hình 3D khi click chọn.
 - **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)
+
+### 6. Sai Lệch Tọa Độ Cửa Sổ & Nhiễu Biên Khi Chụp Màn Hình Tách Nền trong Studio
+- **Vấn đề:** Khi chụp màn hình từ Python, layout Roblox Studio của mỗi lập trình viên khác nhau (vị trí Explorer, Output), Windows High-DPI scaling (125%, 150%) làm lệch khung hình, và công thức Dual-Shot Matte bị crash chia cho 0 ($\text{Alpha} \to 0$) hoặc viền mờ hạt (noise) do ánh sáng bloom.
+- **Giải pháp:**
+  1. **Tự động nhận diện Viewport qua Sai phân (Auto Difference Rect Detection):** Lấy hiệu số $|Frame_{\text{White}} - Frame_{\text{Black}}| > 30$, vùng duy nhất biến đổi màu sắc mạnh chính là khung chữ nhật 3D Viewport.
+  2. **Bảo vệ chia cho 0 & Lọc ngưỡng Alpha:** Vector hóa ma trận với NumPy: `np.where(Alpha > Threshold, ColorBlack / Alpha, 0.0)` và kẹp Alpha $[0.0, 1.0]$.
+  3. **Windows DPI-Aware:** Kích hoạt `SetProcessDpiAwareness(2)` ngay khi khởi động Python worker để khớp tuyệt đối pixel vật lý.
+- **File liên quan:** [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua)

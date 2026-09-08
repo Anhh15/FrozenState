@@ -19,7 +19,7 @@ local AnimationConfig = {
 		HitEndTime     = 0.33,
 
 		-- Pose: Animation của nạn nhân khi bị đóng băng
-		PoseAnimation  = 124599578653105,--127604545127643,
+		PoseAnimation  = 127604545127643,--124599578653105,
 	},
 
 	-- =========================================================
