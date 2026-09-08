@@ -8,6 +8,16 @@
 local ViewportConfig = {}
 
 -- =========================================================
+-- LIGHTING — Cấu hình ánh sáng chuẩn cho mọi Viewport hiển thị vật phẩm
+-- =========================================================
+
+ViewportConfig.Lighting = {
+	Ambient        = Color3.fromRGB(200, 200, 200),
+	LightColor     = Color3.fromRGB(255, 255, 255),
+	LightDirection = Vector3.new(1, 1, 3),
+}
+
+-- =========================================================
 -- DEFAULT — Áp dụng cho tất cả vật phẩm nếu không có override
 -- =========================================================
 

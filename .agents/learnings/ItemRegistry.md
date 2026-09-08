@@ -52,15 +52,20 @@
 - **Triệt tiêu Dead Code:** Do 2D Icon nạp tức thì trong $0\text{ms}$ và được engine gom vào 1 Draw Call duy nhất, toàn bộ hệ thống Lazy Loading (`_LazyRenderQueue`, `CheckLazyQueue`, `_ScrollConn`) trong `InventoryController` và `InventoryConfig.LazyRenderBuffer` được dỡ bỏ hoàn toàn, giảm tải độ phức tạp mã nguồn.
 - **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [InventoryConfig.lua](../../src/ReplicatedStorage/Shared/Config/InventoryConfig.lua)
 
-### 8. Pipeline Tự Động Hóa Tạo Icon 2D Từ Model 3D (Dual-Shot Difference Matte Photo Booth)
+### 8. Pipeline Tự Động Hóa Tạo Icon 2D Từ Model 3D (Dual-Shot Difference Matte GUI Viewport)
 - **Chi tiết:** Để thay thế `ViewportFrame` bằng `ImageLabel` mà vẫn bảo toàn 100% shader, vật liệu (`Ice`, `Glass`, `Neon`) và màu sắc trong Studio (tránh lỗi ám viền xanh và mất thân item màu lục khi dùng Chroma Key phông xanh), áp dụng kỹ thuật **Dual-Shot Difference Matte** với 2 lần chụp trên nền Đen (`#000000`) và Trắng (`#FFFFFF`):
   $$\text{Alpha} = 1.0 - (\text{Color}_{\text{White}} - \text{Color}_{\text{Black}})$$
   $$\text{FinalColor} = \frac{\text{Color}_{\text{Black}}}{\text{Alpha}}$$
-- **Kiến trúc Client-Server Cục Bộ:** Roblox Studio dựng buồng chụp hộp kín cách ly tại $Y = 100,000$ (tắt shadow, bố trí đèn 3 điểm Key/Fill/Back), đồng bộ góc chụp với `ViewportConfig.lua`, đổi màu nền và gọi HTTP POST sang Python Local Worker qua `HttpService`.
+- **Kiến trúc GUI ViewportFrame Photo Booth:** Thay vì dựng hộp 3D và đèn trong Workspace, Roblox Studio tạo `ScreenGui` tạm chứa `ViewportFrame` vuông tỉ lệ 1:1 (`800x800` pixels) căn giữa màn hình. Nạp model và camera bằng `ViewportManager.RenderItem`, thừa hưởng trực tiếp `ViewportConfig.Lighting` để đảm bảo ánh sáng tương đồng 100% với in-game Viewport. Đổi màu nền `BackgroundColor3` (Đen/Trắng) và gửi HTTP POST sang Python Local Worker.
 - **Tách Biệt 2 Pha Chuyên Biệt (Decoupled Capture & Upload) & SSOT Output Path:**
   - *Pha 1 (Tạo & Kiểm duyệt):* Python Worker chụp, tách nền, crop vuông tâm và xuất file PNG 512x512 vào thư mục tập trung ngoài dự án `SuperFrozenState/GUI_FrozenState/Icon/Item/{Type}/{Id}.png` theo phân cấp để nhà phát triển kiểm tra trước.
   - *Pha 2 (Upload & Sync):* Script `upload_icons.py` tái sử dụng `config.OutputDir` làm nguồn chân lý duy nhất (SSOT), upload qua Roblox Open Cloud Assets API và tự động ghi đè mã `rbxassetid://...` vào `ItemRegistry.lua`.
 - **File liên quan:** [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua), [IconGenerator.lua](../../src/ReplicatedStorage/Shared/Tools/IconGenerator.lua), [config.py](../../tools/icon_pipeline/config.py), [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [upload_icons.py](../../tools/icon_pipeline/upload_icons.py), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)
+
+### 9. Single Source of Truth Cho Ánh Sáng ViewportFrame (ViewportConfig.Lighting)
+- **Chi tiết:** Thay vì lưu tĩnh thông số ánh sáng trong file GUI XML (`Menu.rbxmx`), tập trung hóa toàn bộ tham số vào `ViewportConfig.Lighting` (`Ambient`, `LightColor`, `LightDirection`).
+- **Tự Động Đồng Bộ:** Hàm `ViewportManager.RenderItem()` tự động áp dụng cấu hình này vào bất kỳ `ViewportFrame` nào trước khi gán Camera. Đảm bảo tính nhất quán 100% giữa khung preview trang bị (`ItemSelection`), rương quà (`Shop`, `ItemReward`) và buồng chụp Icon (`IconGenerator`).
+- **File liên quan:** [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua), [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [IconGenerator.lua](../../src/ReplicatedStorage/Shared/Tools/IconGenerator.lua)
 
 ---
 
@@ -110,4 +115,11 @@
   1. **Bảo tồn phân cấp danh mục:** Áp dụng cấu trúc thư mục con `{OutputDir}/{ItemType}/{ItemId}.png` bảo vệ tính toàn vẹn của dữ liệu hình ảnh.
   2. **Single Source of Truth (SSOT):** Tập trung hóa biến `OutputDir` tại `config.py`; buộc toàn bộ các script vệ tinh (`studio_capture.py`, `upload_icons.py`) import trực tiếp từ config để loại bỏ hoàn toàn hardcode đường dẫn.
 - **File liên quan:** [config.py](../../tools/icon_pipeline/config.py), [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [upload_icons.py](../../tools/icon_pipeline/upload_icons.py)
+
+### 8. Lệch Ánh Sáng và Bóng Đổ Khi Tạo Icon Bằng Buồng Chụp 3D So Với ViewportFrame
+- **Vấn đề:** Dựng buồng chụp 3D trong `Workspace` (vách hộp ở $Y = 100,000$ và 3 đèn SpotLight) tạo ra chênh lệch đồ họa lớn so với `ViewportFrame` in-game:
+  1. `ViewportFrame` dùng shader diffuse Lambertian tối giản, không hỗ trợ shadow map, không có falloff theo khoảng cách và có `Ambient` môi trường rất cao (`Color3.fromRGB(200, 200, 200)`).
+  2. Buồng chụp 3D Workspace có `Ambient = 0` (do vách chặn bóng), đèn SpotLight tạo bóng sắc và gắt, đèn BackLight tạo rim light thừa, và vách Neon gây tán xạ bloom.
+- **Giải pháp:** Khai tử buồng chụp 3D, chuyển toàn bộ `IconGenerator` sang chụp trực tiếp trên `ViewportFrame` ở GUI. Do cùng chung engine shader và dùng chung `ViewportConfig.Lighting`, Icon 2D đạt độ tương đồng 100% với `ItemSelection`.
+- **File liên quan:** [IconGenerator.lua](../../src/ReplicatedStorage/Shared/Tools/IconGenerator.lua), [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua), [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua), [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua)
 

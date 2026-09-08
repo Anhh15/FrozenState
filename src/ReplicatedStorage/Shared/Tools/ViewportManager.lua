@@ -97,6 +97,14 @@ function ViewportManager.RenderItem(Viewport, Model, ItemType, ItemId)
 	Camera.Focus       = ModelCFrame  -- Camera luôn nhìn vào tâm model
 	Camera.Parent      = Viewport
 
+	-- Đồng bộ thiết lập ánh sáng chuẩn từ ViewportConfig
+	local LightingConfig = ViewportConfig.Lighting
+	if LightingConfig then
+		Viewport.Ambient        = LightingConfig.Ambient
+		Viewport.LightColor     = LightingConfig.LightColor
+		Viewport.LightDirection = LightingConfig.LightDirection
+	end
+
 	Viewport.CurrentCamera = Camera
 end
 
