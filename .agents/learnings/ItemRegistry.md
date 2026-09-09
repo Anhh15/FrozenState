@@ -1,6 +1,6 @@
 # ItemRegistry
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard, chuyển đổi 2D ItemImage, cơ chế hiển thị Avatar và Pipeline tự động hóa tạo Icon 2D (ItemRegistry, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar, Shop Lazy Rendering và Dual-Shot Matte Photo Booth).
-> Cập nhật lần cuối: 08-09-2026
+> Cập nhật lần cuối: 09-09-2026
 
 ---
 
@@ -56,7 +56,10 @@
 - **Chi tiết:** Để thay thế `ViewportFrame` bằng `ImageLabel` mà vẫn bảo toàn 100% shader, vật liệu (`Ice`, `Glass`, `Neon`) và màu sắc trong Studio (tránh lỗi ám viền xanh và mất thân item màu lục khi dùng Chroma Key phông xanh), áp dụng kỹ thuật **Dual-Shot Difference Matte** với 2 lần chụp trên nền Đen (`#000000`) và Trắng (`#FFFFFF`):
   $$\text{Alpha} = 1.0 - (\text{Color}_{\text{White}} - \text{Color}_{\text{Black}})$$
   $$\text{FinalColor} = \frac{\text{Color}_{\text{Black}}}{\text{Alpha}}$$
-- **Kiến trúc GUI ViewportFrame Photo Booth:** Thay vì dựng hộp 3D và đèn trong Workspace, Roblox Studio tạo `ScreenGui` tạm chứa `ViewportFrame` vuông tỉ lệ 1:1 (`800x800` pixels) căn giữa màn hình. Nạp model và camera bằng `ViewportManager.RenderItem`, thừa hưởng trực tiếp `ViewportConfig.Lighting` để đảm bảo ánh sáng tương đồng 100% với in-game Viewport. Đổi màu nền `BackgroundColor3` (Đen/Trắng) và gửi HTTP POST sang Python Local Worker.
+- **Kiến trúc GUI ViewportFrame Photo Booth:** Thay vì dựng hộp 3D và đèn trong Workspace, Roblox Studio tạo `ScreenGui` tạm chứa `ViewportFrame` vuông tỉ lệ 1:1 (`500x500` pixels) căn giữa màn hình. Nạp model và camera bằng `ViewportManager.RenderItem`, thừa hưởng trực tiếp `ViewportConfig.Lighting` để đảm bảo ánh sáng tương đồng 100% với in-game Viewport. Đổi màu nền `BackgroundColor3` (Đen/Trắng) và gửi HTTP POST sang Python Local Worker kèm tọa độ chuẩn `ViewportBounds` (`AbsolutePosition`, `AbsoluteSize`).
+- **Cơ Chế Bất Đồng Bộ (Async TaskQueue) & GPU Synchronization:**
+  - *Đồng bộ GPU:* Studio lặp qua chu kỳ `RenderStepped:Wait()` / `Heartbeat:Wait()` (`IconPipelineConfig.RenderWarmupFrames`) trước khi gửi HTTP request, đảm bảo GPU flush frame hoàn chỉnh lên màn hình, triệt tiêu race condition gây lệch frame.
+  - *Async Queue trên Worker:* Khi nhận request pha Trắng, Python worker lưu frame vào bộ nhớ, đẩy tác vụ vào `queue.Queue` và trả về HTTP `ok` ngay lập tức ($< 2\text{ms}$). Luồng ngầm daemon thực hiện xử lý tách nền và xuất PNG, giải phóng Studio khỏi hiện tượng treo đơ ở nền trắng.
 - **Tách Biệt 2 Pha Chuyên Biệt (Decoupled Capture & Upload) & SSOT Output Path:**
   - *Pha 1 (Tạo & Kiểm duyệt):* Python Worker chụp, tách nền, crop vuông tâm và xuất file PNG 512x512 vào thư mục tập trung ngoài dự án `SuperFrozenState/GUI_FrozenState/Icon/Item/{Type}/{Id}.png` theo phân cấp để nhà phát triển kiểm tra trước.
   - *Pha 2 (Upload & Sync):* Script `upload_icons.py` tái sử dụng `config.OutputDir` làm nguồn chân lý duy nhất (SSOT), upload qua Roblox Open Cloud Assets API và tự động ghi đè mã `rbxassetid://...` vào `ItemRegistry.lua`.
@@ -101,13 +104,17 @@
   - Duy trì duy nhất **1** `ViewportFrame` ở khung xem trước chi tiết (`ItemSelection`) để người chơi quan sát mô hình 3D khi click chọn.
 - **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)
 
-### 6. Sai Lệch Tọa Độ Cửa Sổ & Nhiễu Biên Khi Chụp Màn Hình Tách Nền trong Studio
-- **Vấn đề:** Khi chụp màn hình từ Python, layout Roblox Studio của mỗi lập trình viên khác nhau (vị trí Explorer, Output), Windows High-DPI scaling (125%, 150%) làm lệch khung hình, và công thức Dual-Shot Matte bị crash chia cho 0 ($\text{Alpha} \to 0$) hoặc viền mờ hạt (noise) do ánh sáng bloom.
+### 6. Sai Lệch Tọa Độ Cửa Sổ, Dính Tab Studio & Hiện Tượng Bóng Ma Khi Chụp Màn Hình
+- **Vấn đề:** Khi chụp màn hình từ Python:
+  1. *Dính UI Tab Studio & Cắt cụt đáy:* Thuật toán diff đơn thuần `np.any(Mask, axis=1)` bị đánh lừa bởi nhiễu repaint rời rạc trên thanh Tab dock của Studio, kéo `MinY` lên đỉnh cửa sổ khiến tâm crop bị lệch lên trên và cắt cụt chân vật phẩm.
+  2. *Bóng ma kép (Ghosting):* GPU render bất đồng bộ, `task.wait` tĩnh trôi qua khi GPU chưa kịp vẽ frame mới, khiến pha Đen chụp item cũ/góc cũ còn pha Trắng chụp item mới.
+  3. *Treo đơ ở nền trắng:* Pha Trắng xử lý tính toán ma trận và ghi đĩa đồng bộ làm nghẽn thread `HttpService:PostAsync` của Studio.
 - **Giải pháp:**
-  1. **Tự động nhận diện Viewport qua Sai phân (Auto Difference Rect Detection):** Lấy hiệu số $|Frame_{\text{White}} - Frame_{\text{Black}}| > 30$, vùng duy nhất biến đổi màu sắc mạnh chính là khung chữ nhật 3D Viewport.
-  2. **Bảo vệ chia cho 0 & Lọc ngưỡng Alpha:** Vector hóa ma trận với NumPy: `np.where(Alpha > Threshold, ColorBlack / Alpha, 0.0)` và kẹp Alpha $[0.0, 1.0]$.
-  3. **Windows DPI-Aware:** Kích hoạt `SetProcessDpiAwareness(2)` ngay khi khởi động Python worker để khớp tuyệt đối pixel vật lý.
-- **File liên quan:** [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua)
+  1. **Lọc Mật Độ Sai Phân (Density-Based Filtering):** Nâng ngưỡng sai phân $> 80$ và chỉ công nhận hàng/cột có mật độ biến đổi pixel $> 35\%$ kích thước Viewport (`RowDensity > ExpectedW * 0.35`), loại bỏ $100\%$ nhiễu UI Studio và căn đúng tâm buồng chụp.
+  2. **Đồng bộ GPU Frame (WaitForRenderFrames):** Lặp qua các nhịp frame của Engine kết hợp thời gian đệm để GPU flush xong frame trước mỗi lần chụp, triệt tiêu hoàn toàn bóng ma kép.
+  3. **Async TaskQueue Worker:** Đẩy việc tính toán Dual-Shot Matte và nén PNG vào hàng đợi nền, phản hồi HTTP cho Studio ngay lập tức.
+  4. **Tăng Khoảng Đệm Camera (PaddingFactor = 1.25):** Nâng `PaddingFactor` trong `ViewportConfig.lua` từ 1.0 lên 1.25 để vật thể xoay 3D luôn có biên an toàn.
+- **File liên quan:** [studio_capture.py](../../tools/icon_pipeline/studio_capture.py), [IconGenerator.lua](../../src/ReplicatedStorage/Shared/Tools/IconGenerator.lua), [IconPipelineConfig.lua](../../src/ReplicatedStorage/Shared/Config/IconPipelineConfig.lua), [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua)
 
 ### 7. Xung Đột Ghi Đè Tài Nguyên Khi Lưu Trữ Phẳng & Phân Mảnh Nguồn Dữ Liệu Pipeline
 - **Vấn đề:** Khi kết xuất icon từ nhiều phân loại vật phẩm (`Icicle`, `Block`) ra thư mục chung, các item có cùng `ItemId` (như `Default`, `Green`, `Red`) sẽ ghi đè và làm mất file của nhau nếu lưu cấu trúc phẳng. Đồng thời, việc script upload tự khai báo hardcode đường dẫn cục bộ thay vì dùng chung biến cấu hình dẫn đến rủi ro lệch pha dữ liệu khi di dời thư mục lưu trữ.

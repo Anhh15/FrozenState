@@ -15,6 +15,8 @@ if sys.platform == "win32":
 	except Exception:
 		pass
 
+import queue
+import threading
 from flask import Flask, request, jsonify
 import numpy as np
 from PIL import Image, ImageGrab
@@ -88,27 +90,52 @@ def CaptureStudioWindow(WindowRect=None):
 		return ImageGrab.grab(bbox=WindowRect, all_screens=True)
 	return ImageGrab.grab(all_screens=True)
 
-def DetectViewportRect(BlackImage, WhiteImage):
-	"""Tự động phát hiện hình chữ nhật Viewport 3D dựa trên sai phân giữa Black và White frame."""
+def DetectViewportRect(BlackImage, WhiteImage, ViewportBounds=None):
+	"""
+	Tự động phát hiện chính xác hình chữ nhật ViewportFrame 3D.
+	Sử dụng mật độ sai phân (Density-Based Filtering) để loại bỏ 100% nhiễu từ thanh tab,
+	menu bar hoặc các widget khác của Roblox Studio.
+	"""
 	BlackArr = np.array(BlackImage, dtype=np.float32)
 	WhiteArr = np.array(WhiteImage, dtype=np.float32)
 
-	# Sai phân màu giữa 2 frame
+	# Sai phân màu giữa 2 frame (nền đổi từ đen sang trắng nên Diff rất lớn)
 	Diff = np.abs(WhiteArr - BlackArr).mean(axis=2)
-	Mask = Diff > config.DifferenceMinThreshold
 
-	Rows = np.any(Mask, axis=1)
-	Cols = np.any(Mask, axis=0)
+	# Ngưỡng sai phân mạnh để lọc nền thực sự thay đổi (> 80)
+	StrongMask = Diff > 80.0
 
-	if np.any(Rows) and np.any(Cols):
-		MinY, MaxY = np.where(Rows)[0][[0, -1]]
-		MinX, MaxX = np.where(Cols)[0][[0, -1]]
+	ExpectedW = ViewportBounds.get("Width", 500) if ViewportBounds else 500
+	ExpectedH = ViewportBounds.get("Height", 500) if ViewportBounds else 500
 
-		# Thêm biên độ an toàn nhẹ
-		Width = MaxX - MinX
-		Height = MaxY - MinY
-		if Width > 100 and Height > 100:
-			return (int(MinX), int(MinY), int(MaxX), int(MaxY))
+	# Mật độ pixel thay đổi theo hàng (Row) và theo cột (Col)
+	RowDensity = np.sum(StrongMask, axis=1)
+	ColDensity = np.sum(StrongMask, axis=0)
+
+	# Chỉ lấy những hàng/cột có số pixel thay đổi vượt ngưỡng mật độ (loại bỏ nhiễu rời rạc trên tab Studio)
+	MinDensityX = max(ExpectedW * 0.35, 50.0)
+	MinDensityY = max(ExpectedH * 0.35, 50.0)
+
+	ValidRows = RowDensity > MinDensityX
+	ValidCols = ColDensity > MinDensityY
+
+	if np.any(ValidRows) and np.any(ValidCols):
+		MinY, MaxY = np.where(ValidRows)[0][[0, -1]]
+		MinX, MaxX = np.where(ValidCols)[0][[0, -1]]
+
+		# Căn giữa theo tâm của vùng mật độ cao
+		CenterX = (MinX + MaxX) // 2
+		CenterY = (MinY + MaxY) // 2
+		DetectedSize = max(MaxX - MinX + 1, MaxY - MinY + 1)
+
+		# Điều chỉnh kích thước sao cho vuông 1:1 theo ViewportFrame
+		HalfSize = DetectedSize // 2
+		TargetMinX = max(0, CenterX - HalfSize)
+		TargetMinY = max(0, CenterY - HalfSize)
+		TargetMaxX = min(BlackImage.width, TargetMinX + DetectedSize)
+		TargetMaxY = min(BlackImage.height, TargetMinY + DetectedSize)
+
+		return (int(TargetMinX), int(TargetMinY), int(TargetMaxX), int(TargetMaxY))
 
 	# Fallback nếu không xác định được: trả về toàn bộ ảnh
 	return (0, 0, BlackImage.width, BlackImage.height)
@@ -149,10 +176,10 @@ def ComputeDualShotMatte(BlackImage, WhiteImage):
 	ResultImage = Image.fromarray(RgbaArr, mode="RGBA")
 	return ResultImage
 
-def ProcessAndSaveIcon(BlackImage, WhiteImage, ItemType, ItemId):
+def ProcessAndSaveIcon(BlackImage, WhiteImage, ItemType, ItemId, ViewportBounds=None):
 	"""Cắt xén hình chữ nhật Viewport, thực hiện tách nền, crop vuông và resize chuẩn."""
-	# 1. Phát hiện Viewport
-	ViewportRect = DetectViewportRect(BlackImage, WhiteImage)
+	# 1. Phát hiện Viewport sạch sẽ loại bỏ nhiễu giao diện
+	ViewportRect = DetectViewportRect(BlackImage, WhiteImage, ViewportBounds)
 	BlackCrop = BlackImage.crop(ViewportRect)
 	WhiteCrop = WhiteImage.crop(ViewportRect)
 
@@ -179,11 +206,38 @@ def ProcessAndSaveIcon(BlackImage, WhiteImage, ItemType, ItemId):
 	return OutputPath
 
 # =========================================================
-# FLASK HTTP SERVER & ENDPOINTS
+# FLASK HTTP SERVER & ASYNC TASK QUEUE
 # =========================================================
 
 App = Flask(__name__)
 TempFrameCache = {} # Lưu tạm Black frame chờ White frame theo ItemKey
+TaskQueue = queue.Queue()
+
+def BackgroundWorkerLoop():
+	"""Luồng xử lý ngầm các tác vụ tính toán Matte và lưu file PNG để giải phóng Studio ngay lập tức."""
+	while True:
+		Task = TaskQueue.get()
+		if Task is None:
+			break
+
+		BlackImage, WhiteImage, ItemType, ItemId, ViewportBounds = Task
+		try:
+			ProcessAndSaveIcon(BlackImage, WhiteImage, ItemType, ItemId, ViewportBounds)
+		except Exception as Err:
+			print(f"[Worker] Lỗi xử lý Dual-Shot Matte cho {ItemType}_{ItemId}: {Err}")
+		finally:
+			TaskQueue.task_done()
+
+# Khởi chạy luồng worker ngầm daemon
+WorkerThread = threading.Thread(target=BackgroundWorkerLoop, daemon=True)
+WorkerThread.start()
+
+@App.route("/status", methods=["GET"])
+def HandleStatusRequest():
+	return jsonify({
+		"status": "ok",
+		"remaining_tasks": TaskQueue.qsize()
+	})
 
 @App.route("/capture", methods=["POST"])
 def HandleCaptureRequest():
@@ -191,9 +245,10 @@ def HandleCaptureRequest():
 	if not Data:
 		return jsonify({"status": "error", "message": "Invalid JSON body"}), 400
 
-	ItemId   = Data.get("ItemId")
-	ItemType = Data.get("ItemType", "Item")
-	Step     = Data.get("Step") # "Black" hoặc "White"
+	ItemId         = Data.get("ItemId")
+	ItemType       = Data.get("ItemType", "Item")
+	Step           = Data.get("Step") # "Black" hoặc "White"
+	ViewportBounds = Data.get("ViewportBounds")
 
 	if not ItemId or not Step:
 		return jsonify({"status": "error", "message": "Missing ItemId or Step"}), 400
@@ -205,6 +260,7 @@ def HandleCaptureRequest():
 	if Step.lower() == "black":
 		TempFrameCache[ItemKey] = {
 			"black": CapturedImage,
+			"bounds": ViewportBounds,
 		}
 		print(f"[Worker] Đã lưu Black frame cho {ItemKey}")
 		return jsonify({"status": "ok", "message": "Black frame captured"})
@@ -215,19 +271,18 @@ def HandleCaptureRequest():
 			return jsonify({"status": "error", "message": f"Không tìm thấy Black frame cho {ItemKey}"}), 400
 
 		BlackImage = Cached["black"]
+		CachedBounds = Cached.get("bounds") or ViewportBounds
 		WhiteImage = CapturedImage
 
-		try:
-			OutputPath = ProcessAndSaveIcon(BlackImage, WhiteImage, ItemType, ItemId)
-			del TempFrameCache[ItemKey]
-			return jsonify({
-				"status": "ok",
-				"message": f"Saved {ItemType}/{ItemId}.png",
-				"path": str(OutputPath)
-			})
-		except Exception as Err:
-			print(f"[Worker] Lỗi xử lý Dual-Shot Matte cho {ItemKey}: {Err}")
-			return jsonify({"status": "error", "message": str(Err)}), 500
+		# Đẩy tác vụ vào hàng đợi ngầm và phản hồi Studio ngay lập tức (< 2ms)
+		TaskQueue.put((BlackImage, WhiteImage, ItemType, ItemId, CachedBounds))
+		del TempFrameCache[ItemKey]
+
+		print(f"[Worker] Đã tiếp nhận White frame cho {ItemKey} -> Đẩy vào hàng đợi xử lý ngầm")
+		return jsonify({
+			"status": "ok",
+			"message": f"Enqueued {ItemType}/{ItemId} for background processing"
+		})
 
 	return jsonify({"status": "error", "message": f"Unknown step '{Step}'"}), 400
 

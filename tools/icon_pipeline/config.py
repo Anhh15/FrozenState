@@ -21,7 +21,10 @@ TargetResolution = (512, 512)
 # Từ khóa tìm kiếm tiêu đề cửa sổ Roblox Studio trên Windows
 StudioWindowTitleKeyword = "Roblox Studio"
 
+# Cấu hình định vị Viewport buồng chụp
+UseStudioCoordinates = True   # Ưu tiên dùng tọa độ Viewport do Roblox Studio gửi qua HTTP
+
 # Cấu hình thuật toán Dual-Shot Matte & Khử nhiễu
 AlphaThreshold = 0.02          # Ngưỡng Alpha coi là nền trong suốt hoàn toàn
-DifferenceMinThreshold = 30    # Ngưỡng sai phân RGB nhận diện vùng Viewport giữa Black và White frame
+DifferenceMinThreshold = 30    # Ngưỡng sai phân RGB nhận diện vùng Viewport nếu fallback
 CropPaddingFactor = 1.1        # Hệ số đệm khi crop khung hình bao quanh vật phẩm

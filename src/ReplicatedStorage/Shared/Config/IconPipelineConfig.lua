@@ -21,10 +21,19 @@ local IconPipelineConfig = {
 
 	-- Thời gian chờ (giây) giữa các thao tác để Roblox Studio hoàn tất vẽ frame
 	RenderDelays = {
-		AfterColorChange = 0.25, -- Chờ engine cập nhật màu nền
-		AfterModelLoaded = 0.15, -- Chờ model render hoàn chỉnh
-		BetweenItems     = 0.10, -- Giãn cách giữa 2 item liên tiếp
+		AfterColorChange = 0.25, -- Thời gian đệm tối thiểu sau khi đổi màu
+		AfterModelLoaded = 0.35, -- Thời gian đệm tối thiểu sau khi nạp model
+		BetweenItems     = 0.25, -- Giãn cách giữa 2 item liên tiếp
 	},
+
+	-- Số nhịp frame Engine (RenderStepped/Heartbeat) chờ GPU flush hoàn tất
+	RenderWarmupFrames = {
+		AfterModelLoaded = 5,
+		AfterColorChange = 3,
+	},
+
+	-- Bật gửi kèm tọa độ tuyệt đối của ViewportFrame để Python crop chuẩn xác
+	SendViewportBounds = true,
 
 	-- Thư mục gốc chứa model preview theo kiến trúc dự án
 	PreviewFolderNames = {

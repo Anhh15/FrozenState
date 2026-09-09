@@ -5,6 +5,7 @@
 local HttpService       = game:GetService("HttpService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService        = game:GetService("RunService")
 
 local IconPipelineConfig = require(ReplicatedStorage.Shared.Config.IconPipelineConfig)
 local ItemRegistry       = require(ReplicatedStorage.Shared.Config.ItemRegistry)
@@ -135,6 +136,39 @@ end
 -- INTERNAL HELPERS: HTTP GIAO TIẾP VỚI PYTHON WORKER
 -- =========================================================
 
+--- Chờ số nhịp frame của Engine kết hợp thời gian đệm để GPU flush frame hoàn chỉnh
+--- @param FrameCount number
+--- @param BufferSeconds number
+local function WaitForRenderFrames(FrameCount, BufferSeconds)
+	FrameCount = FrameCount or 3
+	for _ = 1, FrameCount do
+		if RunService:IsClient() then
+			RunService.RenderStepped:Wait()
+		else
+			RunService.Heartbeat:Wait()
+		end
+	end
+
+	if BufferSeconds and BufferSeconds > 0 then
+		task.wait(BufferSeconds)
+	end
+end
+
+--- Lấy thông số tọa độ và kích thước tuyệt đối của CaptureViewport trên màn hình
+--- @return table|nil
+local function GetViewportBounds()
+	if not CaptureViewport or not IconPipelineConfig.SendViewportBounds then
+		return nil
+	end
+
+	return {
+		X      = math.round(CaptureViewport.AbsolutePosition.X),
+		Y      = math.round(CaptureViewport.AbsolutePosition.Y),
+		Width  = math.round(CaptureViewport.AbsoluteSize.X),
+		Height = math.round(CaptureViewport.AbsoluteSize.Y),
+	}
+end
+
 --- Gửi lệnh chụp tới Python Local Worker
 --- @param ItemId   string
 --- @param ItemType string
@@ -142,9 +176,10 @@ end
 --- @return boolean
 local function RequestCaptureStep(ItemId, ItemType, Step)
 	local Payload = {
-		ItemId   = ItemId,
-		ItemType = ItemType,
-		Step     = Step,
+		ItemId         = ItemId,
+		ItemType       = ItemType,
+		Step           = Step,
+		ViewportBounds = GetViewportBounds(),
 	}
 
 	local Success, Response = pcall(function()
@@ -239,16 +274,25 @@ function IconGenerator.Run(FilterType, FilterItemId)
 
 			-- Thiết lập Camera và Ánh sáng đồng bộ 100% qua ViewportManager
 			ViewportManager.RenderItem(CaptureViewport, ClonedModel, Entry.Type, Entry.Id)
-			task.wait(IconPipelineConfig.RenderDelays.AfterModelLoaded)
+			WaitForRenderFrames(
+				IconPipelineConfig.RenderWarmupFrames.AfterModelLoaded,
+				IconPipelineConfig.RenderDelays.AfterModelLoaded
+			)
 
 			-- Pha 1: Nền ĐEN
 			SetCaptureBackgroundColor(IconPipelineConfig.BackgroundColors.Black)
-			task.wait(IconPipelineConfig.RenderDelays.AfterColorChange)
+			WaitForRenderFrames(
+				IconPipelineConfig.RenderWarmupFrames.AfterColorChange,
+				IconPipelineConfig.RenderDelays.AfterColorChange
+			)
 			local BlackOk = RequestCaptureStep(Entry.Id, Entry.Type, "Black")
 
 			-- Pha 2: Nền TRẮNG
 			SetCaptureBackgroundColor(IconPipelineConfig.BackgroundColors.White)
-			task.wait(IconPipelineConfig.RenderDelays.AfterColorChange)
+			WaitForRenderFrames(
+				IconPipelineConfig.RenderWarmupFrames.AfterColorChange,
+				IconPipelineConfig.RenderDelays.AfterColorChange
+			)
 			local WhiteOk = RequestCaptureStep(Entry.Id, Entry.Type, "White")
 
 			-- Dọn dẹp model hiện tại

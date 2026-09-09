@@ -40,13 +40,13 @@ local TypeOverrides = {
 		PitchAngle    = 0,
 		YawAngle      = 180,
 		RollAngle     = 45,
-		PaddingFactor = 1,
+		PaddingFactor = 1.25,
 	},
 	Block = {
 		PitchAngle    = 10,
 		YawAngle      = 135,
 		RollAngle     = 0,
-		PaddingFactor = 1,
+		PaddingFactor = 1.25,
 	},
 	Chest = {
 		FieldOfView   = 70,
