@@ -40,18 +40,6 @@ local UpdateMoneyEvent    = nil
 
 local ShopService = nil
 
---- Lấy giá trị stat hiện tại của player
---- @param Player Player
---- @param RawData table
---- @param StatKey string
---- @return number
-local function GetStatValue(Player, RawData, StatKey)
-	local Value = RawData[StatKey] or 0
-	if StatKey == "PlayTime" and Player and _sessionStart[Player] then
-		Value = Value + (os.time() - _sessionStart[Player])
-	end
-	return Value
-end
 
 --- So khớp các điều kiện lọc (Conditions) của Objective với EventData
 --- @param Conditions table?
@@ -294,11 +282,6 @@ function QuestService.DispatchEvent(Player, EventName, EventData)
 				JustCompleted = true
 			end
 
-		elseif Obj.Type == "MatchCondition" then
-			DataService.SetQuestProgress(Player, QuestType, QuestId, 1, true)
-			if not WasCompleted then
-				JustCompleted = true
-			end
 		end
 
 		if JustCompleted and NotifyAccoladeEvent then

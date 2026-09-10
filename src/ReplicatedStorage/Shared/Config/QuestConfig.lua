@@ -1,6 +1,6 @@
 -- QuestConfig.lua
 -- Tham số và định nghĩa toàn bộ nhiệm vụ trong game (Objective Engine 2.0)
--- Hỗ trợ 4 loại Objective: InMatchCounter, Accumulative, MatchCondition, LifetimeStat
+-- Hỗ trợ 2 loại Objective: InMatchCounter, Accumulative
 -- Hỗ trợ 3 loại Reward: Money, Chest, Item (Mỗi quest có DUY NHẤT 1 loại phần thưởng)
 -- Hỗ trợ cờ Repeatable: true (lặp vô hạn sau khi claim) / false (chỉ 1 lần trong chu kỳ)
 
@@ -136,7 +136,7 @@ local QuestConfig = {
 				Repeatable  = false,
 			},
 
-			-- [Nhóm 3: MatchCondition — Điều kiện kết thúc trận cụ thể]
+			-- [Nhóm 3: MatchEnd Accumulative — Điều kiện kết thúc trận đấu]
 			{
 				Id          = "D_Win3Matches",
 				Description = "Win 3 matches",
@@ -153,7 +153,7 @@ local QuestConfig = {
 				Id          = "D_WinChaosMode1",
 				Description = "Win 1 match in Chaos Mode",
 				Objective   = {
-					Type        = "MatchCondition",
+					Type        = "Accumulative",
 					Event       = "OnMatchEnd",
 					Requirement = 1,
 					Conditions  = { Won = true, ModeKey = "Chaos" },
@@ -165,7 +165,7 @@ local QuestConfig = {
 				Id          = "D_WinLastStanding1",
 				Description = "Be Last Standing 1 time",
 				Objective   = {
-					Type        = "MatchCondition",
+					Type        = "Accumulative",
 					Event       = "OnMatchEnd",
 					Requirement = 1,
 					Conditions  = { Won = true, LastStanding = true },

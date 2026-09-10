@@ -1,6 +1,6 @@
 # ProgressionAndEconomy
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống tiến trình người chơi và kinh tế (Kinh tế & Thưởng trận đấu, Spree Streak, Nhiệm vụ Objective Engine 2.0, Hiệu ứng Mở rương, Phần thưởng Đa hình, Nhiệm vụ Lặp Vô hạn, Mutex In-Flight Lock và Đồng bộ Dữ liệu).
-> Cập nhật lần cuối: 06-09-2026
+> Cập nhật lần cuối: 10-09-2026
 
 ---
 
@@ -18,11 +18,9 @@
 
 ### 3. Kiến trúc Objective Engine 2.0 & Event-Driven Quest Dispatcher
 - **Chi tiết:** Thay thế hoàn toàn cơ chế lấy hiệu số snapshot trọn đời (`CurrentStat - BaseProgress`) bằng mô hình hướng sự kiện (Event-Driven). Gameplay Services (`FreezeService`, `MatchService`, `ShopService`) chỉ phát sự kiện qua `QuestService.DispatchEvent(Player, EventName, EventData)`.
-- **4 Loại Objective Chuẩn Hóa:**
-  - `InMatchCounter`: Yêu cầu đạt số lượng trong **duy nhất 1 trận** (vd: Freeze 10 người trong 1 trận).
-  - `Accumulative`: Tích lũy cộng dồn qua nhiều trận kèm điều kiện lọc `Conditions` (vd: Thaw 3 đồng đội trong FrozenState, Open 2 Chests).
-  - `MatchCondition`: Điều kiện kết thúc trận (vd: Thắng mode Chaos, thắng khi là Last Standing).
-  - `LifetimeStat`: Dựa trên DataStore/Thời gian chơi (vd: PlayTime 30 phút).
+- **2 Loại Objective Chuẩn Hóa:**
+  - `InMatchCounter`: Yêu cầu đạt số lượng trong **duy nhất 1 trận** (bộ đếm RAM, tự hủy khi kết thúc ván).
+  - `Accumulative`: Tích lũy cộng dồn qua nhiều trận kèm điều kiện lọc `Conditions` (lưu bền vững Profile DataStore), bao quát mọi tiến trình từ $1$ lần (vd: Thắng mode Chaos, Be Last Standing) đến $N$ lần (vd: Thaw 3 đồng đội trong FrozenState, Open 2 Chests).
 - **File liên quan:** [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
 
 ### 4. Quản lý Tiến Trình RAM Theo Trận Đấu & Lưu Trữ Bền Vững QuestData
@@ -293,3 +291,12 @@
   2. Bổ sung `OnServerShutdown()` duyệt snapshot `ActiveProfiles` và đăng ký trực tiếp `game:BindToClose(OnServerShutdown)` trong `DataService:Init()`.
   3. Xóa bỏ kết nối thừa `Players.PlayerRemoving:Connect(FlushSession)` tại `QuestService.lua`, quy tụ toàn bộ quyền điều phối vòng đời giải phóng dữ liệu về duy nhất `DataService`.
 - **File liên quan:** [DataService.lua](../../src/ServerScriptService/Services/DataService.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
+### 25. Phân Mảnh Khái Niệm Trong Objective Engine & Tinh Gọn Về 2 Phạm Vi Tiến Trình
+- **Vấn đề:** Phân chia dư thừa thành 4 loại Objective gây ra mã chết `LifetimeStat` (không có logic thực thi, để lại hàm chết `GetStatValue`) và trừu tượng hóa thừa `MatchCondition` (trùng lặp $100\%$ bản chất với `Accumulative` khi $\text{Requirement} = 1$). Điều này tạo ra mâu thuẫn kiến trúc khi cùng kiểm tra điều kiện kết thúc trận mà Daily Quest dùng `MatchCondition` còn Milestone Quest dùng `Accumulative`.
+- **Giải pháp:**
+  1. *Xóa bỏ mã chết:* Xóa hàm `GetStatValue()` và loại bỏ hoàn toàn `LifetimeStat`.
+  2. *Hợp nhất khái niệm:* Xóa nhánh `MatchCondition` trong `QuestService.EvaluateQuest`, chuyển toàn bộ quest 1 lần (`D_WinChaosMode1`, `D_WinLastStanding1`) sang `Accumulative` với $\text{Requirement} = 1$.
+  3. *Chuẩn hóa kiến trúc:* Đưa hệ thống về duy nhất 2 phạm vi tiến trình: In-Match RAM (`InMatchCounter`) và Persistent Profile DataStore (`Accumulative`).
+- **File liên quan:** [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [QuestService.lua](../../src/ServerScriptService/Services/QuestService.lua)
+
