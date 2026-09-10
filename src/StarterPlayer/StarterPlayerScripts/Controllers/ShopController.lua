@@ -12,7 +12,7 @@
 --       ScrollingFrame  (ScrollingFrame) — UIGridLayout đã có sẵn trong Studio
 --     Templates         (Folder)
 --       ChestPreview    (Frame) — template card, Visible = false
---         ChestViewport (ViewportFrame) — hiển thị model 3D rương
+--         ChestIcon     (ImageLabel) — hiển thị icon 2D rương
 --         ItemPreview   (Frame)
 --           ScrollingFrame (ScrollingFrame) — UIGridLayout — hiển thị danh sách item
 --           BuyButton      (ImageButton) — nút mua, text = giá tổng
@@ -33,7 +33,6 @@ local ProductConfig        = require(ReplicatedStorage.Shared.Config.ProductConf
 local AudioConfig          = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local GuiConfig            = require(ReplicatedStorage.Shared.Config.GuiConfig)
 local PlayerDataController = require(script.Parent.PlayerDataController)
-local ViewportManager      = require(ReplicatedStorage.Shared.Tools.ViewportManager)
 local GuiHelper            = require(ReplicatedStorage.Shared.Tools.GuiHelper)
 local ItemCard             = require(ReplicatedStorage.Shared.Tools.ItemCard)
 
@@ -58,8 +57,6 @@ local CurrencySection      = nil
 local GamePassSection      = nil
 local TemplatesFolder      = nil
 local ChestPreviewTemplate = nil
-local Assets               = nil
-local ChestsFolder         = nil
 
 -- =========================================================
 -- STATE
@@ -69,9 +66,7 @@ local _CurrentTab       = "Icicle"  -- Tab đang hiển thị: "Icicle", "Block"
 local _ListConnections  = {}        -- Connections của ChestList cards (dọn khi re-render)
 local _RobuxConnections = {}        -- Connections của Robux card buttons
 local _PreviewStates    = {}        -- [Frame] = { Amount: number } — trạng thái per-card
-local _LazyRenderQueue  = {}        -- { Frame, ChestEntry } — cards chờ render viewport
 local _ProductInfoCache = {}        -- [ProductId / CacheKey] = ProductInfo dictionary (Cache giá động theo khu vực)
-local _ScrollConn       = nil       -- Connection theo dõi ChestScroll.CanvasPosition
 local _StaggerThread    = nil       -- Thread animation stagger danh sách rương
 
 --- Dừng animation stagger đang chạy dở
@@ -161,12 +156,6 @@ end
 local _ItemRewardController = nil
 local _MenuController       = nil
 
---- Dọn dẹp ViewportFrame tránh memory leak (cả Camera lẫn Model)
---- Ủy quyền cho ViewportManager thay vì giữ lại Camera tĩnh cũ
-local function CleanViewport(Viewport)
-	ViewportManager.CleanViewport(Viewport)
-end
-
 --- Disconnect và xóa danh sách connections
 local function DisconnectAll(ConnectionList)
 	for _, Conn in ipairs(ConnectionList) do
@@ -192,22 +181,14 @@ local function UpdateTabHighlight(ActiveTab)
 	end
 end
 
---- Clone model Chest vào ViewportFrame và tự động tạo camera theo Bounding Box
---- @param Viewport  ViewportFrame
---- @param ChestId   string
-local function LoadChestModel(Viewport, ChestId)
-	CleanViewport(Viewport)
-	if not ChestsFolder then return end
-	local Model = ChestsFolder:FindFirstChild(ChestId)
-	if not Model then
-		warn(("[ShopController] Không tìm thấy Chest model '%s' trong Assets/Chests."):format(ChestId))
-		return
+--- Render 2D Icon của rương vào ChestIcon ImageLabel
+--- @param Card        Frame — ChestPreview card
+--- @param ChestEntry  table — entry từ ChestConfig
+local function LoadChestIcon(Card, ChestEntry)
+	local ChestIcon = Card:FindFirstChild(GuiConfig.ShopElements.ChestIcon, true)
+	if ChestIcon and ChestIcon:IsA("ImageLabel") then
+		ChestIcon.Image = ChestConfig.GetChestIcon(ChestEntry.Id)
 	end
-	local Clone = Model:Clone()
-	Clone.Parent = Viewport
-
-	-- Tạo camera tự động dựa trên Bounding Box và cấu hình ViewportConfig
-	ViewportManager.RenderItem(Viewport, Clone, "Chest", ChestId)
 end
 
 --- Render danh sách item vào ItemPreview/ScrollingFrame của một card
@@ -233,49 +214,6 @@ local function LoadItemPreviews(Card, ChestEntry)
 			EnableHover  = false,
 			EnableSound  = false,
 		})
-	end
-end
-
--- =========================================================
--- LAZY RENDER
--- =========================================================
-
---- Kiểm tra queue và render các card đang nằm trong (hoặc gần) vùng nhìn thấy của ChestScroll
-local function CheckLazyQueue()
-	if not ChestScroll or #_LazyRenderQueue == 0 then return end
-
-	local Buffer       = ShopConfig.LazyRenderBuffer
-	local CanvasY      = ChestScroll.CanvasPosition.Y
-	local ScrollHeight = ChestScroll.AbsoluteSize.Y
-	local ScrollTop    = ChestScroll.AbsolutePosition.Y
-
-	local VisibleTop    = CanvasY - Buffer
-	local VisibleBottom = CanvasY + ScrollHeight + Buffer
-
-	-- Duyệt ngược để an toàn khi xóa phần tử
-	for Index = #_LazyRenderQueue, 1, -1 do
-		local Entry = _LazyRenderQueue[Index]
-		local Frame = Entry.Frame
-
-		-- Nếu card đã bị destroy (ví dụ: đổi tab), bỏ qua
-		if not Frame.Parent then
-			table.remove(_LazyRenderQueue, Index)
-			continue
-		end
-
-		-- Tính vị trí card trong canvas coordinate
-		local CardTop    = Frame.AbsolutePosition.Y - ScrollTop + CanvasY
-		local CardBottom = CardTop + Frame.AbsoluteSize.Y
-
-		if CardBottom >= VisibleTop and CardTop <= VisibleBottom then
-			-- Card trong vùng nhìn thấy → render
-			local ChestView = Frame:FindFirstChild("ChestViewport", true)
-			if ChestView then
-				LoadChestModel(ChestView, Entry.ChestEntry.Id)
-			end
-			LoadItemPreviews(Frame, Entry.ChestEntry)
-			table.remove(_LazyRenderQueue, Index)
-		end
 	end
 end
 
@@ -308,21 +246,14 @@ end
 -- CHEST & ROBUX LIST RENDERING
 -- =========================================================
 
---- Xóa toàn bộ nội dung ChestScroll và dọn connections + lazy state cũ
+--- Xóa toàn bộ nội dung ChestScroll và dọn connections cũ
 local function ClearChestList()
 	StopStaggerAnimation()
 	DisconnectAll(_ListConnections)
 	DisconnectAll(_RobuxConnections)
 
-	-- Ngắt connection theo dõi scroll
-	if _ScrollConn and _ScrollConn.Connected then
-		_ScrollConn:Disconnect()
-		_ScrollConn = nil
-	end
-
 	-- Reset state per-card
 	table.clear(_PreviewStates)
-	table.clear(_LazyRenderQueue)
 
 	-- Dọn card UI (giữ lại UIGridLayout/UIListLayout)
 	if not ChestScroll then return end
@@ -420,23 +351,16 @@ local function RenderChestList(Type)
 			table.insert(_ListConnections, Conn)
 		end
 
+		-- Nạp trực tiếp 2D Icon rương và previews item
+		LoadChestIcon(Card, ChestEntry)
+		LoadItemPreviews(Card, ChestEntry)
+
 		Card.Parent = ChestScroll
 		table.insert(RenderedCards, Card)
-
-		-- Đẩy vào lazy render queue (viewport chưa render)
-		table.insert(_LazyRenderQueue, { Frame = Card, ChestEntry = ChestEntry })
 	end
 
 	-- Kích hoạt hiệu ứng xuất hiện lần lượt (Stagger Pop)
 	_StaggerThread = GuiHelper.StaggerPopOpen(RenderedCards)
-
-	-- Kết nối scroll để trigger lazy render khi cuộn
-	_ScrollConn = ChestScroll:GetPropertyChangedSignal("CanvasPosition"):Connect(CheckLazyQueue)
-	table.insert(_ListConnections, _ScrollConn)
-
-	-- Render ngay các card đang trong vùng nhìn thấy (không chờ người dùng scroll)
-	-- Dùng task.defer để đảm bảo AbsolutePosition đã được tính bởi engine
-	task.defer(CheckLazyQueue)
 end
 
 --- Render danh sách sản phẩm trong RobuxShopList (GamePassSection + CurrencySection)
@@ -624,9 +548,6 @@ function ShopController:Init()
 
 	TemplatesFolder      = Shop:FindFirstChild("Templates")
 	ChestPreviewTemplate = TemplatesFolder and TemplatesFolder:FindFirstChild("ChestPreview")
-
-	Assets       = ReplicatedStorage:FindFirstChild("Assets")
-	ChestsFolder = Assets and Assets:FindFirstChild("Chests")
 
 	-- Shop bắt đầu ẩn
 	Shop.Visible = false

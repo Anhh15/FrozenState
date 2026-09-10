@@ -1,6 +1,6 @@
 # ItemRegistry
-> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard, chuyển đổi 2D ItemImage, cơ chế hiển thị Avatar và Pipeline tự động hóa tạo Icon 2D (ItemRegistry, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar, Shop Lazy Rendering và Dual-Shot Matte Photo Booth).
-> Cập nhật lần cuối: 09-09-2026
+> Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống đăng ký vật phẩm, độ hiếm, quản lý mô hình Viewport, Functional Component ItemCard, chuyển đổi 2D ItemImage, Chuẩn hóa 2D Icon Rương và Khai tử Viewport Grid trong Shop, cơ chế hiển thị Avatar và Pipeline tự động hóa tạo Icon 2D (ItemRegistry, ChestConfig, RarityConfig, ItemCard, ViewportManager, 2D CDN Avatar và Dual-Shot Matte Photo Booth).
+> Cập nhật lần cuối: 10-09-2026
 
 ---
 
@@ -23,8 +23,8 @@
 
 ### 3. Tự Động Hóa Camera ViewportFrame qua Bounding Box và ViewportConfig
 - **Chi tiết:** Tự động hóa tính toán camera hiển thị mô hình 3D trong `ViewportFrame` bằng `ViewportManager.lua` dựa trên Bounding Box của mô hình. Hỗ trợ ghi đè góc nhìn (Pitch, Yaw, FOV, Padding) qua cấu hình phân tầng `ViewportConfig.lua` (`Default` $\rightarrow$ `Type` $\rightarrow$ `ItemId`).
-- **Phân định Phạm vi 3D Viewport:** ViewportFrame 3D được giữ lại phục vụ độc quyền cho các khung hiển thị chi tiết (khung xem trước `ItemSelection` trong Inventory, `ChestViewport` trong Shop và ItemReward), loại bỏ hoàn toàn khỏi danh sách thẻ lặp lại (Card Grid).
-- **File liên quan:** [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
+- **Phân định Phạm vi 3D Viewport:** ViewportFrame 3D được thu hẹp tối đa và giữ lại phục vụ độc quyền cho 2 trường hợp: (1) Khung xem trước chi tiết `ItemSelection` trong Inventory, và (2) Hiệu ứng mở rương 3D trong `ItemRewardController`. Loại bỏ 100% Viewport khỏi toàn bộ danh sách thẻ lặp lại (Card Grid ở cả Inventory và Shop).
+- **File liên quan:** [ViewportManager.lua](../../src/ReplicatedStorage/Shared/Tools/ViewportManager.lua), [ViewportConfig.lua](../../src/ReplicatedStorage/Shared/Config/ViewportConfig.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 
 ### 4. Quy Tắc Phân Vùng Lưu Trữ Template GUI & Khai Tử Dead Asset ChestTemplate
 - **Chi tiết:**
@@ -42,10 +42,12 @@
 - **Lợi ích:** Tiết kiệm GPU/VRAM Client (không tốn các render pass 3D song song), loại bỏ `AvatarCacheService` trên Server giúp giảm tải RAM/CPU Server, hiển thị tức thì không bị méo camera hay độ trễ bất đồng bộ.
 - **File liên quan:** [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua)
 
-### 6. Lazy Render ViewportFrame theo Vùng Nhìn Thấy (Shop Preview In-Place)
-- **Chi tiết:** Để tối ưu hiệu suất khi một danh sách card GUI chứa các ViewportFrame 3D (như `ChestPreview.ChestViewport` trong Shop), áp dụng cơ chế lazy render: Chỉ clone model và gọi `ViewportManager.RenderItem` khi card nằm trong (hoặc gần) vùng nhìn thấy của `ScrollingFrame` cha.
-- **Cơ chế:** Lưu hàng đợi `{ Frame, Data }`, lắng nghe `CanvasPosition` thay đổi để kiểm tra bounding box với buffer mở rộng trước khi render.
-- **File liên quan:** [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ShopConfig.lua](../../src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
+### 6. Chuẩn Hóa 2D Icon Rương & Khai Tử Toàn Diện Lazy Render Trong Shop (ChestConfig & ShopController)
+- **Chi tiết:** Mở rộng hệ sinh thái Icon 2D sang toàn bộ danh mục rương (`ChestConfig.lua`):
+  - *Cấu hình tập trung:* Bổ sung trường `Icon` cho từng rương trong `CHEST_CATALOG`, khai báo `ChestConfig.DefaultIcon` làm SSOT fallback, và cung cấp API an toàn `ChestConfig.GetChestIcon(ChestId)`.
+  - *Liên kết đa hình phần thưởng:* `QuestConfig.GetRewardIcon` tự động phân luồng tra cứu theo `ChestId` (rương) và `ItemId` (skin), loại bỏ hoàn toàn icon generic tĩnh.
+  - *Khai tử Viewport Grid & Lazy Render trong Shop:* Chuyển đổi `ChestViewport` trong `ChestPreview` sang 2D `ImageLabel` (**`ChestIcon`**). Tương tự tiền lệ của `InventoryController`, do 2D Icon nạp tức thì trong $0\text{ms}$ (1 Draw Call), toàn bộ hệ thống Lazy Render trong `ShopController` (`_LazyRenderQueue`, `CheckLazyQueue`, `_ScrollConn`) cùng phụ thuộc 3D (`ViewportManager`, `ChestsFolder`) được dỡ bỏ hoàn toàn, triệt tiêu triệt để rủi ro rò rỉ hàng đợi hoặc lỗi race condition khi chuyển tab.
+- **File liên quan:** [ChestConfig.lua](../../src/ReplicatedStorage/Shared/Config/ChestConfig.lua), [QuestConfig.lua](../../src/ReplicatedStorage/Shared/Config/QuestConfig.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
 
 ### 7. Chuyển Đổi Danh Sách Thẻ Vật Phẩm sang 2D Image & Khai Tử Lazy Render trong Inventory
 - **Chi tiết:** Chuyển đổi toàn bộ hiển thị vật phẩm trong danh sách cuộn (`ItemTemplate`) và thanh Hotbar (`ItemSlot`) từ `ViewportFrame` sang `ImageLabel` (**`ItemImage`**).
@@ -98,11 +100,11 @@
 - **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua)
 
 ### 5. Nghẽn Cổ Chai GPU do Lạm Dụng Hàng Loạt ViewportFrame trên Mobile (Viewport Grid Anti-Pattern)
-- **Vấn đề:** Đặt hàng chục `ViewportFrame` 3D vào các ô thẻ trong danh sách cuộn (`ScrollingFrame`) hoặc các ô Hotbar gây ra bùng nổ draw calls và sub-render passes song song, làm sụt giảm nghiêm trọng FPS trên các thiết bị di động tầm thấp/trung bình.
-- **Giải pháp:** Áp dụng mô hình **Hybrid (2D Grid + Single 3D Preview)**:
-  - 100% các ô thẻ trong danh sách và Hotbar sử dụng `ImageLabel` 2D (**`ItemImage`**).
-  - Duy trì duy nhất **1** `ViewportFrame` ở khung xem trước chi tiết (`ItemSelection`) để người chơi quan sát mô hình 3D khi click chọn.
-- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ItemRegistry.lua](../../src/ReplicatedStorage/Shared/Config/ItemRegistry.lua)
+- **Vấn đề:** Đặt hàng chục `ViewportFrame` 3D vào các ô thẻ trong danh sách cuộn (`ScrollingFrame`) ở Inventory hay Shop gây ra bùng nổ draw calls và sub-render passes song song, làm sụt giảm nghiêm trọng FPS trên các thiết bị di động tầm thấp/trung bình.
+- **Giải pháp:** Áp dụng mô hình **Hybrid (2D Grid + Isolated 3D Viewport)**:
+  - 100% các ô thẻ trong danh sách cuộn (Inventory, Shop `ChestPreview`) và Hotbar chuyển sang `ImageLabel` 2D (**`ItemImage`**, **`ChestIcon`**).
+  - Thu hẹp triệt để phạm vi sử dụng `ViewportFrame` 3D: chỉ duy nhất 2 nơi giữ lại Viewport là khung xem trước chi tiết (`ItemSelection` trong Inventory) và hiệu ứng mở rương toàn màn hình (`ChestViewport` trong `ItemRewardController`).
+- **File liên quan:** [ItemCard.lua](../../src/ReplicatedStorage/Shared/Tools/ItemCard.lua), [HotbarController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HotbarController.lua), [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ItemRewardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ItemRewardController.lua)
 
 ### 6. Sai Lệch Tọa Độ Cửa Sổ, Dính Tab Studio & Hiện Tượng Bóng Ma Khi Chụp Màn Hình
 - **Vấn đề:** Khi chụp màn hình từ Python:

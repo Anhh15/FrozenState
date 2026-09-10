@@ -4,6 +4,10 @@
 -- Hỗ trợ 3 loại Reward: Money, Chest, Item (Mỗi quest có DUY NHẤT 1 loại phần thưởng)
 -- Hỗ trợ cờ Repeatable: true (lặp vô hạn sau khi claim) / false (chỉ 1 lần trong chu kỳ)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ChestConfig       = require(ReplicatedStorage.Shared.Config.ChestConfig)
+local ItemRegistry      = require(ReplicatedStorage.Shared.Config.ItemRegistry)
+
 local QuestConfig = {
 
 	-- =========================================================
@@ -366,8 +370,20 @@ function QuestConfig.GetRewardIcon(Reward)
 	if RewardType == "Money" then
 		return QuestConfig.RewardAnnouncementIcons.Money
 	elseif RewardType == "Chest" then
+		if Reward.ChestId then
+			local ChestIcon = ChestConfig.GetChestIcon(Reward.ChestId)
+			if ChestIcon and ChestIcon ~= "" then
+				return ChestIcon
+			end
+		end
 		return QuestConfig.RewardAnnouncementIcons.Chest or QuestConfig.RewardAnnouncementIcons.Money
 	elseif RewardType == "Item" then
+		if Reward.ItemId and Reward.ItemType then
+			local ItemIcon = ItemRegistry.GetItemIcon(Reward.ItemId, Reward.ItemType)
+			if ItemIcon and ItemIcon ~= "" then
+				return ItemIcon
+			end
+		end
 		return QuestConfig.RewardAnnouncementIcons.Item or QuestConfig.RewardAnnouncementIcons.Money
 	end
 

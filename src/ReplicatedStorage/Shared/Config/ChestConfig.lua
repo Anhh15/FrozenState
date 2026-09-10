@@ -7,11 +7,18 @@
 --   Name    (string) — Tên hiển thị trong Shop
 --   Type    (string) — "Icicle" hoặc "Block" (tab nào hiển thị rương này)
 --   Price1  (number) — Giá mua 1 rương (nhân với số lượng để ra tổng giá)
+--   Icon    (string) — Image ID của icon 2D hiển thị trên GUI ("rbxassetid://..." hoặc "")
 --   Items   (table)  — Danh sách item có thể rơi từ rương này:
 --                        { ItemId (string), DropRate (number 0-100) }
 --                        Tổng DropRate của tất cả Items PHẢI bằng 100
 
 local ChestConfig = {}
+
+-- =========================================================
+-- CONSTANTS & FALLBACKS
+-- =========================================================
+
+ChestConfig.DefaultIcon = "rbxassetid://106702914411826"
 
 -- =========================================================
 -- CATALOG
@@ -27,6 +34,7 @@ local CHEST_CATALOG = {
 		Name   = "Basic Icicle Chest",
 		Type   = "Icicle",
 		Price1 = 1000,
+		Icon   = "rbxassetid://77843812403584",
 		Items  = {
 			{ ItemId = "Green", DropRate = 60 },
 			{ ItemId = "Red",   DropRate = 40 },
@@ -54,6 +62,7 @@ local CHEST_CATALOG = {
 		Name   = "Basic Block Chest",
 		Type   = "Block",
 		Price1 = 1000,
+		Icon   = "rbxassetid://77843812403584",
 		Items  = {
 			{ ItemId = "Green", DropRate = 60 },
 			{ ItemId = "Red",   DropRate = 40 },
@@ -91,6 +100,19 @@ function ChestConfig.GetChest(ChestId)
 		warn(("[ChestConfig] Không tìm thấy Chest Id='%s'."):format(ChestId))
 	end
 	return Entry
+end
+
+--- Lấy Icon của rương theo Id
+--- Tự động fallback về DefaultIcon nếu rương không có icon riêng hoặc Id không tồn tại
+--- @param ChestId string
+--- @return string
+function ChestConfig.GetChestIcon(ChestId)
+	local Entry = _ChestIndex[ChestId]
+	if Entry and Entry.Icon and Entry.Icon ~= "" then
+		return Entry.Icon
+	end
+
+	return ChestConfig.DefaultIcon or ""
 end
 
 --- Lấy danh sách rương theo type (dùng cho tab switching trong Shop)

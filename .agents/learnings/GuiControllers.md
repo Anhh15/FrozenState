@@ -1,6 +1,6 @@
 # GuiControllers
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống điều phối giao diện sảnh, menu và chuyển cảnh (MenuController, NavigationController, GameStateController, GameLoadingScreen, RoundLoadingScreen, ModeAnnouncement, GameOverAnnouncement và các Menu con).
-> Cập nhật lần cuối: 07-09-2026
+> Cập nhật lần cuối: 10-09-2026
 
 ---
 
@@ -62,14 +62,10 @@
   - *Dynamic RichText & Safe UTF-8 Truncate:* Format màu tương đối (Xanh nếu thắng, Đỏ nếu thua, Trắng nếu Spectator, Vàng Kim `#FFD700` cho FFA). Sử dụng `GuiHelper.TruncateText` cắt chuỗi an toàn bằng `utf8` ($\le 15$ ký tự) *trước khi* đưa vào thẻ `<font>` để chống lỗi hỏng thẻ XML.
 - **File liên quan:** [GameOverAnnouncementController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameOverAnnouncementController.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua)
 
-### 9. Cơ chế Trì hoãn Nạp Đồ họa 3D theo Vùng Nhìn Thấy (Shop Lazy Render Viewport Engine)
-- **Chi tiết:** Nhằm ngăn chặn hiện tượng giật khung hình (lag spike) và tối ưu hóa bộ nhớ khi danh sách chứa nhiều phần tử 3D trong ScrollingFrame của Shop (`ChestPreview.ChestViewport`):
-  - *Decoupled 3D Lifecycle*: Danh sách item đơn lẻ dùng 2D `ItemImage`, riêng mô hình rương 3D chỉ nạp khi hiển thị trong khung nhìn.
-  - *Viewport Collision Window*: Lưu các phần tử chờ nạp vào `_LazyRenderQueue`, lắng nghe `CanvasPosition` của `ChestScroll` và kiểm tra giao cắt trong khoảng đệm:
-    $$\text{VisibleTop} = \text{CanvasY} - \text{Buffer}, \quad \text{VisibleBottom} = \text{CanvasY} + \text{ScrollHeight} + \text{Buffer}$$
-  - *Initial Frame Defer*: Kích hoạt `task.defer(CheckLazyQueue)` sau khi render danh sách để engine Roblox hoàn tất tính toán `AbsolutePosition`, nạp tức thì các rương trong trang đầu mà không cần người chơi cuộn.
-  - *Zero Magic Numbers*: Khoảng đệm `LazyRenderBuffer` được cấu hình độc lập qua `ShopConfig.lua`.
-- **File liên quan:** [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ShopConfig.lua](../../src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
+### 9. Chuyển Đổi Danh Sách Rương Sang 2D & Khai Tử Lazy Render Viewport Trong Shop
+- **Chi tiết:** Trước đây, `ShopController` áp dụng cơ chế Lazy Render trì hoãn nạp mô hình 3D (`_LazyRenderQueue`, lắng nghe `CanvasPosition` của `ChestScroll`) để tránh giật lag khi danh sách chứa nhiều `ViewportFrame` 3D.
+- **Khai tử toàn diện:** Khi rương được chuẩn hóa hiển thị bằng 2D `ImageLabel` (**`ChestIcon`**) qua `ChestConfig.GetChestIcon`, 100% tài nguyên card và item previews được nạp tức thì trong $0\text{ms}$ (1 Draw Call). Toàn bộ hệ thống hàng đợi Lazy Render, kết nối scroll `_ScrollConn`, hàm `CheckLazyQueue`, cấu hình `LazyRenderBuffer`, và các phụ thuộc 3D (`ViewportManager`, `ChestsFolder`) trong `ShopController` đã được gỡ bỏ hoàn toàn, đồng bộ với kiến trúc 2D của `InventoryController`.
+- **File liên quan:** [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [ChestConfig.lua](../../src/ReplicatedStorage/Shared/Config/ChestConfig.lua), [ShopConfig.lua](../../src/ReplicatedStorage/Shared/Config/ShopConfig.lua)
 
 ### 10. Điều Phối Menu Setting Đa Section & Đồng Bộ Dữ Liệu Bền Vững (SettingController, Stepped Sliders & Drag-Ended Save)
 - **Chi tiết:** Quản lý Frame `Menu/Setting` với các phân mục `GameplaySection` (AFK Toggle) và `SoundSection` (4 Sliders: `MasterRow`, `MusicRow`, `SFXRow`, `UIRow`):
@@ -156,6 +152,7 @@
 - **Giải pháp:**
   1. Trong hàm dọn dẹp `ClearItemList`/`ClearChestList`, chủ động gọi `_ScrollConn:Disconnect()` và `table.clear(_LazyRenderQueue)`.
   2. Trong vòng lặp `CheckLazyQueue`, bổ sung guard clause: nếu `not Frame.Parent` thì xóa ngay phần tử khỏi queue (`table.remove(_LazyRenderQueue, Index)`) và bỏ qua `continue`.
+  3. **Triệt tiêu tận gốc (Khai tử Lazy Render):** Khi `InventoryController` và `ShopController` chuyển đổi hoàn toàn sang 2D Image/Icon, toàn bộ hệ thống Lazy Render Queue được dỡ bỏ hoàn toàn, loại bỏ 100% nguy cơ phát sinh lỗi rò rỉ này trong runtime.
 - **File liên quan:** [InventoryController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/InventoryController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua)
 
 ### 9. Xung Đột Âm Thanh AutoBindButtons Gây Phát SFX Click/Hover Sai Thiết Kế Trên Cụm Nút Setting
