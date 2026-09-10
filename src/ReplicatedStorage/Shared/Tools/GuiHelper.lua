@@ -88,6 +88,21 @@ function GuiHelper.GetNavButton(ButtonName, Timeout)
 	return Button
 end
 
+--- Tìm phần tử NotificationImage bên trong nút Quest của NavigationButtons
+--- @param Timeout number?
+--- @return GuiObject?
+function GuiHelper.GetQuestNotificationImage(Timeout)
+	local QuestBtn = GuiHelper.GetNavButton(GuiConfig.NavButtons.Quest, Timeout)
+	if not QuestBtn then return nil end
+
+	local ElementName = (GuiConfig.NavElements and GuiConfig.NavElements.QuestNotification) or "NotificationImage"
+	local NotificationImage = QuestBtn:FindFirstChild(ElementName, true)
+	if not NotificationImage and Timeout and Timeout > 0 then
+		NotificationImage = QuestBtn:WaitForChild(ElementName, Timeout)
+	end
+	return NotificationImage
+end
+
 --- Lấy TextLabel hiển thị tiền (Cash) trong NavigationButtons
 --- @param Timeout number?
 --- @return TextLabel?
@@ -838,6 +853,13 @@ function GuiHelper.TruncateText(Text, MaxLength)
 	end
 
 	return Text
+end
+
+--- Lấy cấu hình Animation cho NotificationBadge từ GuiAnimConfig
+--- @param OverrideKey string?
+--- @return table
+function GuiHelper.GetNotificationBadgeConfig(OverrideKey)
+	return GuiAnimConfig.GetNotificationBadgeConfig(OverrideKey)
 end
 
 -- Tự động khởi tạo hệ thống lắng nghe CollectionService cho GUI

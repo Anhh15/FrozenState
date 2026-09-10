@@ -1,6 +1,6 @@
 # GuiArchitecture
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về nền tảng GUI (UIScale Animation Engine, Phân tầng Cấu hình Default/Overrides, Stagger Pop, Dynamic GUI Resolver, Phân tách GuiConfig/GuiAnimConfig và Quản lý Vòng đời ScreenGui).
-> Cập nhật lần cuối: 03-09-2026
+> Cập nhật lần cuối: 10-09-2026
 
 ---
 
@@ -71,6 +71,11 @@
   - Xử lý triệt để toàn bộ edge cases: `nil` (fallback `"0"`), $0$, số âm (bảo toàn dấu `-`), số dạng chuỗi và chuỗi chữ không phải số.
 - **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua), [ShopController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ShopController.lua), [QuestController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/QuestController.lua), [ProfileController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ProfileController.lua), [GameStatisticController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/GameStatisticController.lua), [ScoreBoardController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/ScoreBoardController.lua)
 
+### 10. Hoạt Họa Huy Hiệu Thông Báo Ngắt Quãng (Periodic Pulse via UIScale Engine)
+- **Chi tiết:** Nhằm thông báo trạng thái có phần thưởng/nhiệm vụ hoàn thành mà không gây mỏi mắt hay ô nhiễm thị giác, áp dụng cơ chế Periodic Pulse: nảy $2$ nhịp liên tiếp ($1.0 \to 1.2 \to 1.0$) trong $0.25\text{s}$/nhịp, sau đó chuyển sang trạng thái tĩnh nghỉ ngơi $4.0\text{s}$ trước khi lặp lại chu kỳ mới.
+- **Phân tầng cấu hình:** Toàn bộ thông số hoạt ảnh (`MinScale`, `MaxScale`, `PulseTime`, `PulseCount`, `RestInterval`, `EasingStyle`, `EasingDir`) được cấu hình tập trung 2 tầng (`Default` & `Overrides`) tại `GuiAnimConfig.Animations.NotificationBadge` và truy xuất qua getter chuẩn hóa `GuiAnimConfig.GetNotificationBadgeConfig` / `GuiHelper.GetNotificationBadgeConfig`.
+- **File liên quan:** [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua)
+
 ---
 
 ## Vấn đề kiến trúc & Giải pháp
@@ -120,3 +125,12 @@
      $$\text{Knob.Position} = \text{UDim2.new}\left(\frac{\text{StepIndex}}{\text{StepCount}}, 0, 0.5, 0\right)$$
   2. Gán `Knob.AnchorPoint = Vector2.new(0.5, 0.5)` để tâm của núm luôn căn chính xác $100\%$ vào tâm từng vạch chia $0\%, 10\%, \dots, 100\%$.
 - **File liên quan:** [SliderHelper.lua](../../src/ReplicatedStorage/Shared/Tools/SliderHelper.lua), [SettingController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/SettingController.lua)
+
+### 7. Triệt tiêu Dirty Layout Reflow Khi Chạy Hoạt Ảnh Lặp Trong Container Quản Lý Bởi UIListLayout
+- **Vấn đề:** Khi chạy hoạt ảnh lặp vô tận (nhấp nháy, nảy, pulse) trên huy hiệu (`NotificationImage`) nằm bên trong nút thuộc container có `UIListLayout` (thanh dock `Buttons`), nếu can thiệp trực tiếp vào thuộc tính `Size` hoặc `Position`, Roblox engine sẽ liên tục kích hoạt pass tính toán lại bố cục (Layout Invalidation / Dirty Layout Pass) mỗi frame cho toàn bộ các nút anh em, gây sụt giảm FPS và rung giật layout.
+- **Nguyên nhân:** `UIListLayout` tự động giám sát thay đổi kích thước biên (`AbsoluteSize`) của các đối tượng trực thuộc.
+- **Giải pháp:**
+  1. Bắt buộc sử dụng đối tượng `UIScale` độc lập đặt bên trong phần tử huy hiệu thông báo.
+  2. Tween thuần túy trên thuộc tính `UIScale.Scale`. Cơ chế render của Roblox xử lý `UIScale` ở tầng GPU/Canvas mà không làm thay đổi bounding box hình học danh nghĩa của phần tử cha, triệt tiêu 100% chi phí tính toán lại bố cục.
+- **File liên quan:** [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua), [NavigationController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/NavigationController.lua)
+

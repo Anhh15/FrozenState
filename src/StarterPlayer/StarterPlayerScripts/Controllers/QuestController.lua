@@ -78,6 +78,41 @@ end
 --- References đến Controllers liên quan (được nạp trong :Start())
 local _menuController = nil
 local _itemRewardController = nil
+local _navigationController = nil
+local _playerDataController = nil
+
+--- Đánh giá xem có bất kỳ nhiệm vụ nào (Daily hoặc Milestone) đã hoàn thành và chưa nhận thưởng
+--- @param QuestData table?
+--- @return boolean
+local function HasClaimableQuest(QuestData)
+	if not QuestData then return false end
+
+	local function CheckList(List)
+		if not List then return false end
+		for _, Entry in pairs(List) do
+			local IsClaimed = Entry.Claimed == true
+			local IsCompleted = Entry.Completed == true
+			local Requirement = Entry.Requirement or 0
+			local Progress = Entry.Progress or 0
+
+			if (not IsClaimed) and (IsCompleted or (Requirement > 0 and Progress >= Requirement)) then
+				return true
+			end
+		end
+		return false
+	end
+
+	return CheckList(QuestData.Daily) or CheckList(QuestData.Milestone)
+end
+
+--- Đồng bộ trạng thái huy hiệu thông báo sang NavigationController
+--- @param QuestData table?
+local function CheckAndSyncNotificationBadge(QuestData)
+	if not _navigationController or not _navigationController.SetQuestNotification then return end
+	local TargetData = QuestData or _questData
+	local IsClaimable = HasClaimableQuest(TargetData)
+	_navigationController.SetQuestNotification(IsClaimable)
+end
 
 --- Highlight tab button đang active
 --- @param ActiveTab string  -- "Daily" | "Milestone"
@@ -423,6 +458,7 @@ RefreshQuestUI = function(TriggerStagger)
 	RenderQuestList(QuestList, TriggerStagger)
 	UpdateNotificationDisplay()
 	UpdateResetButtonVisibility()
+	CheckAndSyncNotificationBadge(_questData)
 end
 
 -- =========================================================
@@ -460,6 +496,7 @@ local function CloseQuest()
 	if not _questGui then return end
 	StopCountdownLoop()
 	StopStaggerAnimation()
+	CheckAndSyncNotificationBadge(_questData)
 end
 
 local function OpenQuest()
@@ -615,6 +652,18 @@ function QuestController.SetVisible(Visible)
 	end
 end
 
+--- Kiểm tra dữ liệu nhiệm vụ bất đồng bộ từ Server và cập nhật trạng thái huy hiệu thông báo
+function QuestController.CheckQuestNotificationAsync()
+	task.spawn(function()
+		local GetQuestDataFn = RemoteDefinitions.GetFunction("GetQuestData")
+		local Result = GetQuestDataFn:InvokeServer()
+		if Result then
+			_questData = Result
+			CheckAndSyncNotificationBadge(_questData)
+		end
+	end)
+end
+
 function QuestController:Start()
 	local Controllers = script.Parent
 
@@ -633,6 +682,29 @@ function QuestController:Start()
 	local ItemRewardModule = Controllers:FindFirstChild("ItemRewardController")
 	if ItemRewardModule then
 		_itemRewardController = require(ItemRewardModule)
+	end
+
+	local NavigationModule = Controllers:FindFirstChild("NavigationController")
+	if NavigationModule then
+		_navigationController = require(NavigationModule)
+	end
+
+	local PlayerDataModule = Controllers:FindFirstChild("PlayerDataController")
+	if PlayerDataModule then
+		_playerDataController = require(PlayerDataModule)
+		_playerDataController.OnDataLoaded(function()
+			QuestController.CheckQuestNotificationAsync()
+		end)
+	end
+
+	-- Lắng nghe sự kiện chuyển phase để làm mới trạng thái huy hiệu thông báo khi về Lobby
+	local UpdateGameStateEvent = RemoteDefinitions.GetEvent("UpdateGameState")
+	if UpdateGameStateEvent then
+		UpdateGameStateEvent.OnClientEvent:Connect(function(Data)
+			if Data and Data.Phase == "Lobby" then
+				QuestController.CheckQuestNotificationAsync()
+			end
+		end)
 	end
 
 	print("[QuestController] Started.")

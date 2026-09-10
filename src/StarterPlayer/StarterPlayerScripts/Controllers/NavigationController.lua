@@ -23,6 +23,11 @@ local ExtraContainer   = nil
 local StatsContainer   = nil
 local MoneyLabel       = nil
 
+local QuestNotificationImage = nil
+local QuestNotificationScale = nil
+local _PulseTask             = nil
+local _IsNotificationActive  = false
+
 -- References đến Controllers liên quan (được nạp trong :Start())
 local _MenuController = nil
 local _SpectateController = nil
@@ -31,6 +36,66 @@ local _PlayerDataController = nil
 -- =========================================================
 -- PRIVATE HELPERS
 -- =========================================================
+
+--- Dừng animation pulse của NotificationImage và đưa scale về mặc định
+local function StopPulseAnimation()
+	if _PulseTask then
+		task.cancel(_PulseTask)
+		_PulseTask = nil
+	end
+	if QuestNotificationImage then
+		local ScaleObj = QuestNotificationScale or GuiHelper.GetOrCreateScale(QuestNotificationImage)
+		if ScaleObj then
+			GuiHelper.CancelTween(ScaleObj)
+			ScaleObj.Scale = 1.0
+		end
+	end
+end
+
+--- Khởi chạy animation Periodic Pulse (phóng to thu nhỏ ngắt quãng) cho NotificationImage
+local function StartPulseAnimation()
+	StopPulseAnimation()
+	if not QuestNotificationImage then return end
+	if not _IsNotificationActive then return end
+
+	-- Không chạy nếu ScreenGui hoặc ButtonsContainer đang bị ẩn
+	if NavGui and not NavGui.Enabled then return end
+	if ButtonsContainer and not ButtonsContainer.Visible then return end
+
+	local ScaleObj = QuestNotificationScale or GuiHelper.GetOrCreateScale(QuestNotificationImage)
+	if not ScaleObj then return end
+
+	local BadgeConfig  = GuiHelper.GetNotificationBadgeConfig()
+	local MinScale     = BadgeConfig.MinScale or 1.0
+	local MaxScale     = BadgeConfig.MaxScale or 1.2
+	local PulseTime    = BadgeConfig.PulseTime or 0.25
+	local PulseCount   = BadgeConfig.PulseCount or 2
+	local RestInterval = BadgeConfig.RestInterval or 4.0
+	local Style        = BadgeConfig.EasingStyle or Enum.EasingStyle.Sine
+	local Direction    = BadgeConfig.EasingDir or Enum.EasingDirection.InOut
+
+	_PulseTask = task.spawn(function()
+		while _IsNotificationActive and QuestNotificationImage and QuestNotificationImage:IsDescendantOf(PlayerGui) do
+			if (NavGui and not NavGui.Enabled) or (ButtonsContainer and not ButtonsContainer.Visible) then
+				break
+			end
+
+			for _ = 1, PulseCount do
+				if not _IsNotificationActive then break end
+				GuiHelper.TweenScale(QuestNotificationImage, MaxScale, PulseTime, Style, Direction)
+				task.wait(PulseTime)
+
+				if not _IsNotificationActive then break end
+				GuiHelper.TweenScale(QuestNotificationImage, MinScale, PulseTime, Style, Direction)
+				task.wait(PulseTime)
+			end
+
+			if not _IsNotificationActive then break end
+			task.wait(RestInterval)
+		end
+		_PulseTask = nil
+	end)
+end
 
 --- Tìm MoneyLabel hiển thị tiền trong NavigationButtons
 local function ResolveMoneyLabel()
@@ -130,6 +195,12 @@ function NavigationController.SetVisible(Visible)
 		if not ActiveTab and not IsSpectating then
 			NavigationController.SetButtonsContainerVisible(true)
 		end
+
+		if _IsNotificationActive then
+			StartPulseAnimation()
+		end
+	else
+		StopPulseAnimation()
 	end
 end
 
@@ -138,6 +209,35 @@ end
 function NavigationController.SetButtonsContainerVisible(Visible)
 	if ButtonsContainer then
 		ButtonsContainer.Visible = Visible
+	end
+
+	if Visible and _IsNotificationActive then
+		StartPulseAnimation()
+	else
+		StopPulseAnimation()
+	end
+end
+
+--- Bật hoặc tắt trạng thái hiển thị thông báo nhiệm vụ trên nút Quest (NotificationImage)
+--- @param Active boolean
+function NavigationController.SetQuestNotification(Active)
+	_IsNotificationActive = (Active == true)
+
+	if not QuestNotificationImage then
+		QuestNotificationImage = GuiHelper.GetQuestNotificationImage(0)
+		if QuestNotificationImage then
+			QuestNotificationScale = GuiHelper.GetOrCreateScale(QuestNotificationImage)
+		end
+	end
+
+	if not QuestNotificationImage then return end
+
+	QuestNotificationImage.Visible = _IsNotificationActive
+
+	if _IsNotificationActive then
+		StartPulseAnimation()
+	else
+		StopPulseAnimation()
 	end
 end
 
@@ -169,6 +269,13 @@ function NavigationController:Init()
 	ButtonsContainer = GuiHelper.GetNavButtonsContainer()
 	ExtraContainer   = NavGui:FindFirstChild(GuiConfig.NavContainers.Extra, true)
 	StatsContainer   = NavGui:FindFirstChild(GuiConfig.NavContainers.Stats, true)
+
+	-- Tìm kiếm và khởi tạo NotificationImage trong nút Quest
+	QuestNotificationImage = GuiHelper.GetQuestNotificationImage(GuiConfig.Timeouts.ShortWait)
+	if QuestNotificationImage then
+		QuestNotificationScale = GuiHelper.GetOrCreateScale(QuestNotificationImage)
+		QuestNotificationImage.Visible = false
+	end
 
 	print("[NavigationController] Initialized.")
 end

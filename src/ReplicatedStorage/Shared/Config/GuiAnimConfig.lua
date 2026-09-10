@@ -334,6 +334,20 @@ local GuiAnimConfig = {
 			},
 			Overrides = {},
 		},
+
+		-- 14. Cấu hình hiệu ứng thông báo huy hiệu (Notification Badge Pulse)
+		NotificationBadge = {
+			Default = {
+				MinScale     = 1.0,
+				MaxScale     = 2,
+				PulseTime    = 1.0,  -- Thời gian 1 nhịp nở hoặc co (giây)
+				PulseCount   = 1,    -- Số nhịp đập mỗi chu kỳ
+				RestInterval = 4.0,  -- Thời gian nghỉ giữa các chu kỳ (giây)
+				EasingStyle  = Enum.EasingStyle.Sine,
+				EasingDir    = Enum.EasingDirection.InOut,
+			},
+			Overrides = {},
+		},
 	},
 
 }
@@ -583,6 +597,22 @@ function GuiAnimConfig.GetSliderAnimConfig(OverrideKey)
 		Duration    = O.Duration    or D.Duration    or 0.08,
 		EasingStyle = O.EasingStyle or D.EasingStyle or Enum.EasingStyle.Quad,
 		EasingDir   = O.EasingDir   or D.EasingDir   or Enum.EasingDirection.Out,
+	}
+end
+
+--- Lấy cấu hình Animation cho NotificationBadge (kết hợp Default và Overrides)
+--- @param OverrideKey string?
+--- @return table
+function GuiAnimConfig.GetNotificationBadgeConfig(OverrideKey)
+	local D, O = Resolve("NotificationBadge", OverrideKey)
+	return {
+		MinScale     = O.MinScale     or D.MinScale     or 1.0,
+		MaxScale     = O.MaxScale     or D.MaxScale     or 1.2,
+		PulseTime    = O.PulseTime    or D.PulseTime    or 0.25,
+		PulseCount   = O.PulseCount   or D.PulseCount   or 2,
+		RestInterval = O.RestInterval or D.RestInterval or 4.0,
+		EasingStyle  = O.EasingStyle  or D.EasingStyle  or Enum.EasingStyle.Sine,
+		EasingDir    = O.EasingDir    or D.EasingDir    or Enum.EasingDirection.InOut,
 	}
 end
 

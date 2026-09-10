@@ -41,6 +41,13 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ CON TRONG CÁC NÚT ĐIỀU HƯỚNG (NAVIGATION ELEMENTS)
+	-- =========================================================
+	NavElements = {
+		QuestNotification = "NotificationImage",
+	},
+
+	-- =========================================================
 	-- TÊN CÁC PHẦN TỬ TRONG FRAME BUTTONS CỦA INGAMEGUI
 	-- =========================================================
 	InGameButtons = {
