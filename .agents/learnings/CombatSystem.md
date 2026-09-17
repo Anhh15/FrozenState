@@ -1,6 +1,6 @@
 # CombatSystem
 > Tổng hợp kiến thức kiến trúc và giải pháp kỹ thuật về hệ thống chiến đấu (Icicle Tool, Hitbox Spatial Query, Freeze/Thaw mechanics, IceBlock Model và Tags CollectionService).
-> Cập nhật lần cuối: 07-09-2026
+> Cập nhật lần cuối: 17-09-2026
 
 ---
 
@@ -32,11 +32,13 @@
 - **Chi tiết:** Module Server `FreezeService` duy trì bảng cache cục bộ `_iceBlocks` (map `UserId -> BlockModel`). Khi `SpawnIceBlock`, lưu reference ngay sau khi set parent. Khi `RemoveIceBlock`, tra cứu trực tiếp $O(1)$ và dọn dẹp. Thực hiện cleanup an toàn trong sự kiện `Players.PlayerRemoving` để chống rò rỉ bộ nhớ.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua)
 
-### 6. Quản lý Vòng đời Highlight Nhân vật & Khối Băng (HighlightController)
+### 6. Quản Lý Vòng Đời Highlight Trực Tiếp Trên Nhân Vật (Character Highlight Architecture)
 - **Chi tiết:** Quản lý viền Highlight cục bộ hoàn toàn tại Client (`HighlightController`).
-- **Logic Highlight:** Phân biệt phe theo `LocalPlayer` (Đồng minh = Xanh, Kẻ địch = Đỏ; trong FFA = 100% Đỏ). Chỉ gán Highlight khi cả `LocalPlayer` và mục tiêu thỏa mãn `IsInMatch == true` và `State ~= "Dead"`.
-- **Highlight khối băng xuyên vật thể:** Khi mục tiêu bị đóng băng (`State == "Frozen"`), Client gán `Highlight.Adornee = HighlightHelper` (Part nằm trong Model khối băng) với `DepthMode = Enum.HighlightDepthMode.AlwaysOnTop` để người chơi định vị rõ vị trí đồng minh/kẻ địch bị đóng băng xuyên qua các bức tường. Khi giải cứu (`Thaw`), `Adornee` được trả lại cho `Character`.
-- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua)
+- **Gắn trực tiếp lên Character:** Thay vì gán `Adornee` vào khối băng `IceBlock`, Highlight luôn gắn trực tiếp lên `Character`. Khi bị đóng băng (`State == "Frozen"`), `Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop` giúp người chơi nhìn rõ silhouette tư thế đóng băng phát sáng viền và fill xuyên qua khối băng và các bức tường.
+- **Phân cấp màu sắc & Đồng bộ Trạng thái:**
+  - *Đồng minh khi đóng băng:* Nếu có thể giải cứu (`Thawable`), hiển thị màu trắng `#ffffff` (`FillTransparency = 0.5`); nếu không thể giải cứu (`Unthawable` - trong `FrozenState` hoặc các chế độ chơi cấm thaw như `EternalFreeze`), hiển thị màu xám `#5b5b5b` (`FillTransparency = 0.5`).
+  - *Kẻ địch:* Luôn hiển thị viền đỏ `EnemyColor`, `FillTransparency = 1.0`, `DepthMode = AlwaysOnTop` khi đóng băng.
+- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [PlayerStateHelper.lua](../../src/ReplicatedStorage/Shared/Tools/PlayerStateHelper.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua)
 
 ### 7. Mô hình Stateful Attack Verification & Xác thực Đòn đánh Đa tầng (Server Authority)
 - **Chi tiết:** Triệt tiêu hoàn toàn fake-hit và bypass swing bằng quy trình xác thực trạng thái 2 pha có phân quyền rõ ràng giữa vũ khí và luật chơi:
@@ -60,6 +62,16 @@
 - **Giải pháp Server-Side Authority:** Server trực tiếp nạp hoạt ảnh qua `AnimationConfig.GetPoseAnimation(BlockSkinId)` và gọi `Animator:LoadAnimation()` trên `Humanoid.Animator` của nạn nhân với mức ưu tiên cao nhất `Enum.AnimationPriority.Action4` (`Looped = true`). Theo cơ chế Roblox Luau Engine, hoạt ảnh nạp từ Server sẽ tự động nhân bản (replicate) xuống 100% Client bất kể HRP có bị Anchor hay không.
 - **Quản lý vòng đời:** Module `FreezeService` duy trì bảng cache `_FrozenAnimationTracks[UserId]` trên Server, tự động dừng (`:Stop()`) và dọn dẹp track khi nạn nhân được rã đông (`ThawPlayer`), rã đông cuối trận (`ThawAll`), bị loại (`EliminatePlayer`), hoặc thoát game (`Players.PlayerRemoving`).
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [AnimationHelper.lua](../../src/ReplicatedStorage/Shared/Tools/AnimationHelper.lua), [AnimationConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnimationConfig.lua)
+
+### 10. Hệ Thống Định Vị Cứu Hộ 3D (FrozenMarker BillboardGui & Responsive UIScale Engine)
+- **Chi tiết:** Quản lý `FrozenMarker` (`BillboardGui`) hiển thị trên đỉnh đầu (`Head`) của đồng đội bị đóng băng để hỗ trợ định vị từ xa:
+  - *Cấu trúc Phân cấp Chuẩn:* `FrozenMarker (BillboardGui) -> Frame (UDim2.fromScale(1, 1)) -> [UIScale, Icon, NameText]`. Vì `BillboardGui` là `LayerCollector` không hỗ trợ `UIScale` trực tiếp, việc đặt `UIScale` trong phần tử con `Frame` là chuẩn xác theo engine Roblox.
+  - *Responsive Offset Engine:* Sử dụng kích thước gốc tính bằng Offset ($50 \times 65\text{px}$ trên $1080\text{p}$) kết hợp `UIScale` tự động điều chỉnh theo độ cao Viewport:
+    $$\text{ScaleFactor} = \text{math.clamp}\left(\frac{\text{Camera.ViewportSize.Y}}{1080}, 0.75, 1.4\right)$$
+    giúp Marker không bị teo nhỏ thành hạt bụi ở khoảng cách xa (khắc phục nhược điểm của Scale-in-studs) và duy trì tỉ lệ thị giác hoàn hảo trên mọi thiết bị (Mobile, Tablet, PC, 4K).
+  - *UTF-8 Safe Name Truncate:* Giới hạn `DisplayName` tối đa 12 ký tự thông qua `GuiHelper.TruncateText`, tự động nối thêm `"..."` an toàn không lỗi byte rác.
+  - *Đồng bộ Màu Sắc Trạng thái:* Icon tự động đổi màu trắng (`#ffffff`) hoặc xám (`#5b5b5b`) đồng bộ theo điều kiện có thể rã đông (`Thawable` vs `Unthawable`).
+- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [GuiHelper.lua](../../src/ReplicatedStorage/Shared/Tools/GuiHelper.lua), [GuiConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiConfig.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua)
 
 ---
 
@@ -101,10 +113,10 @@
   2. Gọi `StopHitboxPoll()` ngay bên trong listener `Tool.Unequipped` để lập tức ngắt kết nối `_HitboxConnection` khi cất vũ khí.
 - **File liên quan:** [IcicleScript.client.lua](../../src/ReplicatedStorage/Shared/Tools/IcicleScript.client.lua)
 
-### 7. Tụt FPS Do Quét Toàn Bộ Workspace $O(N \times M)$ Khi Cập Nhật Highlight Khối Băng
-- **Vấn đề:** Trong `HighlightController`, sự kiện `Workspace.ChildAdded` và `ChildRemoved` lắng nghe trên toàn bộ Workspace. Mỗi khi bất kỳ instance nào sinh ra hoặc mất đi (kể cả hiệu ứng hạt particle, mảnh vụn), hàm `RefreshAll()` được gọi duyệt qua toàn bộ danh sách người chơi, gây drop FPS nghiêm trọng trong giao tranh đông người.
-- **Giải pháp:** Gỡ bỏ hoàn toàn `Workspace.ChildAdded/Removed`. Sử dụng `TagHelper.ObserveTagAdded` và `ObserveTagRemoved` trên tag `TagConfig.Tags.IceBlock`. Khi có khối băng thay đổi, chỉ tra cứu `VictimUserId` và cập nhật Adornee $O(1)$ cho duy nhất người chơi tương ứng qua hàm `UpdateSinglePlayerHighlight`.
-- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [TagHelper.lua](../../src/ReplicatedStorage/Shared/Tools/TagHelper.lua)
+### 7. Khai Tử Quét IceBlock Phụ Thuộc & Triệt Tiêu Chi Phí Lắng Nghe Tag Khối Băng Trong HighlightController
+- **Vấn đề:** Trước đây, `HighlightController` phải dùng `TagHelper.ObserveTagAdded/Removed` trên tag `TagConfig.Tags.IceBlock` để gán `Highlight.Adornee = HighlightHelper`, vừa tiềm ẩn nguy cơ lệch pha (desync) nếu khối băng chưa replicate kịp, vừa tiêu tốn tài nguyên lắng nghe event.
+- **Giải pháp:** Khi chuyển sang gắn Highlight trực tiếp lên `Character` và bổ sung `FrozenMarker`, toàn bộ logic quét `FindIceBlockForPlayer` và lắng nghe tag `IceBlock` trong `HighlightController` được khai tử hoàn toàn. `HighlightController` độc lập $100\%$ khỏi vòng đời spawn của Model khối băng, giảm tải chi phí sự kiện và triệt tiêu mọi nguy cơ race condition.
+- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [TagConfig.lua](../../src/ReplicatedStorage/Shared/Config/TagConfig.lua)
 
 ### 8. Lỗi Runtime và Hỏng Dọn Dẹp Hitbox Do Khai Báo Hàm Cục Bộ Sau Sự Kiện (Function Hoisting & Scope Pitfall)
 - **Vấn đề:** Trong Luau/Lua 5.1, khai báo `local function StopHitboxPoll()` nằm bên dưới sự kiện `Tool.Unequipped:Connect` khiến handler tra cứu biến toàn cục `StopHitboxPoll` (`nil`). Khi người chơi cất vũ khí hoặc bị đóng băng/hạ gục giữa lúc vung đòn, game văng exception `attempt to call a nil value`, làm chết đứng luồng dọn dẹp animation.
@@ -139,3 +151,8 @@
 - **Giải pháp:** Xây dựng bảng quản lý kết nối `_PlayerConnections = {}` (map UserId -> mảng connections). Đăng ký `Players.PlayerRemoving` kích hoạt hàm `CleanupPlayer(Player)`: ngắt toàn bộ connection trong `_PlayerConnections[UserId]`, tìm và `:Destroy()` instance `TeamHighlight` trên nhân vật, dọn sạch key khỏi `KnownTeams`, `_frozenPlayers`, `_playerStates`.
 - **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua)
 
+### 14. Mâu Thuẫn Tỉ Lệ Hiển Thị Đa Màn Hình & Teo Nhỏ Khoảng Cách Xa Trên BillboardGui (BillboardGui Scaling Dilemma)
+- **Vấn đề:** Khi làm icon chỉ báo cứu hộ (Rescue Marker), dùng `UDim2.Scale` (studs trong 3D) khiến icon teo nhỏ thành hạt bụi ở khoảng cách 150-200 studs (không thể thấy đồng đội), còn đứng gần thì phóng to che màn hình. Nếu dùng `UDim2.Offset` (pixel) thì trên màn hình mobile 720p icon quá to, trên màn hình 4K lại bé tí. Đồng thời các thuộc tính `DistanceLowerLimit`/`DistanceUpperLimit` đã bị Roblox deprecated và vô hiệu hóa.
+- **Nguyên nhân:** `BillboardGui` xử lý Scale theo không gian 3D thế giới thực (perspective projection) thay vì tỉ lệ màn hình như `ScreenGui`.
+- **Giải pháp:** Thiết lập cấu trúc phân cấp `BillboardGui (Offset) -> Frame -> UIScale`. Client tính toán hệ số phóng đại theo độ cao viewport `Camera.ViewportSize.Y / 1080`, kẹp clamp an toàn $[0.75, 1.4]$. Cập nhật duy nhất khi viewport thay đổi kích thước (`Camera:GetPropertyChangedSignal("ViewportSize")`). Giữ nguyên kích cỡ hiển thị tối ưu trên mọi độ phân giải và duy trì độ rõ nét ở mọi khoảng cách bản đồ.
+- **File liên quan:** [HighlightController.lua](../../src/StarterPlayer/StarterPlayerScripts/Controllers/HighlightController.lua), [GuiAnimConfig.lua](../../src/ReplicatedStorage/Shared/Config/GuiAnimConfig.lua)

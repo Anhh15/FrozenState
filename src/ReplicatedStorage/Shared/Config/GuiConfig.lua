@@ -243,6 +243,17 @@ local GuiConfig = {
 	},
 
 	-- =========================================================
+	-- TÊN CÁC PHẦN TỬ TRONG BILLBOARDGUI FROZENMARKER
+	-- =========================================================
+	FrozenMarker = {
+		Templates    = "Templates",
+		FrozenMarker = "FrozenMarker",
+		Container    = "Frame",
+		Icon         = "Icon",
+		NameText     = "NameText",
+	},
+
+	-- =========================================================
 	-- TIMEOUT MẶC ĐỊNH KHI WAIT CHO CÁC PHẦN TỬ GUI (giây)
 	-- =========================================================
 	Timeouts = {

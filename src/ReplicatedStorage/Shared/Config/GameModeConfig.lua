@@ -58,7 +58,7 @@ local Modes = {
 		WinCondition         = "TeamBased",
 
 		-- Thời gian
-		InGameDuration       = 60,
+		InGameDuration       = 210,
 		FrozenStateThreshold = 45,   -- chỉ dùng khi AllowFrozenState = true
 	},
 
@@ -79,7 +79,7 @@ local Modes = {
 		SpawnType            = "FFA",
 		WinCondition         = "FFA",
 
-		InGameDuration       = 180,
+		InGameDuration       = 210,
 		FrozenStateThreshold = 45,   -- ignored khi AllowFrozenState = false
 	},
 
@@ -100,7 +100,7 @@ local Modes = {
 		SpawnType            = "TeamBased",
 		WinCondition         = "TeamBased",
 
-		InGameDuration       = 180,
+		InGameDuration       = 210,
 		FrozenStateThreshold = 45,
 	},
 

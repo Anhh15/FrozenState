@@ -33,6 +33,30 @@ local GuiAnimConfig = {
 		AllyColor           = Color3.fromRGB(50,  120, 220), -- Xanh đồng minh
 		FillTransparency    = 1.0,
 		OutlineTransparency = 0.0,
+		Thawable = {
+			FillColor           = Color3.fromHex("ffffff"),
+			OutlineColor        = Color3.fromHex("ffffff"),
+			FillTransparency    = 0.5,
+			OutlineTransparency = 0.0,
+		},
+		Unthawable = {
+			FillColor           = Color3.fromHex("5b5b5b"),
+			OutlineColor        = Color3.fromHex("5b5b5b"),
+			FillTransparency    = 0.5,
+			OutlineTransparency = 0.0,
+		},
+	},
+
+	FrozenMarker = {
+		BaseSize            = Vector2.new(50, 65),       -- Kích thước gốc (width, height) trên màn hình 1080p
+		ReferenceResolution = 1080,                      -- Chiều cao màn hình tham chiếu (pixels)
+		MinScale            = 0.75,                      -- Giới hạn scale tối thiểu cho màn hình nhỏ
+		MaxScale            = 1.4,                       -- Giới hạn scale tối đa cho màn hình lớn
+		StudsOffset         = Vector3.new(0, 2.5, 0),    -- Khoảng cách nổi trên đỉnh đầu (Studs)
+		AlwaysOnTop         = true,                      -- Hiển thị xuyên tường để đồng đội tìm kiếm
+		MaxNameLength       = 12,                        -- Độ dài tối đa trước khi cắt ngắn thêm "..."
+		NormalColor         = Color3.fromHex("ffffff"),  -- Màu trắng mặc định của Icon
+		UnthawableColor     = Color3.fromHex("5b5b5b"),  -- Màu xám khi không thể giải cứu
 	},
 
 	-- =========================================================
