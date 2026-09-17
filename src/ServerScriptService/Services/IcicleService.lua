@@ -220,6 +220,9 @@ function IcicleService:Init()
 			HitTargets     = {},
 		}
 
+		-- Ghi nhận cú vung kiếm vào Telemetry
+		SessionService.IncrementStat(Player, "Throws", 1)
+
 		-- Broadcast đến tất cả Client khác để phát 3D Spatial Sound
 		PlaySwingSFXEvent:FireAllClients({
 			Player       = Player,

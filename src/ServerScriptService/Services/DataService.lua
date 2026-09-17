@@ -112,6 +112,15 @@ local function OnProfileLoaded(Player, Profile)
 	if Player:IsDescendantOf(Players) then
 		ActiveProfiles[Player] = Profile
 		_ProfileLoadedBindable:Fire(Player, Profile)
+
+		local SessionServiceModule = script.Parent:FindFirstChild("SessionService")
+		if SessionServiceModule then
+			local SessionService = require(SessionServiceModule)
+			if SessionService.SetStartingMoney then
+				SessionService.SetStartingMoney(Player, Profile.Data.Money)
+			end
+		end
+
 		print(("[DataService] Profile đã load: %s | Money: %d"):format(Player.Name, Profile.Data.Money))
 	else
 		-- Player đã rời server trước khi profile load xong

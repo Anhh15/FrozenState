@@ -175,17 +175,17 @@ local QuestConfig = {
 			},
 
 			-- [Nhóm 4: PlayTime — Tích lũy thời gian chơi]
-			{
-				Id          = "D_PlayTime30m",
-				Description = "Play for 30 minutes",
-				Objective   = {
-					Type        = "Accumulative",
-					Event       = "OnPlayTime",
-					Requirement = 1800, -- 30 phút = 1800 giây
-				},
-				Reward      = { Type = "Money", Amount = 80 },
-				Repeatable  = false,
-			},
+			-- {
+			-- 	Id          = "D_PlayTime30m",
+			-- 	Description = "Play for 30 minutes",
+			-- 	Objective   = {
+			-- 		Type        = "Accumulative",
+			-- 		Event       = "OnPlayTime",
+			-- 		Requirement = 1800, -- 30 phút = 1800 giây
+			-- 	},
+			-- 	Reward      = { Type = "Money", Amount = 80 },
+			-- 	Repeatable  = false,
+			-- },
 		},
 	},
 
@@ -206,17 +206,6 @@ local QuestConfig = {
 				Repeatable  = true,
 			},
 			{
-				Id          = "M_Freeze100",
-				Description = "Freeze 100 enemies",
-				Objective   = {
-					Type        = "Accumulative",
-					Event       = "OnFreeze",
-					Requirement = 100,
-				},
-				Reward      = { Type = "Chest", ChestId = "BasicIcicleChest", Amount = 1 },
-				Repeatable  = true,
-			},
-			{
 				Id          = "M_Thaw50",
 				Description = "Thaw 50 allies",
 				Objective   = {
@@ -225,17 +214,6 @@ local QuestConfig = {
 					Requirement = 50,
 				},
 				Reward      = { Type = "Money", Amount = 500 },
-				Repeatable  = true,
-			},
-			{
-				Id          = "M_Thaw100",
-				Description = "Thaw 100 allies",
-				Objective   = {
-					Type        = "Accumulative",
-					Event       = "OnThaw",
-					Requirement = 100,
-				},
-				Reward      = { Type = "Chest", ChestId = "BasicBlockChest", Amount = 1 },
 				Repeatable  = true,
 			},
 			{
@@ -251,18 +229,6 @@ local QuestConfig = {
 				Repeatable  = true,
 			},
 			{
-				Id          = "M_Win25",
-				Description = "Win 25 matches",
-				Objective   = {
-					Type        = "Accumulative",
-					Event       = "OnMatchEnd",
-					Requirement = 25,
-					Conditions  = { Won = true },
-				},
-				Reward      = { Type = "Chest", ChestId = "BasicIcicleChest", Amount = 2 },
-				Repeatable  = true,
-			},
-			{
 				Id          = "M_FreezingSpree10",
 				Description = "Achieve Freezing Spree 10 times",
 				Objective   = {
@@ -271,7 +237,7 @@ local QuestConfig = {
 					Requirement = 10,
 					Conditions  = { IsSpree = true },
 				},
-				Reward      = { Type = "Money", Amount = 750 },
+				Reward      = { Type = "Money", Amount = 1000 },
 				Repeatable  = true,
 			},
 			{
@@ -283,7 +249,7 @@ local QuestConfig = {
 					Requirement = 10,
 					Conditions  = { IsSpree = true },
 				},
-				Reward      = { Type = "Money", Amount = 750 },
+				Reward      = { Type = "Money", Amount = 1000 },
 				Repeatable  = true,
 			},
 			{
@@ -311,12 +277,12 @@ local QuestConfig = {
 				Repeatable  = true,
 			},
 			{
-				Id          = "M_PlayTime2h",
-				Description = "Play for 2 hours",
+				Id          = "M_PlayTime30m",
+				Description = "Play for 30 minutes",
 				Objective   = {
 					Type        = "Accumulative",
 					Event       = "OnPlayTime",
-					Requirement = 15, -- 2 giờ = 7200 giây
+					Requirement = 1800, -- 30 phút = 1800 giây
 				},
 				Reward      = { Type = "Money", Amount = 600 },
 				Repeatable  = true,

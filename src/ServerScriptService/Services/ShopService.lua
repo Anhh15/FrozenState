@@ -13,6 +13,8 @@ local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
+local AnalyticsConfig   = require(ReplicatedStorage.Shared.Config.AnalyticsConfig)
+local AnalyticsService  = require(script.Parent.AnalyticsService)
 
 local QuestService = nil
 
@@ -156,6 +158,25 @@ function ShopService:Start()
 			local NewMoney = DataService.GetData(Player).Money
 			UpdateMoneyEv:FireClient(Player, NewMoney)
 
+			-- Telemetry: Ghi nhận chi tiêu và rương mở
+			AnalyticsService.LogExpense(Player, TotalPrice, AnalyticsConfig.EconomySinks.ChestPurchase, ChestId, NewMoney)
+			if TotalRefund > 0 then
+				AnalyticsService.LogIncome(Player, TotalRefund, AnalyticsConfig.EconomySources.ProductPurchase, NewMoney, { RefundFrom = ChestId })
+			end
+
+			local DuplicateCount = 0
+			for _, ItemInfo in ipairs(ReceivedItems) do
+				if ItemInfo.WasDuplicate then
+					DuplicateCount = DuplicateCount + 1
+				else
+					local ItemEntry = ItemRegistry.GetItem(ItemInfo.ItemId, Chest.Type)
+					local Rarity = ItemEntry and ItemEntry.Rarity or "Common"
+					AnalyticsService.LogItemAcquired(Player, ItemInfo.ItemId, Chest.Type, Rarity, "Chest", Data.PlayTime, Data.TotalWins)
+				end
+			end
+
+			AnalyticsService.LogChestOpened(Player, ChestId, Quantity, DuplicateCount, TotalRefund)
+
 			print(("[ShopService] %s mua %s x%d — Nhận: %d item, Hoàn: %d Cash"):format(
 				Player.Name, ChestId, Quantity, #ReceivedItems, TotalRefund
 			))
@@ -247,6 +268,12 @@ function ShopService:Start()
 				UpdateMoneyEv:FireClient(Player, NewMoney)
 			end
 
+			-- Telemetry: Ghi nhận nạp tiền Robux Developer Product
+			AnalyticsService.LogIncome(Player, Package.CurrencyAmount, AnalyticsConfig.EconomySources.ProductPurchase, NewMoney, {
+				ProductId  = tostring(ReceiptInfo.ProductId),
+				PurchaseId = PurchaseId,
+			})
+
 			print(("[ShopService] ProcessReceipt thành công: %s mua gói %s (+%d Money, PurchaseId: %s)"):format(
 				Player.Name, Package.DisplayName, Package.CurrencyAmount, PurchaseId
 			))
@@ -272,6 +299,13 @@ function ShopService:Start()
 					_GamePassCache[Player] = {}
 				end
 				_GamePassCache[Player][PassKey] = true
+
+				-- Telemetry: Ghi nhận người chơi mua GamePass
+				AnalyticsService.LogCustomEvent(Player, "GamePassPurchased", 1, {
+					PassId  = tostring(PassId),
+					PassKey = PassKey,
+				})
+
 				print(("[ShopService] %s đã mua thành công GamePass: %s (PassId: %s)"):format(
 					Player.Name, PassKey, tostring(PassId)
 				))

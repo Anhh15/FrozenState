@@ -26,6 +26,8 @@ local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local MapHelper         = require(ReplicatedStorage.Shared.Tools.MapHelper)
 local MapConfig         = require(ReplicatedStorage.Shared.Config.MapConfig)
 local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
+local AnalyticsConfig   = require(ReplicatedStorage.Shared.Config.AnalyticsConfig)
+local AnalyticsService  = require(script.Parent.AnalyticsService)
 
 local ShopService  = nil
 local QuestService = nil
@@ -259,8 +261,10 @@ local function DistributeRewards(Result)
 				SessionService.SetStat(LastAlive, "LastStanding", true)
 				DataService.IncrementStat(LastAlive, "TotalLastStanding")
 				local LastReward = RewardHelper.GetLastStandingReward()
-				local _, FinalLastReward = RewardHelper.RewardAndSync(LastAlive, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(LastAlive))
-				SessionService.IncrementStat(LastAlive, "MoneyEarned", FinalLastReward or LastReward)
+				local NewMoney, FinalLastReward = RewardHelper.RewardAndSync(LastAlive, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(LastAlive))
+				local AwardedLast = FinalLastReward or LastReward
+				SessionService.IncrementStat(LastAlive, "MoneyEarned", AwardedLast)
+				AnalyticsService.LogIncome(LastAlive, AwardedLast, AnalyticsConfig.EconomySources.LastStandingReward, NewMoney or 0)
 			end
 		end
 
@@ -272,8 +276,12 @@ local function DistributeRewards(Result)
 			local IsWinner = (Team == WinTeam)
 			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(Player))
-			SessionService.IncrementStat(Player, "MoneyEarned", FinalReward or Reward)
+			local NewMoney, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(Player))
+			local Awarded = FinalReward or Reward
+			SessionService.IncrementStat(Player, "MoneyEarned", Awarded)
+
+			local SourceKey = IsWinner and AnalyticsConfig.EconomySources.MatchWinReward or AnalyticsConfig.EconomySources.MatchLoseReward
+			AnalyticsService.LogIncome(Player, Awarded, SourceKey, NewMoney or 0)
 
 			if IsWinner then
 				DataService.IncrementStat(Player, "TotalWins")
@@ -290,8 +298,10 @@ local function DistributeRewards(Result)
 				SessionService.SetStat(WinPlayer, "LastStanding", true)
 				DataService.IncrementStat(WinPlayer, "TotalLastStanding")
 				local LastReward = RewardHelper.GetLastStandingReward()
-				local _, FinalLastReward = RewardHelper.RewardAndSync(WinPlayer, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(WinPlayer))
-				SessionService.IncrementStat(WinPlayer, "MoneyEarned", FinalLastReward or LastReward)
+				local NewMoney, FinalLastReward = RewardHelper.RewardAndSync(WinPlayer, LastReward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(WinPlayer))
+				local AwardedLast = FinalLastReward or LastReward
+				SessionService.IncrementStat(WinPlayer, "MoneyEarned", AwardedLast)
+				AnalyticsService.LogIncome(WinPlayer, AwardedLast, AnalyticsConfig.EconomySources.LastStandingReward, NewMoney or 0)
 			end
 		end
 
@@ -300,8 +310,12 @@ local function DistributeRewards(Result)
 			local IsWinner = (Player == WinPlayer)
 			local Reward = RewardHelper.GetMatchEndReward(IsWinner)
 
-			local _, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(Player))
-			SessionService.IncrementStat(Player, "MoneyEarned", FinalReward or Reward)
+			local NewMoney, FinalReward = RewardHelper.RewardAndSync(Player, Reward, DataService, RemoteDefinitions.GetEvent("UpdateMoney"), GetMatchMultiplier(Player))
+			local Awarded = FinalReward or Reward
+			SessionService.IncrementStat(Player, "MoneyEarned", Awarded)
+
+			local SourceKey = IsWinner and AnalyticsConfig.EconomySources.MatchWinReward or AnalyticsConfig.EconomySources.MatchLoseReward
+			AnalyticsService.LogIncome(Player, Awarded, SourceKey, NewMoney or 0)
 
 			if IsWinner then
 				DataService.IncrementStat(Player, "TotalWins")
@@ -469,6 +483,16 @@ local function RunSetup()
 	task.wait(FadeInDuration)
 	task.wait(0.5)  -- buffer nhỏ để map load xong
 
+	-- Bắt đầu theo dõi Telemetry cho ván đấu mới
+	local MatchId = ("Match_%d_%d"):format(os.time(), math.random(1000, 9999))
+	SessionService.StartMatchTracking(MatchId)
+	for _, Player in ipairs(ActivePlayers) do
+		SessionService.IncrementMatchCount(Player)
+	end
+	local CurrentMap = MapService.GetCurrentMap()
+	local MapName = CurrentMap and CurrentMap.Name or "DefaultMap"
+	AnalyticsService.LogMatchStart(MatchId, ModeKey, MapName, #ActivePlayers)
+
 	return true
 end
 
@@ -579,7 +603,14 @@ local function RunInGame()
 		if GameModeHelper.HasFrozenState(ModeKey) and t <= FSTThresh and not FrozenStateOn then
 			FrozenStateOn = true
 			SessionService.SetFrozenState(true)
+			SessionService.SetFrozenStateReached(true)
 			TeamService.SetFrozenStateHighlights(true)
+			AnalyticsService.LogFrozenStateTrigger(
+				SessionService.GetMatchId(),
+				Duration - t,
+				SessionService.GetAliveCount("Team1"),
+				SessionService.GetAliveCount("Team2")
+			)
 			print("[MatchService] ❄ FrozenState đã kích hoạt!")
 		end
 
@@ -612,6 +643,56 @@ local function RunGameOver(Result)
 
 	-- Phát phần thưởng
 	DistributeRewards(Result)
+
+	-- Telemetry: Ghi nhận tổng kết trận đấu và chi tiết từng người chơi
+	local ModeKey = SessionService.GetCurrentModeKey()
+	local CurrentMap = MapService.GetCurrentMap()
+	local MapName = CurrentMap and CurrentMap.Name or "DefaultMap"
+	local EndReason = _earlyResult and "TeamWipe" or "TimeOut"
+	local WinningTeam = Result and (Result.WinTeam or (Result.WinPlayer and Result.WinPlayer.Name)) or "None"
+
+	local Participants = SessionService.GetParticipants()
+	local TotalFreezes = 0
+	local TotalThaws = 0
+	for _, Player in ipairs(Participants) do
+		local Stats = SessionService.GetStats(Player) or {}
+		TotalFreezes = TotalFreezes + (Stats.Freezes or 0)
+		TotalThaws   = TotalThaws + (Stats.Thaws or 0)
+	end
+
+	AnalyticsService.LogMatchEnd({
+		MatchId       = SessionService.GetMatchId(),
+		Duration      = SessionService.GetMatchDuration(),
+		ModeKey       = ModeKey,
+		MapName       = MapName,
+		WinningTeam   = WinningTeam,
+		EndReason     = EndReason,
+		EnteredFrozen = SessionService.DidReachFrozenState(),
+		PlayerCount   = #Participants,
+		TotalFreezes  = TotalFreezes,
+		TotalThaws    = TotalThaws,
+	})
+
+	for _, Player in ipairs(Participants) do
+		local Stats = SessionService.GetStats(Player) or {}
+		local IsWinner = false
+		if Result and Result.WinTeam and SessionService.GetTeam(Player) == Result.WinTeam then
+			IsWinner = true
+		elseif Result and Result.WinPlayer and Result.WinPlayer == Player then
+			IsWinner = true
+		end
+
+		AnalyticsService.LogPlayerMatchSummary(Player, {
+			MatchId         = SessionService.GetMatchId(),
+			Freezes         = Stats.Freezes or 0,
+			Thaws           = Stats.Thaws or 0,
+			Throws          = Stats.Throws or 0,
+			Hits            = Stats.Hits or 0,
+			TimeSpentFrozen = Stats.TimeSpentFrozen or 0,
+			MoneyEarned     = Stats.MoneyEarned or 0,
+			IsWinner        = IsWinner,
+		})
+	end
 
 	-- Chuẩn bị dữ liệu thống kê cuối trận TRƯỚC KHI ClearTeam để giữ nguyên dữ liệu team và top players
 	local Payloads = PrepareGameOverPayloads(Result)

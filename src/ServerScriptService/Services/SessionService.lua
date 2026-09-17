@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 local GameModeHelper    = require(ReplicatedStorage.Shared.Tools.GameModeHelper)
+local AnalyticsService  = require(script.Parent.AnalyticsService)
 
 -- =========================================================
 -- SESSION STATE
@@ -21,6 +22,13 @@ local _isFrozenState  = false
 local _currentModeKey = "Normal"  -- key của GameModeConfig hiện tại
 local _CurrentPhase   = "Intermission"
 
+-- Telemetry & Analytics tracking state
+local _matchId                = ""
+local _matchStartTime         = 0
+local _didReachFrozenState    = false
+local _frozenStateEnteredTime = nil
+local _playerSessionInfo      = {}  -- { [Player] = { JoinTimestamp = number, MatchesPlayed = number, StartingMoney = number? } }
+
 -- BindableEvent: fires khi một đội bị đóng băng toàn bộ
 -- Payload: winTeam (string "Team1" | "Team2")
 local MatchEndSignal = Instance.new("BindableEvent")
@@ -36,14 +44,25 @@ local function InitPlayerSession(Player)
 	_freezeStreaks[Player]  = 0
 	_thawStreaks[Player]    = 0
 	_sessionStats[Player]   = {
-		Freezes        = 0,
-		Thaws          = 0,
-		FreezingSprees = 0,
-		ThawingSprees  = 0,
-		FirstBlood     = false,
-		LastStanding   = false,
-		MoneyEarned    = 0,
+		Freezes         = 0,
+		Thaws           = 0,
+		Throws          = 0,
+		Hits            = 0,
+		TimeSpentFrozen = 0,
+		FrozenStartTime = nil,
+		FreezingSprees  = 0,
+		ThawingSprees   = 0,
+		FirstBlood      = false,
+		LastStanding    = false,
+		MoneyEarned     = 0,
 	}
+	if not _playerSessionInfo[Player] then
+		_playerSessionInfo[Player] = {
+			JoinTimestamp = os.time(),
+			MatchesPlayed = 0,
+			StartingMoney = nil,
+		}
+	end
 	-- Xóa Attribute team và InMatch để client biết player này là Spectator
 	PlayerStateHelper.SetTeam(Player, nil)
 	PlayerStateHelper.SetInMatch(Player, false)
@@ -395,6 +414,71 @@ function SessionService.CheckWinCondition()
 	end
 end
 
+-- ── Match & Telemetry Tracking ───────────────────────────
+
+function SessionService.StartMatchTracking(MatchId)
+	_matchId                = MatchId or ("Match_" .. tostring(os.time()))
+	_matchStartTime         = os.clock()
+	_didReachFrozenState    = false
+	_frozenStateEnteredTime = nil
+end
+
+function SessionService.GetMatchId()
+	return _matchId
+end
+
+function SessionService.GetMatchDuration()
+	if _matchStartTime > 0 then
+		return math.floor(os.clock() - _matchStartTime)
+	end
+	return 0
+end
+
+function SessionService.SetFrozenStateReached(Reached)
+	_didReachFrozenState = Reached
+	if Reached and not _frozenStateEnteredTime then
+		_frozenStateEnteredTime = os.clock()
+	end
+end
+
+function SessionService.DidReachFrozenState()
+	return _didReachFrozenState
+end
+
+function SessionService.GetFrozenStateEnteredTime()
+	return _frozenStateEnteredTime
+end
+
+function SessionService.RecordFrozenStart(Player)
+	local Stats = _sessionStats[Player]
+	if Stats then
+		Stats.FrozenStartTime = os.clock()
+	end
+end
+
+function SessionService.RecordFrozenEnd(Player)
+	local Stats = _sessionStats[Player]
+	if Stats and Stats.FrozenStartTime then
+		local Duration = math.floor(os.clock() - Stats.FrozenStartTime)
+		Stats.TimeSpentFrozen = (Stats.TimeSpentFrozen or 0) + Duration
+		Stats.FrozenStartTime = nil
+	end
+end
+
+function SessionService.IncrementMatchCount(Player)
+	local Info = _playerSessionInfo[Player]
+	if Info then
+		Info.MatchesPlayed = (Info.MatchesPlayed or 0) + 1
+	end
+end
+
+function SessionService.SetStartingMoney(Player, Amount)
+	local Info = _playerSessionInfo[Player]
+	if Info and Info.StartingMoney == nil then
+		Info.StartingMoney = Amount
+	end
+end
+
 -- ── Reset ────────────────────────────────────────────────
 
 --- Xóa sạch dữ liệu session, giữ nguyên danh sách player
@@ -404,9 +488,13 @@ function SessionService.ResetSession()
 	for Player in pairs(_playerStates) do
 		InitPlayerSession(Player)
 	end
-	_isMatchActive  = false
-	_isFrozenState  = false
-	_currentModeKey = "Normal"
+	_isMatchActive          = false
+	_isFrozenState          = false
+	_currentModeKey         = "Normal"
+	_matchId                = ""
+	_matchStartTime         = 0
+	_didReachFrozenState    = false
+	_frozenStateEnteredTime = nil
 end
 
 -- =========================================================
@@ -424,13 +512,29 @@ function SessionService:Init()
 	end)
 
 	Players.PlayerRemoving:Connect(function(Player)
+		-- Finalize frozen duration nếu đang bị freeze
+		SessionService.RecordFrozenEnd(Player)
+
+		-- Log Session Summary Telemetry trước khi xóa dữ liệu
+		local SessionInfo = _playerSessionInfo[Player]
+		if SessionInfo then
+			local SessionDuration = os.time() - SessionInfo.JoinTimestamp
+			local DataService = require(script.Parent.DataService)
+			local Data = DataService.GetData(Player)
+			local CurrentMoney = (Data and type(Data.Money) == "number") and Data.Money or 0
+			local StartingMoney = SessionInfo.StartingMoney or CurrentMoney
+			local NetMoney = CurrentMoney - StartingMoney
+
+			AnalyticsService.LogSessionSummary(Player, SessionDuration, SessionInfo.MatchesPlayed, NetMoney)
+			_playerSessionInfo[Player] = nil
+		end
+
 		-- Nếu thoát giữa trận: loại khỏi trận (Dead) → trigger win condition nếu làm team bị wipe / FFA kết thúc
 		if _isMatchActive or _CurrentPhase == "Ready" then
 			local Team = _teamAssignment[Player]
 			_playerStates[Player] = "Dead"
 
 			-- Broadcast state mới để tất cả client (ScoreBoard/HUD) cập nhật biểu tượng FrozenStatus
-			local ReplicatedStorage = game:GetService("ReplicatedStorage")
 			local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
 			local UpdatePlayerStateEvent = RemoteDefinitions.GetEvent("UpdatePlayerState")
 			if UpdatePlayerStateEvent then

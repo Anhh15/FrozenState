@@ -14,6 +14,8 @@ local RarityConfig      = require(ReplicatedStorage.Shared.Config.RarityConfig)
 local ProductConfig     = require(ReplicatedStorage.Shared.Config.ProductConfig)
 local RewardHelper      = require(ReplicatedStorage.Shared.Tools.RewardHelper)
 local RemoteDefinitions = require(ReplicatedStorage.Shared.Remotes.RemoteDefinitions)
+local AnalyticsConfig   = require(ReplicatedStorage.Shared.Config.AnalyticsConfig)
+local AnalyticsService  = require(script.Parent.AnalyticsService)
 
 -- =========================================================
 -- PRIVATE STATE
@@ -284,13 +286,17 @@ function QuestService.DispatchEvent(Player, EventName, EventData)
 
 		end
 
-		if JustCompleted and NotifyAccoladeEvent then
-			if Player:IsDescendantOf(Players) then
+		if JustCompleted then
+			if NotifyAccoladeEvent and Player:IsDescendantOf(Players) then
 				NotifyAccoladeEvent:FireClient(Player, {
 					Type       = "QuestComplete",
 					QuestTitle = ConfigEntry.Description,
 				})
 			end
+
+			local CategoryKey = (QuestType == "Daily") and AnalyticsConfig.ProgressionCategories.DailyQuest or AnalyticsConfig.ProgressionCategories.MilestoneQuest
+			AnalyticsService.LogProgressionEvent(Player, CategoryKey, AnalyticsConfig.ProgressionActions.Complete, QuestId, "Completed")
+
 			print(("[QuestService] 🎉 %s hoàn thành nhiệm vụ: '%s'!"):format(Player.Name, ConfigEntry.Description))
 		end
 	end
@@ -605,6 +611,25 @@ local function ClaimQuest(Player, QuestType, QuestId)
 		end
 
 		local FinalMoney = DataService.GetData(Player) and DataService.GetData(Player).Money or 0
+
+		-- Telemetry: Ghi nhận claim quest và thu nhập thưởng
+		local CategoryKey = (QuestType == "Daily") and AnalyticsConfig.ProgressionCategories.DailyQuest or AnalyticsConfig.ProgressionCategories.MilestoneQuest
+		AnalyticsService.LogQuestClaim(Player, QuestId, CategoryKey, ActualRewardAmount)
+
+		if Reward.Type == "Money" then
+			local SourceKey = (QuestType == "Daily") and AnalyticsConfig.EconomySources.DailyQuestReward or AnalyticsConfig.EconomySources.MilestoneQuestReward
+			AnalyticsService.LogIncome(Player, ActualRewardAmount, SourceKey, FinalMoney)
+		end
+
+		if #ReceivedItems > 0 then
+			for _, ItemInfo in ipairs(ReceivedItems) do
+				if not ItemInfo.WasDuplicate then
+					local ItemEntry = ItemRegistry.GetItem(ItemInfo.ItemId, ItemInfo.Type)
+					local Rarity = ItemEntry and ItemEntry.Rarity or "Common"
+					AnalyticsService.LogItemAcquired(Player, ItemInfo.ItemId, ItemInfo.Type, Rarity, "QuestReward", RawData.PlayTime, RawData.TotalWins)
+				end
+			end
+		end
 
 		print(("[QuestService] %s claim %s '%s' thành công — Thưởng: %s (Amount: %d, Repeatable: %s)."):format(
 			Player.Name, QuestType, QuestId, Reward.Type, ActualRewardAmount, tostring(IsRepeatable)

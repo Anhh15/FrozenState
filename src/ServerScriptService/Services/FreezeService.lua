@@ -26,6 +26,8 @@ local TagHelper         = require(ReplicatedStorage.Shared.Tools.TagHelper)
 local PlayerStateHelper = require(ReplicatedStorage.Shared.Tools.PlayerStateHelper)
 local AnimationConfig   = require(ReplicatedStorage.Shared.Config.AnimationConfig)
 local AnimationHelper   = require(ReplicatedStorage.Shared.Tools.AnimationHelper)
+local AnalyticsConfig   = require(ReplicatedStorage.Shared.Config.AnalyticsConfig)
+local AnalyticsService  = require(script.Parent.AnalyticsService)
 
 local ShopService  = nil
 local QuestService = nil
@@ -207,14 +209,18 @@ end
 -- =========================================================
 
 --- Thưởng tiền và đồng bộ về client (hỗ trợ GamePass DoubleMatchMoney)
-local function RewardAndSync(Player, Amount)
+local function RewardAndSync(Player, Amount, SourceKey)
 	local Multiplier = 1
 	if ShopService and ShopService.PlayerOwnsGamePass and ShopService.PlayerOwnsGamePass(Player, "DoubleMatchMoney") then
 		local PassConfig = ProductConfig.GetGamePassByKey("DoubleMatchMoney")
 		Multiplier = (PassConfig and PassConfig.Multiplier) or 2
 	end
-	local _, FinalAmount = RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent, Multiplier)
-	SessionService.IncrementStat(Player, "MoneyEarned", FinalAmount or Amount)
+	local NewMoney, FinalAmount = RewardHelper.RewardAndSync(Player, Amount, DataService, UpdateMoneyEvent, Multiplier)
+	local Awarded = FinalAmount or Amount
+	SessionService.IncrementStat(Player, "MoneyEarned", Awarded)
+	if AnalyticsService and SourceKey then
+		AnalyticsService.LogIncome(Player, Awarded, SourceKey, NewMoney or 0)
+	end
 end
 
 --- Broadcast trạng thái player xuống tất cả client
@@ -253,6 +259,7 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 
 	-- Đặt trạng thái Frozen
 	SessionService.SetState(Victim, "Frozen")
+	SessionService.RecordFrozenStart(Victim)
 	BroadcastPlayerState(Victim)
 
 	-- Khóa chuyển động và vị trí
@@ -304,14 +311,15 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 	local FreezeStreak = SessionService.GetFreezeStreak(Attacker)
 	local BaseReward, SpreeBonus, IsSpree = RewardHelper.CalculateFreezeReward(FreezeStreak)
 
-	RewardAndSync(Attacker, BaseReward)
+	RewardAndSync(Attacker, BaseReward, AnalyticsConfig.EconomySources.FreezeReward)
 
 	if IsSpree then
 		SessionService.IncrementStat(Attacker, "FreezingSprees")
 		DataService.IncrementStat(Attacker, "TotalFreezingSpree")
-		RewardAndSync(Attacker, SpreeBonus)
+		RewardAndSync(Attacker, SpreeBonus, AnalyticsConfig.EconomySources.SpreeReward)
 		SessionService.ResetFreezeStreak(Attacker)
 		NotifyAccoladeEvent:FireClient(Attacker, { Type = "FreezingSpree" })
+		AnalyticsService.LogSpreeAchieved(Attacker, "Freezing", FreezeStreak)
 		print(("[FreezeService] ❄ %s đạt Freezing Spree!"):format(Attacker.Name))
 	end
 
@@ -322,8 +330,9 @@ function FreezeService.FreezePlayer(Attacker, Victim)
 		IsFirstBlood = true
 		SessionService.SetStat(Attacker, "FirstBlood", true)
 		DataService.IncrementStat(Attacker, "TotalFirstBlood")
-		RewardAndSync(Attacker, RewardHelper.GetFirstBloodReward())
+		RewardAndSync(Attacker, RewardHelper.GetFirstBloodReward(), AnalyticsConfig.EconomySources.FirstBloodReward)
 		NotifyAccoladeEvent:FireClient(Attacker, { Type = "FirstBlood" })
+		AnalyticsService.LogFirstBlood(Attacker, SessionService.GetMatchId(), SessionService.GetMatchDuration())
 		print(("[FreezeService] 🩸 %s đạt First Blood!"):format(Attacker.Name))
 	end
 
@@ -369,6 +378,7 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 
 	-- Khôi phục trạng thái Normal
 	SessionService.SetState(Victim, "Normal")
+	SessionService.RecordFrozenEnd(Victim)
 	BroadcastPlayerState(Victim)
 
 	-- Khôi phục chuyển động và vị trí
@@ -416,14 +426,15 @@ function FreezeService.ThawPlayer(Rescuer, Victim)
 	local ThawStreak = SessionService.GetThawStreak(Rescuer)
 	local BaseReward, SpreeBonus, IsSpree = RewardHelper.CalculateThawReward(ThawStreak)
 
-	RewardAndSync(Rescuer, BaseReward)
+	RewardAndSync(Rescuer, BaseReward, AnalyticsConfig.EconomySources.ThawReward)
 
 	if IsSpree then
 		SessionService.IncrementStat(Rescuer, "ThawingSprees")
 		DataService.IncrementStat(Rescuer, "TotalThawingSpree")
-		RewardAndSync(Rescuer, SpreeBonus)
+		RewardAndSync(Rescuer, SpreeBonus, AnalyticsConfig.EconomySources.SpreeReward)
 		SessionService.ResetThawStreak(Rescuer)
 		NotifyAccoladeEvent:FireClient(Rescuer, { Type = "ThawingSpree" })
+		AnalyticsService.LogSpreeAchieved(Rescuer, "Thawing", ThawStreak)
 		print(("[FreezeService] 💧 %s đạt Thawing Spree!"):format(Rescuer.Name))
 	end
 
@@ -460,6 +471,7 @@ function FreezeService.ThawAll()
 					HRP.Anchored = false
 				end
 			end
+			SessionService.RecordFrozenEnd(Player)
 			RemoveIceBlock(Player)
 			StopFreezeAnimation(Player)
 			SessionService.SetState(Player, "Normal")
@@ -490,6 +502,11 @@ function FreezeService.EliminatePlayer(Player)
 		if HRP then
 			HRP.Anchored = false
 		end
+	end
+
+	-- Finalize frozen duration nếu đang bị freeze trước khi bị loại
+	if SessionService.GetState(Player) == "Frozen" then
+		SessionService.RecordFrozenEnd(Player)
 	end
 
 	-- Thu hồi Tool, xóa IceBlock & dừng Pose Animation đóng băng
@@ -662,6 +679,7 @@ local function HandleToolHit(Attacker, Target)
 
 	-- Đăng ký Target đã bị hit trong cú swing này
 	IcicleService.RegisterHitTarget(Attacker, Target)
+	SessionService.IncrementStat(Attacker, "Hits", 1)
 
 	-- 11. Thực hiện logic Freeze / Thaw theo mode
 	local ModeKey = SessionService.GetCurrentModeKey()
