@@ -259,14 +259,15 @@ end
 --- @param SourceKey string  -- Từ AnalyticsConfig.EconomySources
 --- @param EndingBalance number
 --- @param CustomFields table?
-function AnalyticsService.LogIncome(Player, Amount, SourceKey, EndingBalance, CustomFields)
+--- @param ItemSku string?
+function AnalyticsService.LogIncome(Player, Amount, SourceKey, EndingBalance, CustomFields, ItemSku)
 	AnalyticsService.LogEconomyEvent(
 		Player,
 		"Source",
 		Amount,
 		EndingBalance,
 		SourceKey or AnalyticsConfig.EconomySources.FreezeReward,
-		"InGameReward",
+		ItemSku or "InGameReward",
 		CustomFields
 	)
 end

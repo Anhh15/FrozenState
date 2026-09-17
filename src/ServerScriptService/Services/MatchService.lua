@@ -489,8 +489,7 @@ local function RunSetup()
 	for _, Player in ipairs(ActivePlayers) do
 		SessionService.IncrementMatchCount(Player)
 	end
-	local CurrentMap = MapService.GetCurrentMap()
-	local MapName = CurrentMap and CurrentMap.Name or "DefaultMap"
+	local MapName = MapService.GetCurrentMapName and MapService.GetCurrentMapName() or "DefaultMap"
 	AnalyticsService.LogMatchStart(MatchId, ModeKey, MapName, #ActivePlayers)
 
 	return true
@@ -646,8 +645,7 @@ local function RunGameOver(Result)
 
 	-- Telemetry: Ghi nhận tổng kết trận đấu và chi tiết từng người chơi
 	local ModeKey = SessionService.GetCurrentModeKey()
-	local CurrentMap = MapService.GetCurrentMap()
-	local MapName = CurrentMap and CurrentMap.Name or "DefaultMap"
+	local MapName = MapService.GetCurrentMapName and MapService.GetCurrentMapName() or "DefaultMap"
 	local EndReason = _earlyResult and "TeamWipe" or "TimeOut"
 	local WinningTeam = Result and (Result.WinTeam or (Result.WinPlayer and Result.WinPlayer.Name)) or "None"
 

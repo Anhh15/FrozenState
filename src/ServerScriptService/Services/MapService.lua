@@ -12,7 +12,8 @@ local MapHelper         = require(ReplicatedStorage.Shared.Tools.MapHelper)
 -- STATE
 -- =========================================================
 
-local _currentMap = nil   -- Model đang active trong Workspace
+local _currentMap     = nil   -- Model đang active trong Workspace
+local _currentMapName = "DefaultMap" -- Tên template của map đang active
 
 -- =========================================================
 -- PUBLIC API
@@ -42,7 +43,8 @@ function MapService.LoadRandomMap()
 	Map.Name             = MapConfig.Folders.MapContainer
 	Map.Parent           = workspace
 
-	_currentMap = Map
+	_currentMap     = Map
+	_currentMapName = ChosenTemplate.Name
 	print(("[MapService] Đã load map: %s"):format(ChosenTemplate.Name))
 	return Map
 end
@@ -52,6 +54,7 @@ function MapService.UnloadMap()
 	if _currentMap and _currentMap.Parent then
 		_currentMap:Destroy()
 		_currentMap = nil
+		_currentMapName = "DefaultMap"
 		print("[MapService] Đã unload map cũ.")
 	end
 
@@ -74,6 +77,12 @@ end
 --- @return Model?
 function MapService.GetCurrentMap()
 	return _currentMap or MapHelper.GetCurrentMap()
+end
+
+--- Lấy tên bản đồ đang active
+--- @return string
+function MapService.GetCurrentMapName()
+	return _currentMapName
 end
 
 -- =========================================================

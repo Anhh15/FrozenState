@@ -57,11 +57,30 @@ local function InitPlayerSession(Player)
 		MoneyEarned     = 0,
 	}
 	if not _playerSessionInfo[Player] then
+		local StartingMoney = nil
+		local DataServiceModule = script.Parent:FindFirstChild("DataService")
+		if DataServiceModule then
+			local DataService = require(DataServiceModule)
+			local Data = DataService.GetData(Player)
+			if Data and type(Data.Money) == "number" then
+				StartingMoney = Data.Money
+			end
+		end
+
 		_playerSessionInfo[Player] = {
 			JoinTimestamp = os.time(),
 			MatchesPlayed = 0,
-			StartingMoney = nil,
+			StartingMoney = StartingMoney,
 		}
+	elseif _playerSessionInfo[Player].StartingMoney == nil then
+		local DataServiceModule = script.Parent:FindFirstChild("DataService")
+		if DataServiceModule then
+			local DataService = require(DataServiceModule)
+			local Data = DataService.GetData(Player)
+			if Data and type(Data.Money) == "number" then
+				_playerSessionInfo[Player].StartingMoney = Data.Money
+			end
+		end
 	end
 	-- Xóa Attribute team và InMatch để client biết player này là Spectator
 	PlayerStateHelper.SetTeam(Player, nil)
@@ -473,9 +492,14 @@ function SessionService.IncrementMatchCount(Player)
 end
 
 function SessionService.SetStartingMoney(Player, Amount)
-	local Info = _playerSessionInfo[Player]
-	if Info and Info.StartingMoney == nil then
-		Info.StartingMoney = Amount
+	if not _playerSessionInfo[Player] then
+		_playerSessionInfo[Player] = {
+			JoinTimestamp = os.time(),
+			MatchesPlayed = 0,
+			StartingMoney = Amount,
+		}
+	elseif _playerSessionInfo[Player].StartingMoney == nil then
+		_playerSessionInfo[Player].StartingMoney = Amount
 	end
 end
 
@@ -501,7 +525,42 @@ end
 -- KHỞI ĐỘNG SERVICE
 -- =========================================================
 
+local function FlushSessionTelemetry(Player)
+	local SessionInfo = _playerSessionInfo[Player]
+	if not SessionInfo or SessionInfo.Logged then
+		return
+	end
+	SessionInfo.Logged = true
+
+	local SessionDuration = math.max(0, os.time() - SessionInfo.JoinTimestamp)
+	local CurrentMoney = 0
+	local DataServiceModule = script.Parent:FindFirstChild("DataService")
+	if DataServiceModule then
+		local DataService = require(DataServiceModule)
+		local Data = DataService.GetData(Player)
+		if Data and type(Data.Money) == "number" then
+			CurrentMoney = Data.Money
+		end
+	end
+
+	local StartingMoney = SessionInfo.StartingMoney or CurrentMoney
+	local NetMoney = CurrentMoney - StartingMoney
+
+	AnalyticsService.LogSessionSummary(Player, SessionDuration, SessionInfo.MatchesPlayed or 0, NetMoney)
+end
+
 function SessionService:Init()
+	-- Đăng ký callback BeforeProfileRelease để log NetMoney trước khi Profile bị unload
+	local DataServiceModule = script.Parent:FindFirstChild("DataService")
+	if DataServiceModule then
+		local DataService = require(DataServiceModule)
+		if DataService.RegisterBeforeProfileRelease then
+			DataService.RegisterBeforeProfileRelease(function(Player)
+				FlushSessionTelemetry(Player)
+			end)
+		end
+	end
+
 	-- Khởi tạo cho players đang có mặt
 	for _, Player in ipairs(Players:GetPlayers()) do
 		InitPlayerSession(Player)
@@ -515,19 +574,9 @@ function SessionService:Init()
 		-- Finalize frozen duration nếu đang bị freeze
 		SessionService.RecordFrozenEnd(Player)
 
-		-- Log Session Summary Telemetry trước khi xóa dữ liệu
-		local SessionInfo = _playerSessionInfo[Player]
-		if SessionInfo then
-			local SessionDuration = os.time() - SessionInfo.JoinTimestamp
-			local DataService = require(script.Parent.DataService)
-			local Data = DataService.GetData(Player)
-			local CurrentMoney = (Data and type(Data.Money) == "number") and Data.Money or 0
-			local StartingMoney = SessionInfo.StartingMoney or CurrentMoney
-			local NetMoney = CurrentMoney - StartingMoney
-
-			AnalyticsService.LogSessionSummary(Player, SessionDuration, SessionInfo.MatchesPlayed, NetMoney)
-			_playerSessionInfo[Player] = nil
-		end
+		-- Log Session Summary Telemetry trước khi xóa dữ liệu (nếu chưa flush ở BeforeProfileRelease)
+		FlushSessionTelemetry(Player)
+		_playerSessionInfo[Player] = nil
 
 		-- Nếu thoát giữa trận: loại khỏi trận (Dead) → trigger win condition nếu làm team bị wipe / FFA kết thúc
 		if _isMatchActive or _CurrentPhase == "Ready" then

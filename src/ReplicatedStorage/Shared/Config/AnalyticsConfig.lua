@@ -44,6 +44,7 @@ local AnalyticsConfig = {
 		DailyQuestReward     = "DailyQuestReward",
 		MilestoneQuestReward = "MilestoneQuestReward",
 		ProductPurchase      = "ProductPurchase",
+		DuplicateRefund      = "DuplicateRefund",
 	},
 
 	-- =========================================================

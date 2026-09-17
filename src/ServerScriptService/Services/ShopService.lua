@@ -161,7 +161,14 @@ function ShopService:Start()
 			-- Telemetry: Ghi nhận chi tiêu và rương mở
 			AnalyticsService.LogExpense(Player, TotalPrice, AnalyticsConfig.EconomySinks.ChestPurchase, ChestId, NewMoney)
 			if TotalRefund > 0 then
-				AnalyticsService.LogIncome(Player, TotalRefund, AnalyticsConfig.EconomySources.ProductPurchase, NewMoney, { RefundFrom = ChestId })
+				AnalyticsService.LogIncome(
+					Player,
+					TotalRefund,
+					AnalyticsConfig.EconomySources.DuplicateRefund,
+					NewMoney,
+					{ RefundFrom = ChestId },
+					ChestId
+				)
 			end
 
 			local DuplicateCount = 0
@@ -269,10 +276,17 @@ function ShopService:Start()
 			end
 
 			-- Telemetry: Ghi nhận nạp tiền Robux Developer Product
-			AnalyticsService.LogIncome(Player, Package.CurrencyAmount, AnalyticsConfig.EconomySources.ProductPurchase, NewMoney, {
-				ProductId  = tostring(ReceiptInfo.ProductId),
-				PurchaseId = PurchaseId,
-			})
+			AnalyticsService.LogIncome(
+				Player,
+				Package.CurrencyAmount,
+				AnalyticsConfig.EconomySources.ProductPurchase,
+				NewMoney,
+				{
+					ProductId  = tostring(ReceiptInfo.ProductId),
+					PurchaseId = PurchaseId,
+				},
+				Package.DisplayName or tostring(ReceiptInfo.ProductId)
+			)
 
 			print(("[ShopService] ProcessReceipt thành công: %s mua gói %s (+%d Money, PurchaseId: %s)"):format(
 				Player.Name, Package.DisplayName, Package.CurrencyAmount, PurchaseId

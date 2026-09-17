@@ -35,12 +35,18 @@
     Phục vụ trực tiếp cho việc cân bằng trải nghiệm, tránh để thời gian "chết" của người chơi vượt quá ngưỡng gây nản lòng ($> 45\text{s}$).
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [IcicleService.lua](../../src/ServerScriptService/Services/IcicleService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
 
-### 5. Theo Dõi Vòng Đời Phiên Chơi & Biến Động Số Dư (Player Session Lifecycle Tracking)
-- **Chi tiết:** `SessionService` khởi tạo `_playerSessionInfo` lưu `JoinTimestamp`, bộ đếm `MatchesPlayed`, và chụp `StartingMoney` khi `DataService` nạp xong Profile.
-- Khi người chơi rời server (`PlayerRemoving`), hệ thống tính toán:
+### 5. Theo Dõi Vòng Đời Phiên Chơi & Chụp Số Dư An Toàn (Player Session Lifecycle Tracking)
+- **Chi tiết:** `SessionService` quản lý `_playerSessionInfo` lưu `JoinTimestamp`, `MatchesPlayed`, và `StartingMoney`. Để tránh race condition khi profile bị đóng trước khi tính delta, `SessionService` hook vào `DataService.RegisterBeforeProfileRelease` để chụp số dư `CurrentMoney` ngay trước khi giải phóng Profile:
   $$\Delta \text{Money} = \text{CurrentMoney} - \text{StartingMoney}$$
-  và ghi nhận `PlayerSessionEnded` kèm `SessionDuration`, phục vụ phân tích độ giữ chân người chơi (Retention) và tốc độ sinh tiền (Income Velocity).
+  Ghi nhận sự kiện `PlayerSessionEnded` kèm `SessionDuration`, phục vụ phân tích độ giữ chân (Retention) và biến động số dư ròng của từng người chơi.
 - **File liên quan:** [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
+### 6. Phân Tách Doanh Thu Thực (Robux IAP) & Dòng Tiền Ảo Trong Economy Telemetry
+- **Chi tiết:** Tách bạch nguồn tiền thưởng/hoàn trong game với giao dịch Robux tiền thật để không làm sai lệch báo cáo tài chính trên Creator Hub:
+  - *Developer Product (Robux):* Ghi nhận `Type: ProductPurchase`, `Sku` là tên gói hiển thị (ví dụ: `A LOT`), kèm `ProductId` và `PurchaseId` trong metadata.
+  - *Cashback Gacha:* Ghi nhận `Type: DuplicateRefund`, `Sku` là `ChestId` (ví dụ: `BasicIcicleChest`), kèm `RefundFrom`.
+  Cả hai đều qua `AnalyticsService.LogIncome` với tham số `ItemSku` tùy biến.
+- **File liên quan:** [AnalyticsConfig.lua](../../src/ReplicatedStorage/Shared/Config/AnalyticsConfig.lua), [AnalyticsService.lua](../../src/ServerScriptService/Services/AnalyticsService.lua), [ShopService.lua](../../src/ServerScriptService/Services/ShopService.lua)
 
 ---
 
@@ -60,3 +66,13 @@
 - **Vấn đề:** Người chơi đang ở trạng thái `Frozen` nhưng đột ngột thoát game (`PlayerRemoving`) hoặc rơi xuống void / reset character (`EliminatePlayer`), nếu chỉ tính giờ ở hàm `ThawPlayer` thì mốc `FrozenStartTime` sẽ bị thất lạc vĩnh viễn, làm sai lệch chỉ số `TimeSpentFrozen`.
 - **Giải pháp:** Thiết lập điểm chốt chặn finalize `SessionService.RecordFrozenEnd(Player)` bắt buộc tại 3 vị trí: (1) `ThawPlayer` khi được giải cứu, (2) `ThawAll` khi kết thúc ván đấu, và (3) `EliminatePlayer` / `PlayerRemoving` ngay trước khi người chơi bị xóa khỏi session.
 - **File liên quan:** [FreezeService.lua](../../src/ServerScriptService/Services/FreezeService.lua), [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua)
+
+### 4. Bẫy Mất Dữ Liệu Số Dư Cuối Do Thứ Tự Lifecycle Của PlayerRemoving (Data Release Race Condition)
+- **Vấn đề:** Do `DataService` khởi tạo trước trong `ServiceLoader`, sự kiện `PlayerRemoving` của nó chạy trước và giải phóng Profile (`Profile:Release()`). Khi `SessionService` nhận sự kiện `PlayerRemoving` sau đó, `DataService.GetData(Player)` đã trả về `nil`, khiến `CurrentMoney` bị fallback về 0 hoặc bằng `StartingMoney`, làm `NetMoneyChange = 0` (hoặc âm toàn bộ tài khoản).
+- **Giải pháp:** Sử dụng hook đồng bộ `DataService.RegisterBeforeProfileRelease` để `SessionService` flush telemetry và lấy số dư `CurrentMoney` chính xác ngay trước khi profile đóng. Đồng thời bổ sung fallback 2 chiều giữa `SetStartingMoney` và `InitPlayerSession` để không bỏ sót `StartingMoney`.
+- **File liên quan:** [SessionService.lua](../../src/ServerScriptService/Services/SessionService.lua), [DataService.lua](../../src/ServerScriptService/Services/DataService.lua)
+
+### 5. Mất Tên Template Bản Đồ Gốc Khi Clone Ra Workspace Container
+- **Vấn đề:** Khi `MapService.LoadRandomMap` clone template map vào Workspace, model được đổi tên thành container chung (`CurrentMap` theo `MapConfig.Folders.MapContainer`). Code đo lường lấy `CurrentMap.Name` sẽ luôn ghi nhận `"CurrentMap"` vào sự kiện `MatchStarted` và `MatchEnded`, làm mất dữ liệu phân tích tỷ lệ thắng/thời gian theo từng map cụ thể.
+- **Giải pháp:** Lưu trữ tên template gốc vào state nội bộ `_currentMapName` tại thời điểm chọn ngẫu nhiên trong `MapService.LoadRandomMap`, đồng thời mở API công khai `MapService.GetCurrentMapName()` để các service khác truy xuất.
+- **File liên quan:** [MapService.lua](../../src/ServerScriptService/Services/MapService.lua), [MatchService.lua](../../src/ServerScriptService/Services/MatchService.lua)
